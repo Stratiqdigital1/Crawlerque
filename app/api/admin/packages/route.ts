@@ -1,11 +1,25 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
+import { verifySessionToken } from "@/lib/auth";
+
+async function getAdminUser() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("stratiq_session")?.value;
+  if (!token) return null;
+  try {
+    const payload: any = await verifySessionToken(token);
+    if (payload?.role !== "admin") return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
 
 export async function GET() {
-  const user = await getCurrentUser();
+  const user = await getAdminUser();
 
-  if (!user || user.role !== "admin") {
+  if (!user) {
     return NextResponse.json(
       { success: false, error: "Unauthorized" },
       { status: 401 }
@@ -20,9 +34,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const user = await getCurrentUser();
+  const user = await getAdminUser();
 
-  if (!user || user.role !== "admin") {
+  if (!user) {
     return NextResponse.json(
       { success: false, error: "Unauthorized" },
       { status: 401 }

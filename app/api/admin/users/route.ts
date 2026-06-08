@@ -1,14 +1,28 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
+import { verifySessionToken } from "@/lib/auth";
 import { generateRandomPassword, hashPassword } from "@/lib/password";
 import { sendEmail } from "@/lib/mail";
 
-export async function GET() {
-  const admin = await getCurrentUser();
+async function getAdminUser() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("stratiq_session")?.value;
+  if (!token) return null;
+  try {
+    const payload: any = await verifySessionToken(token);
+    if (payload?.role !== "admin") return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
 
-  if (!admin || admin.role !== "admin") {
+export async function GET() {
+  const admin = await getAdminUser();
+
+  if (!admin) {
     return NextResponse.json(
       { success: false, error: "Unauthorized" },
       { status: 401 }
@@ -24,9 +38,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const admin = await getCurrentUser();
+  const admin = await getAdminUser();
 
-  if (!admin || admin.role !== "admin") {
+  if (!admin) {
     return NextResponse.json(
       { success: false, error: "Unauthorized" },
       { status: 401 }
@@ -54,7 +68,7 @@ export async function POST(req: Request) {
     data: {
       name,
       email,
-      password: hashedPassword,
+      passwordHash: hashedPassword,
       role,
       packageId,
       mustChangePassword: true,
