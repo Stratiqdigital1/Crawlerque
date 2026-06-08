@@ -37,10 +37,10 @@ export async function POST(req: Request) {
 
     await prisma.user.update({
       where: { id: resetToken.userId },
-      data: {
-        password: await hashPassword(password),
-        mustChangePassword: false,
-      },
+        data: {
+          passwordHash: await hashPassword(password),
+          mustChangePassword: false,
+        },
     });
 
     await prisma.passwordResetToken.update({

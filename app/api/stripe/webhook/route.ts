@@ -3,7 +3,7 @@ import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2023-10-16",
+  apiVersion: "2026-05-27.dahlia",
 });
 
 export async function POST(req: Request) {
@@ -26,12 +26,14 @@ export async function POST(req: Request) {
   try {
     switch (event.type) {
       case "checkout.session.completed": {
-        const session = event.data.object as Stripe.CheckoutSession;
+        const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.metadata?.userId;
         const packageName = session.metadata?.packageName;
         if (!packageName) break;
 
-        const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
+        const subscription = await stripe.subscriptions.retrieve(
+          session.subscription as string
+        );
         const pkg = await prisma.package.findFirst({ where: { name: packageName } });
         if (!pkg) break;
 
@@ -39,22 +41,22 @@ export async function POST(req: Request) {
           await prisma.user.update({
             where: { id: userId },
             data: {
-              packageId: pkg.id,
-              packageName: pkg.name,
-              stripeSubscriptionId: subscription.id,
-              stripePriceId: subscription.items.data[0]?.price.id,
-              stripeStatus: subscription.status,
-              stripeCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
-              stripeCancelAtPeriodEnd: subscription.cancel_at_period_end,
-              monthlyAudits: pkg.monthlyAudits,
-              allowPdf: pkg.allowPdf,
-              allowAi: pkg.allowAi,
-              allowTraffic: pkg.allowTraffic,
-              allowKeywords: pkg.allowKeywords,
+              packageId:             pkg.id,
+              packageName:           pkg.name,
+              stripeSubscriptionId:  subscription.id,
+              stripePriceId:         subscription.items.data[0]?.price.id,
+              stripeStatus:          subscription.status,
+              stripeCurrentPeriodEnd:    new Date((subscription as any).currentPeriodEnd * 1000),
+              stripeCancelAtPeriodEnd:   (subscription as any).cancelAtPeriodEnd,
+              monthlyAudits:  pkg.monthlyAudits,
+              allowPdf:       pkg.allowPdf,
+              allowAi:        pkg.allowAi,
+              allowTraffic:   pkg.allowTraffic,
+              allowKeywords:  pkg.allowKeywords,
               allowBacklinks: pkg.allowBacklinks,
-              allowLocalSeo: pkg.allowLocalSeo,
+              allowLocalSeo:  pkg.allowLocalSeo,
               allowWhiteLabel: pkg.allowWhiteLabel,
-              auditsUsed: 0,
+              auditsUsed:    0,
               auditsResetAt: new Date(),
             },
           });
@@ -67,9 +69,9 @@ export async function POST(req: Request) {
         await prisma.user.updateMany({
           where: { stripeSubscriptionId: sub.id },
           data: {
-            stripeStatus: sub.status,
-            stripeCurrentPeriodEnd: new Date(sub.current_period_end * 1000),
-            stripeCancelAtPeriodEnd: sub.cancel_at_period_end,
+            stripeStatus:              sub.status,
+            stripeCurrentPeriodEnd:    new Date((sub as any).currentPeriodEnd * 1000),
+            stripeCancelAtPeriodEnd:   (sub as any).cancelAtPeriodEnd,
           },
         });
         break;
@@ -81,16 +83,16 @@ export async function POST(req: Request) {
         await prisma.user.updateMany({
           where: { stripeSubscriptionId: sub.id },
           data: {
-            stripeStatus: "canceled",
-            packageId: freePkg?.id || null,
-            packageName: "Free",
-            monthlyAudits: 3,
-            allowPdf: false,
-            allowAi: false,
-            allowTraffic: false,
-            allowKeywords: false,
+            stripeStatus:   "canceled",
+            packageId:      freePkg?.id || null,
+            packageName:    "Free",
+            monthlyAudits:  3,
+            allowPdf:       false,
+            allowAi:        false,
+            allowTraffic:   false,
+            allowKeywords:  false,
             allowBacklinks: false,
-            allowLocalSeo: false,
+            allowLocalSeo:  false,
             allowWhiteLabel: false,
           },
         });
@@ -99,9 +101,11 @@ export async function POST(req: Request) {
 
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
-        if (invoice.subscription) {
+        const invoiceAny = invoice as any;
+        const subId = invoiceAny.subscription || invoiceAny.subscriptionDetails?.subscription;
+        if (subId) {
           await prisma.user.updateMany({
-            where: { stripeSubscriptionId: String(invoice.subscription) },
+            where: { stripeSubscriptionId: String(subId) },
             data: { stripeStatus: "past_due" },
           });
         }

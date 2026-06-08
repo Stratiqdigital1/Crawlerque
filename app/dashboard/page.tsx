@@ -1300,7 +1300,7 @@ const exportPDF = async () => {
       {label:"Backlink Rank",value:cl(String(data?.dataforseo?.backlinkRank??normalized.backlinks.rank??"—")),sub:"Authority signal",col:sCol(n(normalized.backlinks.rank))},
       {label:"Total Backlinks",value:fmt(data?.backlinks?.backlinks??normalized.backlinks.total),col:C.accent},
       {label:"Referring Domains",value:fmt(data?.backlinks?.referringDomains??normalized.backlinks.referringDomains),col:C.blue},
-      {label:"Referring Pages",value:fmt(data?.backlinks?.referringPages??normalized.backlinks.referringPages),col:C.amber},
+      {label:"Referring Pages",value:fmt(data?.backlinks?.referringPages??normalized.backlinks.referringDomains),col:C.amber},
     ]);
     scoreBar("Backlink Authority Signal",normalized.backlinks.rank,"50+ referring domains = moderate authority");
     tbl(["Metric","Value","Benchmark"],[
