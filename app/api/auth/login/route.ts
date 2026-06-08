@@ -3,7 +3,6 @@ import { withSecurityHeaders } from "@/lib/security-headers";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { createSessionToken } from "@/lib/auth";
-import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
   try {
@@ -39,20 +38,19 @@ export async function POST(req: Request) {
       role: user.role,
     });
 
-    const res = withSecurityHeaders(
-      NextResponse.json({
-        success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-        },
-      })
-    );
+    // Cookie must be set directly on the NextResponse object in App Router.
+    // Setting it via cookieStore after the response is built does NOT work —
+    // the Set-Cookie header never reaches the browser.
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
+    });
 
-    const cookieStore = await cookies();
-
-    cookieStore.set("stratiq_session", token, {
+    response.cookies.set("stratiq_session", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -60,8 +58,9 @@ export async function POST(req: Request) {
       maxAge: 60 * 60 * 24 * 7,
     });
 
-    return res;
+    return withSecurityHeaders(response);
   } catch (error) {
+    console.error("Login error:", error);
     return withSecurityHeaders(
       NextResponse.json(
         { success: false, error: "Login failed." },
