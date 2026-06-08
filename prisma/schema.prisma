@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Project {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  prompts   Json?
+}
+
+model Package {
+  id            String  @id @default(cuid())
+  name          String  @unique
+  priceMonthly  Int     @default(0)
+  description   String?
+  monthlyAudits Int     @default(10)
+
+  allowPdf               Boolean @default(true)
+  allowAi                Boolean @default(true)
+  allowTraffic           Boolean @default(true)
+  allowKeywords          Boolean @default(true)
+  allowBacklinks         Boolean @default(true)
+  allowLocalSeo          Boolean @default(true)
+  allowWhiteLabel        Boolean @default(false)
+  allowComparisonReports Boolean @default(false)
+
+  historyDays     Int     @default(30)
+  seatLimit       Int     @default(1)
+  prioritySupport Boolean @default(false)
+  stripePriceId   String?
+  stripeProductId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  name               String?
+  email              String    @unique
+  passwordHash       String    @default("")
+  role               String    @default("user")
+  status             String    @default("active")
+  mustChangePassword Boolean   @default(false)
+  packageName        String    @default("Free")
+  auditsUsed         Int       @default(0)
+  auditsResetAt      DateTime  @default(now())
+  monthlyAudits      Int       @default(3)
+  allowPdf           Boolean   @default(false)
+  agencyName         String?
+  companyName        String?
+  brandLogoUrl       String?
+  brandColor         String?   @default("#C5FF3D")
+  pdfFooterText      String?
+  whiteLabelEnabled  Boolean   @default(false)
+  allowAi            Boolean   @default(false)
+  allowTraffic       Boolean   @default(false)
+  allowKeywords      Boolean   @default(false)
+  allowBacklinks     Boolean   @default(false)
+  allowLocalSeo      Boolean   @default(false)
+  allowWhiteLabel    Boolean   @default(false)
+
+  stripeCustomerId       String?   @unique
+  stripeSubscriptionId   String?   @unique
+  stripePriceId          String?
+  stripeStatus           String?   @default("inactive")
+  stripeCurrentPeriodEnd DateTime?
+  stripeCancelAtPeriodEnd Boolean  @default(false)
+  trialEndsAt            DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  packageId String?
+  package   Package? @relation(fields: [packageId], references: [id])
+
+  resetTokens  PasswordResetToken[]
+  auditReports AuditReport[]
+  auditJobs    AuditJob[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model AuditReport {
+  id               String  @id @default(cuid())
+  userId           String?
+  domain           String
+  normalizedDomain String?
+
+  reportTypes Json?
+  reportData  Json
+
+  overallScore Int?
+  seoScore     Int?
+  uxScore      Int?
+  aiScore      Int?
+
+  estimatedTraffic Int?
+  keywordCount     Int?
+
+  pdfGenerated Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([domain])
+  @@index([createdAt])
+  @@index([userId, normalizedDomain, createdAt])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  email       String?
+  ip          String?
+  domain      String
+  auditMode   String?
+  reportTypes Json?
+  status      String
+  message     String?
+  createdAt   DateTime @default(now())
+
+  @@index([ip, auditMode, createdAt])
+}
+
+model AuditJob {
+  id             String    @id @default(cuid())
+  userId         String?
+  domain         String
+  url            String
+  reportTypes    Json?
+  status         String    @default("pending")
+  progress       Int       @default(0)
+  currentModule  String?
+  moduleStatus   Json?
+  error          String?
+  resultReportId String?
+  resultData     Json?
+  retryCount     Int       @default(0)
+  maxRetries     Int       @default(2)
+  startedAt      DateTime?
+  completedAt    DateTime?
+  failedAt       DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([domain])
+  @@index([status])
+  @@index([createdAt])
+}
