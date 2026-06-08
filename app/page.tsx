@@ -115,15 +115,17 @@ export default function Home() {
       <nav className="sticky top-0 z-50 border-b border-white/5 bg-[#080808]/95 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8">
           <a href="/" className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#C5FF3D]">
-              <span className="text-xs font-black text-black">CQ</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#C5FF3D] shadow-[0_0_20px_rgba(197,255,61,0.35)]">
+              <span className="font-mono text-[11px] font-black text-black">CQ</span>
             </div>
-            <span className="font-extrabold tracking-tight text-white">
-              Crawler Que
-            </span>
-            <span className="hidden rounded border border-white/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-white/30 sm:block">
-              by Strat IQ
-            </span>
+            <div className="flex flex-col leading-none">
+              <span className="text-[15px] font-extrabold tracking-tight text-white">
+                Crawler Que
+              </span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/30">
+                by Strat IQ Digital
+              </span>
+            </div>
           </a>
 
           <div className="hidden items-center gap-8 md:flex">
