@@ -4142,13 +4142,14 @@ function AccountSettingsTab({ currentUser }: { currentUser: any }) {
             <p className="text-sm text-[#8A8A8A]">
               White-label PDF branding is available on Agency and Enterprise plans.
             </p>
-            
+            <a
               href="/#pricing"
               className="mt-4 inline-block rounded-xl border border-[#C5FF3D]/30 px-4 py-2 text-sm font-semibold text-[#C5FF3D]"
             >
               View plans &#8594;
             </a>
-          </div>        )}
+          </div>
+          )}
 
         {error && (
           <p className="rounded-xl border border-red-800 bg-red-950 px-4 py-3 text-sm text-red-400">
