@@ -239,7 +239,7 @@ export default function Home() {
                     disabled={loading}
                     className="w-full rounded-xl bg-[#C5FF3D] px-5 py-3.5 font-mono text-sm font-bold uppercase tracking-[0.12em] text-black transition hover:bg-white disabled:opacity-40"
                   >
-                    {loading ? "Analysing..." : "Run Free Audit &#8594;"}
+                    {loading ? "Analysing..." : "Run Free Audit"}
                   </button>
                   {loading && <div className="h-0.5 animate-pulse rounded-full bg-gradient-to-r from-[#C5FF3D] to-transparent" />}
                 </div>
@@ -483,7 +483,7 @@ export default function Home() {
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               className="rounded-xl bg-[#C5FF3D] px-8 py-4 font-mono text-sm font-bold uppercase tracking-wider text-black transition hover:bg-white"
             >
-              Run a Free Audit &#8594;
+              Run a Free Audit
             </button>
             
               href="#pricing"
