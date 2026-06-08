@@ -18,9 +18,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.userId },
-    });
+    const user = await prisma.user.findUnique({ where: { id: session.userId } });
 
     if (!user?.stripeCustomerId) {
       return NextResponse.json(
@@ -39,9 +37,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ url: portalSession.url });
   } catch (error) {
     console.error("Stripe portal error:", error);
-    return NextResponse.json(
-      { error: "Failed to open billing portal" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to open billing portal" }, { status: 500 });
   }
 }

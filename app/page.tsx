@@ -516,7 +516,7 @@ return (
   Pricing
 </a>
         <a href="/login" className="rounded-md bg-[#C5FF3D] px-5 py-2 font-mono text-xs font-bold uppercase tracking-wider text-black">
-          Login →
+          Login &#8594;
         </a>
       </div>
     </nav>
@@ -647,7 +647,7 @@ Crawler Que by Strat IQ Digital is an AI Website Growth Intelligence platform bu
                   disabled={downloadingPdf}
                   className="mt-3 w-full rounded-lg border border-[#C5FF3D]/40 px-5 py-3 font-mono text-xs font-bold uppercase tracking-[0.12em] text-[#C5FF3D] disabled:opacity-40"
                 >
-                  {downloadingPdf ? "Generating..." : "↓ Download Branded PDF Report"}
+                  {downloadingPdf ? "Generating..." : "Download Branded PDF Report"}
                 </button>
               )}
             </div>
@@ -801,7 +801,7 @@ Crawler Que by Strat IQ Digital is an AI Website Growth Intelligence platform bu
               >
                 {checkoutLoading === plan.name
                   ? "Redirecting to checkout..."
-                  : `Choose ${plan.name} →`}
+                  : `Choose ${plan.name}`}
               </button>
             </div>
           ))}
@@ -828,7 +828,7 @@ Crawler Que by Strat IQ Digital is an AI Website Growth Intelligence platform bu
             onClick={() => window.scrollTo({ top: 90, behavior: "smooth" })}
             className="rounded-lg bg-[#C5FF3D] px-8 py-4 font-mono text-sm font-bold uppercase tracking-wider text-black"
           >
-            Run a Free Audit →
+            Run a Free Audit &#8594;
           </button>
           <a
             href="#pricing"

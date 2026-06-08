@@ -18,11 +18,9 @@ export async function POST(req: Request) {
     });
 
     const paid = session.payment_status === "paid";
-
-    // Extract email from customer or session
     const customer = session.customer as Stripe.Customer | null;
     const email = customer?.email || session.customer_details?.email || "";
-    const name  = customer?.name  || session.customer_details?.name  || "";
+    const name = customer?.name || session.customer_details?.name || "";
 
     return NextResponse.json({ paid, email, name, sessionId });
   } catch (error) {

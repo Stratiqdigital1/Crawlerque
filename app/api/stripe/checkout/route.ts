@@ -17,35 +17,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Price ID required" }, { status: 400 });
     }
 
-    // Check if there is an existing logged-in session
     const cookieStore = await cookies();
     const token = cookieStore.get("stratiq_session")?.value;
     const session: any = token ? await verifySessionToken(token) : null;
 
     const origin = new URL(req.url).origin;
 
-    // Build checkout session params
     const checkoutParams: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
-      // On success: redirect to /signup with the session ID so we can
-      // create/link the account after payment is confirmed
       success_url: `${origin}/signup?session_id={CHECKOUT_SESSION_ID}&plan=${encodeURIComponent(packageName)}`,
       cancel_url: `${origin}/#pricing`,
       metadata: { packageName },
-      subscription_data: {
-        metadata: { packageName },
-      },
-      // Collect email on Stripe's hosted page if not already known
+      subscription_data: { metadata: { packageName } },
       billing_address_collection: "auto",
     };
 
-    // If the user is already logged in, attach to their Stripe customer
     if (session?.userId) {
-      const user = await prisma.user.findUnique({
-        where: { id: session.userId },
-      });
+      const user = await prisma.user.findUnique({ where: { id: session.userId } });
 
       if (user) {
         let customerId = user.stripeCustomerId;
@@ -66,20 +56,15 @@ export async function POST(req: Request) {
         checkoutParams.customer = customerId;
         checkoutParams.metadata!.userId = user.id;
         checkoutParams.subscription_data!.metadata!.userId = user.id;
-        // Skip email collection since we already have it
         checkoutParams.success_url = `${origin}/dashboard?upgraded=true&session_id={CHECKOUT_SESSION_ID}`;
         checkoutParams.cancel_url = `${origin}/dashboard?tab=billing&cancelled=true`;
       }
     }
 
     const checkoutSession = await stripe.checkout.sessions.create(checkoutParams);
-
     return NextResponse.json({ url: checkoutSession.url });
   } catch (error) {
     console.error("Stripe checkout error:", error);
-    return NextResponse.json(
-      { error: "Failed to create checkout session" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to create checkout session" }, { status: 500 });
   }
 }
