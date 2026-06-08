@@ -486,7 +486,7 @@ export default function Home() {
               Run a Free Audit
             </button>
             
-              href="#pricing"
+              <a href="#pricing"
               className="rounded-xl border border-white/10 px-8 py-4 font-mono text-sm uppercase tracking-wider text-white/40 transition hover:border-white/20 hover:text-white"
             >
               See Plans
