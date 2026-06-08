@@ -27,4 +27,6 @@ export async function POST(req: Request) {
     console.error("Session verification error:", error);
     return NextResponse.json({ paid: false, error: "Verification failed" }, { status: 500 });
   }
+
+  
 }
