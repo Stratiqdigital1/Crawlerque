@@ -2288,19 +2288,19 @@ value={
   </div>
 </div>
 
-      {data?.unifiedOverview?.sourceCoverage?.length > 0 ? (
+{data?.unifiedOverview?.sourceCoverage?.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {data.unifiedOverview.sourceCoverage.map((source: string, i: number) => (
             <span
               key={i}
-              className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600"
+              className="rounded-full border border-[#C5FF3D]/20 bg-[#C5FF3D]/8 px-3 py-1 font-mono text-[11px] font-semibold text-[#C5FF3D]"
             >
               {source}
             </span>
           ))}
         </div>
       ) : (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-[#8A8A8A]">
           Data not available from connected sources.
         </p>
       )}
@@ -2753,9 +2753,13 @@ value={
         label="Organic Keywords"
         value={data?.domainAnalytics?.organicKeywords ?? "Data not available"}
       />
-      <MetricCard
+<MetricCard
   label="Estimated Organic Traffic"
-  value={data?.domainAnalytics?.organicTraffic ?? "Data not available"}
+  value={
+    data?.domainAnalytics?.organicTraffic != null
+      ? Math.round(Number(data.domainAnalytics.organicTraffic)).toLocaleString()
+      : "Data not available"
+  }
   score={
     Number(data?.domainAnalytics?.organicTraffic || 0) > 10000
       ? 85
@@ -2769,25 +2773,37 @@ value={
 />
       <MetricCard
         label="Organic Cost"
-        value={data?.domainAnalytics?.organicCost ?? "Data not available"}
+        value={
+          data?.domainAnalytics?.organicCost != null
+            ? `$${Number(data.domainAnalytics.organicCost).toFixed(2)}`
+            : "Data not available"
+        }
       />
       <MetricCard
         label="Paid Keywords"
-        value={data?.domainAnalytics?.paidKeywords ?? "Data not available"}
+        value={data?.domainAnalytics?.paidKeywords ?? "0"}
       />
       <MetricCard
         label="Paid Traffic"
-        value={data?.domainAnalytics?.paidTraffic ?? "Data not available"}
+        value={
+          data?.domainAnalytics?.paidTraffic != null
+            ? Math.round(Number(data.domainAnalytics.paidTraffic)).toLocaleString()
+            : "0"
+        }
       />
       <MetricCard
         label="Paid Cost"
-        value={data?.domainAnalytics?.paidCost ?? "Data not available"}
+        value={
+          data?.domainAnalytics?.paidCost != null && Number(data.domainAnalytics.paidCost) > 0
+            ? `$${Number(data.domainAnalytics.paidCost).toFixed(2)}`
+            : "$0.00"
+        }
       />
     </div>
 
     <div className="mb-6 grid gap-4 lg:grid-cols-2">
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-4 font-semibold text-slate-950">
+<div className="rounded-2xl border border-[#222] bg-[#111] p-5">
+        <h3 className="mb-4 font-semibold text-white">
           Estimated Organic vs Paid Traffic
         </h3>
 
@@ -2797,25 +2813,29 @@ value={
               data={[
                 {
                   type: "Organic",
-                  traffic: Number(data?.domainAnalytics?.organicTraffic || 0),
+                  traffic: Math.round(Number(data?.domainAnalytics?.organicTraffic || 0)),
                 },
                 {
                   type: "Paid",
-                  traffic: Number(data?.domainAnalytics?.paidTraffic || 0),
+                  traffic: Math.round(Number(data?.domainAnalytics?.paidTraffic || 0)),
                 },
               ]}
             >
-              <XAxis dataKey="type" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="traffic" />
+              <XAxis dataKey="type" stroke="#555" tick={{ fill: "#8A8A8A", fontSize: 12 }} />
+              <YAxis allowDecimals={false} stroke="#333" tick={{ fill: "#8A8A8A", fontSize: 11 }} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#1a1a1a", border: "1px solid #333", borderRadius: "8px" }}
+                labelStyle={{ color: "#C5FF3D", fontWeight: "bold" }}
+                itemStyle={{ color: "#fff" }}
+              />
+              <Bar dataKey="traffic" fill="#C5FF3D" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-4 font-semibold text-slate-950">
+      <div className="rounded-2xl border border-[#222] bg-[#111] p-5">
+        <h3 className="mb-4 font-semibold text-white">
           Organic vs Paid Keywords
         </h3>
 
@@ -2833,10 +2853,14 @@ value={
                 },
               ]}
             >
-              <XAxis dataKey="type" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="keywords" />
+              <XAxis dataKey="type" stroke="#555" tick={{ fill: "#8A8A8A", fontSize: 12 }} />
+              <YAxis allowDecimals={false} stroke="#333" tick={{ fill: "#8A8A8A", fontSize: 11 }} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#1a1a1a", border: "1px solid #333", borderRadius: "8px" }}
+                labelStyle={{ color: "#C5FF3D", fontWeight: "bold" }}
+                itemStyle={{ color: "#fff" }}
+              />
+              <Bar dataKey="keywords" fill="#C5FF3D" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -2978,35 +3002,43 @@ value={
     </div>
 
     <div className="mb-6 grid gap-4 lg:grid-cols-2">
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-4 font-semibold text-slate-950">
+<div className="rounded-2xl border border-[#222] bg-[#111] p-5">
+        <h3 className="mb-4 font-semibold text-white">
           Brand vs Competitor Mentions
         </h3>
 
         <div className="h-[280px] w-full min-w-0">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={competitorChartData}>
-              <XAxis dataKey="name" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="mentions" />
+              <XAxis dataKey="name" stroke="#555" tick={{ fill: "#8A8A8A", fontSize: 11 }} />
+              <YAxis allowDecimals={false} stroke="#333" tick={{ fill: "#8A8A8A", fontSize: 11 }} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#1a1a1a", border: "1px solid #333", borderRadius: "8px" }}
+                labelStyle={{ color: "#C5FF3D", fontWeight: "bold" }}
+                itemStyle={{ color: "#fff" }}
+              />
+              <Bar dataKey="mentions" fill="#C5FF3D" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-4 font-semibold text-slate-950">
+      <div className="rounded-2xl border border-[#222] bg-[#111] p-5">
+        <h3 className="mb-4 font-semibold text-white">
           Model Mention Coverage
         </h3>
 
         <div className="h-[280px] w-full min-w-0">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={chartData}>
-              <XAxis dataKey="name" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="mentioned" />
+              <XAxis dataKey="name" stroke="#555" tick={{ fill: "#8A8A8A", fontSize: 11 }} />
+              <YAxis allowDecimals={false} stroke="#333" tick={{ fill: "#8A8A8A", fontSize: 11 }} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#1a1a1a", border: "1px solid #333", borderRadius: "8px" }}
+                labelStyle={{ color: "#C5FF3D", fontWeight: "bold" }}
+                itemStyle={{ color: "#fff" }}
+              />
+              <Bar dataKey="mentioned" fill="#C5FF3D" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -3518,8 +3550,8 @@ value={
       />
     </div>
 
-    <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h3 className="mb-4 font-semibold text-slate-950">
+<div className="mb-6 rounded-2xl border border-[#222] bg-[#111] p-5">
+      <h3 className="mb-4 font-semibold text-white">
         Keyword Rank Positions
       </h3>
 
@@ -3531,10 +3563,15 @@ value={
               rank: r.found ? Number(r.rank || 0) : 0,
             }))}
           >
-            <XAxis dataKey="keyword" />
-            <YAxis allowDecimals={false} />
-            <Tooltip />
-            <Bar dataKey="rank" />
+            <XAxis dataKey="keyword" stroke="#555" tick={{ fill: "#8A8A8A", fontSize: 10 }} />
+            <YAxis allowDecimals={false} reversed stroke="#333" tick={{ fill: "#8A8A8A", fontSize: 11 }} />
+            <Tooltip
+              contentStyle={{ backgroundColor: "#1a1a1a", border: "1px solid #333", borderRadius: "8px" }}
+              labelStyle={{ color: "#C5FF3D", fontWeight: "bold" }}
+              itemStyle={{ color: "#fff" }}
+              formatter={(value: any) => [`#${value}`, "Rank Position"]}
+            />
+            <Bar dataKey="rank" fill="#C5FF3D" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -3817,18 +3854,22 @@ value={
       />
     </div>
 
-    <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h3 className="mb-4 font-semibold text-slate-950">
+<div className="mb-6 rounded-2xl border border-[#222] bg-[#111] p-5">
+      <h3 className="mb-4 font-semibold text-white">
         Shared Keyword Overlap
       </h3>
 
       <div className="h-[280px] w-full min-w-0">
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={seoCompetitorChartData}>
-            <XAxis dataKey="name" />
-            <YAxis allowDecimals={false} />
-            <Tooltip />
-            <Bar dataKey="threatScore" />
+            <XAxis dataKey="name" stroke="#555" tick={{ fill: "#8A8A8A", fontSize: 10 }} />
+            <YAxis allowDecimals={false} stroke="#333" tick={{ fill: "#8A8A8A", fontSize: 11 }} />
+            <Tooltip
+              contentStyle={{ backgroundColor: "#1a1a1a", border: "1px solid #333", borderRadius: "8px" }}
+              labelStyle={{ color: "#C5FF3D", fontWeight: "bold" }}
+              itemStyle={{ color: "#fff" }}
+            />
+            <Bar dataKey="threatScore" fill="#C5FF3D" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
