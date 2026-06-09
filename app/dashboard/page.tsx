@@ -1518,7 +1518,8 @@ const shouldShowSection = (section: string) => {
   section === "overview" ||
   section === "unified" ||
   section === "history" ||
-  section === "billing"
+  section === "billing" ||
+  section === "account"
 ) {
   return true;
 }
