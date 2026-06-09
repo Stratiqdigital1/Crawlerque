@@ -685,8 +685,8 @@ export default function Home() {
             </span>
           </a>
 
-          <div className="flex flex-wrap justify-center gap-7 font-mono text-[10px] uppercase tracking-[0.18em] text-white/25">
-            {[["#modules", "Modules"], ["#pricing", "Pricing"], ["/login", "Login"], ["/dashboard", "Dashboard"]].map(([href, label]) => (
+<div className="flex flex-wrap justify-center gap-7 font-mono text-[10px] uppercase tracking-[0.18em] text-white/25">
+            {[["#modules", "Modules"], ["#pricing", "Pricing"], ["/sample-report", "Sample Report"], ["/brand", "Brand"], ["/login", "Login"], ["/dashboard", "Dashboard"]].map(([href, label]) => (
               <a key={label} href={href} className="transition hover:text-white">{label}</a>
             ))}
           </div>
