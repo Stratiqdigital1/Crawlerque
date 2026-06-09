@@ -4074,18 +4074,38 @@ function AccountSettingsTab({ currentUser }: { currentUser: any }) {
         </div>
 
         {canWhiteLabel ? (
-          <div className="rounded-2xl border border-[#C5FF3D]/25 bg-[#0d1500] p-6">
+<div className="rounded-2xl border border-[#C5FF3D]/25 bg-[#0d1500] p-6">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-semibold text-white">White-Label PDF Branding</h3>
-              <label className="flex cursor-pointer items-center gap-2">
-                <span className="text-xs text-[#8A8A8A]">Enabled</span>
-                <input
-                  type="checkbox"
-                  checked={form.whiteLabelEnabled}
-                  onChange={(e) => setForm({ ...form, whiteLabelEnabled: e.target.checked })}
-                  className="h-4 w-4 accent-[#C5FF3D]"
-                />
-              </label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm("Reset white-label branding to Crawler Que defaults? This will clear your agency name, logo, colour, and footer text.")) {
+                      setForm({
+                        ...form,
+                        agencyName:        "",
+                        brandColor:        "#C5FF3D",
+                        brandLogoUrl:      "",
+                        pdfFooterText:     "",
+                        whiteLabelEnabled: false,
+                      });
+                    }
+                  }}
+                  className="rounded-lg border border-red-500/25 bg-red-500/8 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-red-400 transition hover:border-red-500/50 hover:bg-red-500/15"
+                >
+                  Reset to Default
+                </button>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <span className="text-xs text-[#8A8A8A]">Enabled</span>
+                  <input
+                    type="checkbox"
+                    checked={form.whiteLabelEnabled}
+                    onChange={(e) => setForm({ ...form, whiteLabelEnabled: e.target.checked })}
+                    className="h-4 w-4 accent-[#C5FF3D]"
+                  />
+                </label>
+              </div>
             </div>
             <div className="grid gap-4">
               <div>
@@ -4158,7 +4178,7 @@ function AccountSettingsTab({ currentUser }: { currentUser: any }) {
           </p>
         )}
 
-        <button
+<button
           type="button"
           onClick={handleSave}
           disabled={saving}
@@ -4166,6 +4186,10 @@ function AccountSettingsTab({ currentUser }: { currentUser: any }) {
         >
           {saving ? "Saving..." : saved ? "Saved ✓" : "Save Settings"}
         </button>
+
+        <p className="text-xs text-[#555]">
+          Changes take effect on the next PDF export. Use <span className="text-[#8A8A8A]">Reset to Default</span> to switch back to Crawler Que branding at any time. Reset only clears the form — click Save Settings to save the reset to your account.
+        </p>
       </div>
     </Section>
   );
