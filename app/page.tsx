@@ -123,8 +123,8 @@ export default function Home() {
             </span>
           </a>
 
-          <div className="hidden items-center gap-8 md:flex">
-            {[["#modules", "Modules"], ["#pricing", "Pricing"], ["/login", "Login"]].map(([href, label]) => (
+<div className="hidden items-center gap-8 md:flex">
+            {[["#modules", "Modules"], ["#pricing", "Pricing"], ["/sample-report", "Sample Report"], ["/login", "Login"]].map(([href, label]) => (
               <a key={label} href={href} className="font-mono text-[11px] uppercase tracking-wider text-white/40 transition hover:text-white">
                 {label}
               </a>
@@ -267,9 +267,14 @@ export default function Home() {
                         <div className="mt-4 rounded-xl border border-[#C5FF3D]/12 bg-[#C5FF3D]/5 p-4">
                           <p className="text-sm font-semibold text-white">Want the full 8-module report?</p>
                           <p className="mt-1 text-xs leading-relaxed text-white/35">Includes AI visibility, competitor intel, keyword gaps, backlinks, and a white-label PDF.</p>
-                          <a href="#pricing" className="mt-3 inline-block rounded-lg bg-[#C5FF3D] px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-black transition hover:bg-white">
-                            View Plans &#8594;
-                          </a>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                        <a href="/sample-report" className="inline-block rounded-lg border border-white/10 px-4 py-2 font-mono text-[11px] uppercase tracking-wider text-white/50 transition hover:text-white">
+                          View Sample Report
+                        </a>
+                        <a href="#pricing" className="inline-block rounded-lg bg-[#C5FF3D] px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-black transition hover:bg-white">
+                          View Plans &#8594;
+                        </a>
+                      </div>
                         </div>
                       </>
                     ) : (
@@ -312,6 +317,65 @@ export default function Home() {
               <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-white/25">{lbl}</span>
             </div>
           ))}
+        </div>
+      </section>
+
+{/* WHO IS IT FOR */}
+      <section className="border-b border-white/5 px-5 py-24 md:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.25em] text-[#C5FF3D]">&#9646; Who It&#39;s For</div>
+          <h2 className="text-[clamp(1.8rem,4vw,3rem)] font-extrabold leading-tight tracking-tight">
+            Built for the people who<br className="hidden md:block" /> deliver results.
+          </h2>
+          <p className="mt-3 max-w-lg text-base leading-relaxed text-white/40">
+            Whether you run a full-service agency or freelance for three clients, Crawler Que is built around your workflow.
+          </p>
+
+          <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            {[
+              { title:"SEO Agencies", desc:"Run modular audits for every client. Export white-label PDFs. Save hours per report.", tag:"Most Common" },
+              { title:"Web Design Agencies", desc:"Add SEO intelligence to every website handover. Show clients their growth baseline.", tag:"" },
+              { title:"Marketing Consultants", desc:"Back every recommendation with data. Export executive reports clients actually read.", tag:"" },
+              { title:"Freelancers", desc:"Look enterprise-level with branded PDF deliverables. Starter plan keeps costs low.", tag:"" },
+              { title:"White-Label Providers", desc:"Resell audits under your own brand. Agency and Enterprise plans fully white-labelable.", tag:"Popular" },
+            ].map((card) => (
+              <div key={card.title} className="relative rounded-xl border border-white/5 bg-[#0d0d0d] p-6 transition hover:border-[#C5FF3D]/15">
+                {card.tag && (
+                  <div className="absolute -top-3 left-4 rounded-full bg-[#C5FF3D] px-3 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-black">
+                    {card.tag}
+                  </div>
+                )}
+                <h3 className="text-[15px] font-bold text-white">{card.title}</h3>
+                <p className="mt-2 text-[13px] leading-relaxed text-white/35">{card.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+{/* DATA SOURCES */}
+      <section className="border-b border-white/5 bg-[#0a0a0a] px-5 py-8 md:px-8">
+        <div className="mx-auto max-w-7xl">
+          <p className="mb-6 text-center font-mono text-[9px] uppercase tracking-[0.25em] text-white/20">
+            Intelligence powered by
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-10">
+            {[
+              { name:"Google PageSpeed Insights",  desc:"Core Web Vitals" },
+              { name:"DataForSEO",                 desc:"Keywords, Traffic & Backlinks" },
+              { name:"Proprietary AI Engine",      desc:"Recommendations & Scoring" },
+              { name:"Google Search Console",      desc:"SERP Intelligence" },
+            ].map((src) => (
+              <div key={src.name} className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/8 bg-white/4">
+                  <span className="font-mono text-[10px] font-bold text-[#C5FF3D]">&#9632;</span>
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-white/70">{src.name}</div>
+                  <div className="font-mono text-[9px] uppercase tracking-wider text-white/25">{src.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -379,6 +443,59 @@ export default function Home() {
         </div>
       </section>
 
+{/* COMPARISON TABLE */}
+      <section className="border-b border-white/5 px-5 py-24 md:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.25em] text-[#C5FF3D]">&#9646; How We Compare</div>
+          <h2 className="text-[clamp(1.8rem,4vw,3rem)] font-extrabold leading-tight tracking-tight">
+            Built differently.<br className="hidden md:block" /> For a different workflow.
+          </h2>
+          <p className="mt-3 max-w-lg text-base leading-relaxed text-white/40">
+            Traditional SEO tools are built for data analysts. Crawler Que is built for agencies producing client deliverables.
+          </p>
+
+          <div className="mt-14 overflow-x-auto">
+            <table className="w-full min-w-[600px] border-collapse">
+              <thead>
+                <tr>
+                  <th className="border border-white/8 bg-[#0d0d0d] px-5 py-4 text-left font-mono text-[10px] uppercase tracking-wider text-white/40">Feature</th>
+                  {[
+                    { name:"Crawler Que", highlight:true },
+                    { name:"SEMrush",    highlight:false },
+                    { name:"Ahrefs",     highlight:false },
+                  ].map((col) => (
+                    <th key={col.name} className={`border px-5 py-4 font-mono text-[11px] uppercase tracking-wider ${col.highlight ? "border-[#C5FF3D]/20 bg-[#0d1500] text-[#C5FF3D]" : "border-white/8 bg-[#0d0d0d] text-white/40"}`}>
+                      {col.name}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ["White-Label PDF Reports",      "✅",       "Partial",    "❌"],
+                  ["AI Search Visibility",          "✅",       "❌",          "❌"],
+                  ["Agency Workflow Focus",          "✅",       "❌",          "❌"],
+                  ["Client-Ready Deliverables",      "✅",       "Limited",    "Limited"],
+                  ["Keyword Gap Intelligence",       "✅",       "✅",          "✅"],
+                  ["Competitor Threat Scoring",      "✅",       "Partial",    "Partial"],
+                  ["Core Web Vitals Audit",          "✅",       "✅",          "✅"],
+                  ["Modular Report Selection",       "✅",       "❌",          "❌"],
+                  ["GEO / AI Visibility Scoring",    "✅",       "❌",          "❌"],
+                  ["Price (Agency-tier)",            "$99/mo",  "$229/mo",    "$199/mo"],
+                ].map(([feature, cq, sem, ah], i) => (
+                  <tr key={String(feature)} className={i % 2 === 0 ? "bg-[#080808]" : "bg-[#0a0a0a]"}>
+                    <td className="border border-white/5 px-5 py-3.5 text-sm text-white/60">{feature}</td>
+                    <td className="border border-[#C5FF3D]/10 bg-[#0d1500]/60 px-5 py-3.5 text-center font-bold text-[#C5FF3D]">{cq}</td>
+                    <td className="border border-white/5 px-5 py-3.5 text-center text-sm text-white/30">{sem}</td>
+                    <td className="border border-white/5 px-5 py-3.5 text-center text-sm text-white/30">{ah}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       {/* PRICING */}
       <section id="pricing" className="border-b border-white/5 px-5 py-24 md:px-8">
         <div className="mx-auto max-w-7xl">
@@ -427,7 +544,7 @@ export default function Home() {
                     <span className="mb-2 font-mono text-xs text-white/25">{plan.period}</span>
                   </div>
 
-                  <ul className="mt-8 space-y-3">
+<ul className="mt-8 space-y-3">
                     {plan.features.map((feature) => (
                       <li key={feature} className="flex items-start gap-3 text-sm text-white/50">
                         <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#C5FF3D]" />
@@ -435,6 +552,14 @@ export default function Home() {
                       </li>
                     ))}
                   </ul>
+                  <div className="mt-6 rounded-xl border border-white/5 bg-white/2 px-4 py-3">
+                    <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-white/20">What this means</p>
+                    <p className="mt-1 text-xs leading-relaxed text-white/35">
+                      {plan.name === "Starter" && "Run 10 complete website audits per month. Perfect for freelancers with up to 5 regular clients."}
+                      {plan.name === "Agency"  && "40 audits covers 20+ recurring client reports monthly. White-label PDF means every report carries your brand."}
+                      {plan.name === "Enterprise" && "150 audits per month for high-volume agencies. Scale to 50+ clients with priority support behind you."}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="mt-auto px-8 pb-8">
@@ -456,6 +581,60 @@ export default function Home() {
 
           <p className="mt-8 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-white/20">
             All plans include a 7-day free trial &#183; Cancel any time &#183; Secure payment via Stripe
+          </p>
+        </div>
+      </section>
+
+{/* ROI CALCULATOR */}
+      <section className="border-b border-white/5 px-5 py-24 md:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.25em] text-[#C5FF3D]">&#9646; ROI Calculator</div>
+          <h2 className="text-[clamp(1.8rem,4vw,3rem)] font-extrabold leading-tight tracking-tight">
+            What does $99/month<br className="hidden md:block" /> actually cost you?
+          </h2>
+          <p className="mt-3 max-w-lg text-base leading-relaxed text-white/40">
+            Agency Plan pays for itself with a single client report. Here is the math.
+          </p>
+
+          <div className="mt-14 grid gap-6 lg:grid-cols-3">
+            {[
+              { plan:"Starter", price:"$49", audits:10, charge:150, clients:5 },
+              { plan:"Agency",  price:"$99", audits:40, charge:300, clients:15 },
+              { plan:"Enterprise", price:"$299", audits:150, charge:500, clients:40 },
+            ].map((row) => {
+              const revenue = row.charge * row.clients;
+              const profit  = revenue - parseInt(row.price.replace("$",""));
+              return (
+                <div key={row.plan} className="rounded-2xl border border-white/5 bg-[#0d0d0d] p-8">
+                  <div className="mb-4 font-mono text-[10px] uppercase tracking-[0.2em] text-[#C5FF3D]/60">{row.plan} Plan — {row.price}/mo</div>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between border-b border-white/5 pb-3">
+                      <span className="text-white/40">Charge per audit</span>
+                      <span className="font-bold text-white">${row.charge}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-white/5 pb-3">
+                      <span className="text-white/40">Audits per month</span>
+                      <span className="font-bold text-white">{row.clients} clients</span>
+                    </div>
+                    <div className="flex justify-between border-b border-white/5 pb-3">
+                      <span className="text-white/40">Revenue generated</span>
+                      <span className="font-bold text-white">${revenue.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-white/5 pb-3">
+                      <span className="text-white/40">Platform cost</span>
+                      <span className="font-bold text-red-400">{row.price}</span>
+                    </div>
+                    <div className="flex justify-between pt-1">
+                      <span className="font-semibold text-white">Net profit</span>
+                      <span className="text-xl font-extrabold text-[#C5FF3D]">${profit.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-white/20">
+            Based on typical agency audit pricing. Your rates may vary.
           </p>
         </div>
       </section>
