@@ -125,8 +125,8 @@ export default function Home() {
             </span>
           </a>
 
-<div className="hidden items-center gap-8 md:flex">
-            {[["#modules", "Modules"], ["#pricing", "Pricing"], ["/sample-report", "Sample Report"], ["/login", "Login"]].map(([href, label]) => (
+          <div className="hidden items-center gap-8 md:flex">
+            {[["#modules", "Modules"], ["#pricing", "Pricing"], ["/sample-report", "Sample Report"], ["/brand", "Brand"], ["/dashboard", "Dashboard"], ["/login", "Login"]].map(([href, label]) => (
               <a key={label} href={href} className="font-mono text-[11px] uppercase tracking-wider text-white/40 transition hover:text-white">
                 {label}
               </a>
@@ -146,7 +146,7 @@ export default function Home() {
         {mobileMenuOpen && (
           <div className="border-t border-white/5 bg-[#080808] px-5 py-4 md:hidden">
             <div className="flex flex-col gap-4">
-              {[["#modules", "Modules"], ["#pricing", "Pricing"], ["/login", "Login"]].map(([href, label]) => (
+{[["#modules", "Modules"], ["#pricing", "Pricing"], ["/sample-report", "Sample Report"], ["/brand", "Brand"], ["/dashboard", "Dashboard"], ["/login", "Login"]].map(([href, label]) => (
                 <a key={label} href={href} onClick={() => setMobileMenuOpen(false)} className="font-mono text-sm uppercase tracking-wider text-white/50 transition hover:text-white">
                   {label}
                 </a>
