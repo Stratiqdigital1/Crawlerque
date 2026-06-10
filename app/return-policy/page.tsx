@@ -28,27 +28,22 @@ export default function ReturnPolicyPage() {
           </div>
 
           <div>
-            <h2 className="mb-3 text-lg font-bold text-white">2. Free Trial</h2>
-            <p>All plans include a 7-day free trial. You will not be charged during the trial period. You may cancel before the trial ends without incurring any charges.</p>
-          </div>
-
-          <div>
-            <h2 className="mb-3 text-lg font-bold text-white">3. Refund Eligibility</h2>
+            <h2 className="mb-3 text-lg font-bold text-white">2. Refund Eligibility</h2>
             <p>Refunds may be issued at our discretion in the following circumstances: if you were charged due to a technical error on our platform, if you cancel within 48 hours of your first charge and have not used the service. To request a refund, contact us within 7 days of the charge at <a href="mailto:info@crawlerque.com" className="text-[#C5FF3D] underline">info@crawlerque.com</a> with your account email and a brief description.</p>
           </div>
 
           <div>
-            <h2 className="mb-3 text-lg font-bold text-white">4. Non-Refundable Items</h2>
+            <h2 className="mb-3 text-lg font-bold text-white">3. Non-Refundable Items</h2>
             <p>Audit credits consumed prior to a refund request are not refundable. Partial months are not refundable. Downgrade requests do not generate refunds for the price difference.</p>
           </div>
 
           <div>
-            <h2 className="mb-3 text-lg font-bold text-white">5. How to Cancel</h2>
+            <h2 className="mb-3 text-lg font-bold text-white">4. How to Cancel</h2>
             <p>Log into your Crawler Que account, go to the Subscription tab in your dashboard, and click Manage Subscription. This opens the Stripe billing portal where you can cancel, update your payment method, or download invoices.</p>
           </div>
 
           <div>
-            <h2 className="mb-3 text-lg font-bold text-white">6. Contact</h2>
+            <h2 className="mb-3 text-lg font-bold text-white">5. Contact</h2>
             <p>For refund requests or billing questions, contact us at <a href="mailto:info@crawlerque.com" className="text-[#C5FF3D] underline">info@crawlerque.com</a>. We respond within 2 business days.</p>
           </div>
 

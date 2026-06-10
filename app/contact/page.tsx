@@ -183,21 +183,21 @@ export default function ContactPage() {
             <div className="rounded-2xl border border-white/6 bg-[#0c0c0c] p-6">
               <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[#C5FF3D]/60">Quick Links</div>
               <div className="space-y-2">
-                {[
-                  ["/privacy-policy", "Privacy Policy"],
-                  ["/return-policy",  "Return Policy"],
-                  ["/#pricing",       "View Plans"],
-                  ["/login",          "Log In"],
-                ].map(([href, label]) => (
-                  
-                    key={label}
-                    href={href}
-                    className="flex items-center justify-between rounded-lg border border-white/5 px-3 py-2.5 text-sm text-white/45 transition hover:border-white/10 hover:text-white"
-                  >
-                    {label}
-                    <span className="text-white/20">&#8594;</span>
-                  </a>
-                ))}
+{[
+                ["/privacy-policy", "Privacy Policy"],
+                ["/return-policy",  "Return Policy"],
+                ["/#pricing",       "View Plans"],
+                ["/login",          "Log In"],
+              ].map((item) => (
+                
+                  key={item[1]}
+                  href={item[0]}
+                  className="flex items-center justify-between rounded-lg border border-white/5 px-3 py-2.5 text-sm text-white/45 transition hover:border-white/10 hover:text-white"
+                >
+                  {item[1]}
+                  <span className="text-white/20">&#8594;</span>
+                </a>
+              ))}
               </div>
             </div>
 
