@@ -1516,7 +1516,6 @@ const currentReportTypes =
 const shouldShowSection = (section: string) => {
   if (
   section === "overview" ||
-  section === "unified" ||
   section === "history" ||
   section === "billing" ||
   section === "account"
@@ -1553,18 +1552,17 @@ const isLargeSiteWarning =
 
       {/* Sidebar */}
       <div className="sticky top-0 h-screen w-72 overflow-y-auto border-r border-[#222] bg-[#0A0A0A] p-5">
-  <div className="mb-6">
+<div className="mb-6">
     <h1 className="text-xl font-extrabold tracking-tight text-white">
-  Crawler Que<span className="text-[#C5FF3D]"> by Strat IQ Digital</span>
-</h1>
-<p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[#8A8A8A]">
-  AI Website Growth Intelligence
-</p>
+      Crawler Que
+    </h1>
+    <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[#8A8A8A]">
+      AI Website Growth Intelligence
+    </p>
   </div>
 
         {[
   ["overview", "Overview", BarChart3, true],
-  ["unified", "Unified Overview", BarChart3, true],
   ["domainAnalytics", "Domain Analytics", BarChart3, currentUser?.role === "admin" || currentUser?.package?.allowTraffic],
   ["labs", "SEO Labs", BarChart3, currentUser?.role === "admin" || currentUser?.package?.allowKeywords],
   ["seo", "SEO", Search, true],
@@ -1605,7 +1603,26 @@ const isLargeSiteWarning =
 </span>
             {label}
           </button>
-        ))}
+))}
+
+        {/* Logout at bottom of sidebar */}
+        <div className="mt-6 border-t border-[#222] pt-4">
+          <button
+            type="button"
+            onClick={async () => {
+              await fetch("/api/auth/logout", { method: "POST" });
+              window.location.href = "/login";
+            }}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#8A8A8A] transition-all duration-200 hover:bg-white/5 hover:text-red-400"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            <span className="font-mono text-[11px] uppercase tracking-wider">Log Out</span>
+          </button>
+        </div>
       </div>
 
       {/* Main */}
@@ -1746,18 +1763,6 @@ disabled={!data}
     >
       Export PDF
     </button>
-<button
-  onClick={async () => {
-    await fetch("/api/auth/logout", {
-      method: "POST",
-    });
-
-    window.location.href = "/login";
-  }}
-  className="rounded-xl border border-[#222] bg-[#111] px-4 py-2 text-sm font-semibold text-[#CCCCCC] hover:border-[#C5FF3D]/30 hover:text-white"
->
-  Logout
-</button>
 
   </div>
 </div>
@@ -1859,9 +1864,20 @@ disabled={!data}
   </div>
 )}
 
-        {!data && !loading && activeTab !== "billing" && activeTab !== "account" && (
-  <p className="text-slate-500">Run an audit to see data</p>
-)}
+{!data && !loading &&
+          activeTab !== "billing" &&
+          activeTab !== "account" &&
+          activeTab !== "history" && (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#C5FF3D]/20 bg-[#C5FF3D]/8">
+              <span className="font-mono text-lg font-black text-[#C5FF3D]">CQ</span>
+            </div>
+            <h3 className="text-lg font-bold text-white">Run your first audit</h3>
+            <p className="mt-2 max-w-sm text-sm text-[#8A8A8A]">
+              Enter a URL above, select your report modules, and click Run Audit to generate your growth intelligence report.
+            </p>
+          </div>
+        )}
 {/* BILLING */}
 {activeTab === "billing" && (
   <Section title="Subscription">
@@ -2194,9 +2210,9 @@ disabled={!data}
     )}
   </Section>
 )}
-{/* UNIFIED OVERVIEW */}
-{activeTab === "unified" && (
-  <Section title="Unified Overview">
+{/* UNIFIED OVERVIEW — merged into Overview tab */}
+{activeTab === "overview" && data && (
+  <Section title="Intelligence Summary">
     <p className="mb-5 text-sm text-slate-500">
       Combined executive summary across SEO, AI visibility, SERP, keyword data, backlinks, OnPage, content, and local/business signals.
     </p>
@@ -2330,74 +2346,66 @@ value={
     </div>
   </Section>
 )}
-<div className="mb-6 grid gap-4 md:grid-cols-4">
-  {[
-    ["DataForSEO", data?.moduleStatus?.dataforseo],
-    ["AI Optimization", data?.moduleStatus?.aiOptimization],
-    ["SERP API", data?.moduleStatus?.serp],
-    ["OnPage API", data?.moduleStatus?.onPage],
-    ["Backlinks API", data?.backlinks ? "available" : "not_available"],
-    ["Keyword Research", data?.moduleStatus?.keywordResearch],
-    ["Content Analysis", data?.moduleStatus?.contentAnalysis],
-    ["Business Data", data?.moduleStatus?.businessData],
-  ]
-.filter(([name]: any) => {
-  const keyMap: any = {
-    "DataForSEO": "traffic",
-    "AI Optimization": "ai",
-    "SERP API": "serp",
-    "OnPage API": "technical",
-    "Backlinks API": "backlinks",
-    "Keyword Research": "keywordResearch",
-    "Content Analysis": "content",
-    "Business Data": "localSeo",
-  };
-
-  return shouldShowSection(keyMap[name]);
-})
-.map(([name, status]: any, i) => {
-    const ok = status === "available";
-
-    return (
-      <div
-        key={i}
-        className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-      >
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-slate-700">
-            {name}
-          </p>
-
-          <div
-            className={`h-3 w-3 rounded-full ${
-              ok ? "bg-green-500" : "bg-red-500"
-            }`}
-          />
-        </div>
-
-        <p className="mt-2 text-xs text-slate-500">
-          {status === "available"
-            ? "Connected Successfully"
-            : status === "pending_or_not_available"
-            ? "Pending or not available"
-            : "Data not available"}
-        </p>
-      </div>
-    );
-  })}
-</div>
-{/* DATA QUALITY NOTICE */}
-{data?.moduleStatus && (
-  <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
-    <p className="font-semibold text-amber-900">Data Quality Notice</p>
-    <p className="mt-1 text-sm text-amber-800">
-      This report only shows data returned by connected APIs. If a module is marked unavailable, no fake or estimated replacement data is used.
-    </p>
-  </div>
-)}
 {/* OVERVIEW */}
 {activeTab === "overview" && (
   <>
+    {data && (
+      <>
+        <div className="mb-6 grid gap-4 md:grid-cols-4">
+          {[
+            ["DataForSEO", data?.moduleStatus?.dataforseo],
+            ["AI Optimization", data?.moduleStatus?.aiOptimization],
+            ["SERP API", data?.moduleStatus?.serp],
+            ["OnPage API", data?.moduleStatus?.onPage],
+            ["Backlinks API", data?.backlinks ? "available" : "not_available"],
+            ["Keyword Research", data?.moduleStatus?.keywordResearch],
+            ["Content Analysis", data?.moduleStatus?.contentAnalysis],
+            ["Business Data", data?.moduleStatus?.businessData],
+          ]
+          .filter(([name]: any) => {
+            const keyMap: any = {
+              "DataForSEO": "traffic",
+              "AI Optimization": "ai",
+              "SERP API": "serp",
+              "OnPage API": "technical",
+              "Backlinks API": "backlinks",
+              "Keyword Research": "keywordResearch",
+              "Content Analysis": "content",
+              "Business Data": "localSeo",
+            };
+            return shouldShowSection(keyMap[name]);
+          })
+          .map(([name, status]: any, i) => {
+            const ok = status === "available";
+            return (
+              <div key={i} className="rounded-2xl border border-[#222] bg-[#111] p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-white">{name}</p>
+                  <div className={`h-3 w-3 rounded-full ${ok ? "bg-[#C5FF3D]" : "bg-red-500"}`} />
+                </div>
+                <p className="mt-2 text-xs text-[#8A8A8A]">
+                  {status === "available"
+                    ? "Connected Successfully"
+                    : status === "pending_or_not_available"
+                    ? "Pending or not available"
+                    : "Data not available"}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        {data?.moduleStatus && (
+          <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/8 p-5">
+            <p className="font-semibold text-amber-400">Data Quality Notice</p>
+            <p className="mt-1 text-sm text-amber-300/70">
+              This report only shows data returned by connected APIs. If a module is marked unavailable, no fake or estimated replacement data is used.
+            </p>
+          </div>
+        )}
+      </>
+    )}
+
     <div className="mb-6 grid gap-4 md:grid-cols-3">
       <div className="rounded-2xl bg-slate-950 p-6 text-white shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">

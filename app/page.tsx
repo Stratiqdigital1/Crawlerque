@@ -16,6 +16,8 @@ const FOOTER_LINKS = [
   ["/sample-report",        "Sample Report"],
   ["/ai-search-visibility", "AI Visibility"],
   ["/login",                "Login"],
+  ["/privacy-policy",       "Privacy Policy"],
+  ["/return-policy",        "Return Policy"],
 ];
 
 const PLANS = [
@@ -115,7 +117,7 @@ export default function HomePage() {
               <span className="font-mono text-[11px] font-black text-black">CQ</span>
             </div>
             <span className="text-[15px] font-extrabold tracking-tight text-white">
-              Crawler Que <span className="text-[#C5FF3D]">by Strat IQ Digital</span>
+              Crawler Que
             </span>
           </a>
 
@@ -186,13 +188,31 @@ export default function HomePage() {
                 View Sample Report
               </a>
             </div>
-            <div className="mt-12 grid grid-cols-3 gap-6 border-t border-white/5 pt-10">
-              {[["14K+","Keywords Tracked"],["8+","Audit Modules"],["3×","Faster Reports"]].map(([v,l]) => (
-                <div key={l}>
-                  <div className="text-[clamp(1.8rem,3vw,2.5rem)] font-extrabold text-white">{v}</div>
+<div className="mt-12 grid grid-cols-3 gap-6 border-t border-white/5 pt-10">
+              {[
+                { v:"14K+", l:"Keywords Tracked",   color:"#C5FF3D" },
+                { v:"8+",   l:"Audit Modules",       color:"#C5FF3D" },
+                { v:"3×",   l:"Faster Reports",      color:"#C5FF3D" },
+              ].map(({v,l,color}) => (
+                <div key={l} className="group">
+                  <div
+                    className="text-[clamp(1.8rem,3vw,2.5rem)] font-extrabold transition-all duration-500 group-hover:scale-110"
+                    style={{ color }}
+                  >
+                    {v}
+                  </div>
                   <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.18em] text-white/22">{l}</div>
                 </div>
               ))}
+            </div>
+            <div className="mt-8 flex items-center gap-3 rounded-xl border border-white/6 bg-white/[0.02] px-4 py-3">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#C5FF3D] opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-[#C5FF3D]" />
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/35">
+                Live audits running &nbsp;&#183;&nbsp; Data updated in real-time
+              </span>
             </div>
           </div>
 
@@ -572,26 +592,32 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="border-t border-white/5 px-5 py-10 md:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 md:flex-row">
-          <a href="/" className="group flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#C5FF3D] transition-all duration-200 group-hover:shadow-[0_0_12px_rgba(197,255,61,0.4)]">
-              <span className="text-[10px] font-black text-black">CQ</span>
-            </div>
-            <span className="text-sm font-bold text-white">
-              Crawler Que <span className="text-[#C5FF3D]">by Strat IQ Digital</span>
-            </span>
-          </a>
+{/* FOOTER */}
+      <footer className="border-t border-white/5 px-5 py-12 md:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
+            <a href="/" className="group flex items-center gap-2.5">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#C5FF3D] transition-all duration-200 group-hover:shadow-[0_0_12px_rgba(197,255,61,0.4)]">
+                <span className="text-[10px] font-black text-black">CQ</span>
+              </div>
+              <span className="text-sm font-bold text-white">Crawler Que</span>
+            </a>
 
-          <div className="flex flex-wrap justify-center gap-6 font-mono text-[10px] uppercase tracking-[0.18em] text-white/25">
-            {FOOTER_LINKS.map(([href,label]) => (
-              <a key={label} href={href} className="transition-colors duration-200 hover:text-white">{label}</a>
-            ))}
+            <div className="flex flex-wrap justify-center gap-6 font-mono text-[10px] uppercase tracking-[0.18em] text-white/25">
+              {FOOTER_LINKS.map(([href,label]) => (
+                <a key={label} href={href} className="transition-colors duration-200 hover:text-white">{label}</a>
+              ))}
+            </div>
+
+            <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/14">
+              &#169; 2026 Crawler Que
+            </div>
           </div>
 
-          <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/14">
-            &#169; 2026 Crawler Que &#183; Strat IQ Digital
+          <div className="mt-6 border-t border-white/5 pt-5 text-center">
+            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/20">
+              Powered by <span className="text-white/35">Strat IQ Digital</span>
+            </p>
           </div>
         </div>
       </footer>

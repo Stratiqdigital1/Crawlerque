@@ -27,11 +27,11 @@ setAuditLogs(json.auditLogs || []);
         <div className="mb-8 flex items-center justify-between">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.18em] text-[#C5FF3D]">
-              Crawler Que by Strat IQ Digital
+              Admin Panel
             </p>
 
             <h1 className="mt-2 text-5xl font-extrabold tracking-tight">
-              Crawler Que Admin
+              Crawler Que
             </h1>
           </div>
 
@@ -65,25 +65,15 @@ setAuditLogs(json.auditLogs || []);
           />
         </div>
 
-        <div className="mt-10 rounded-2xl border border-[#222] bg-[#111] p-6">
+<div className="mt-10 rounded-2xl border border-[#222] bg-[#111] p-6">
           <h2 className="text-2xl font-bold">
-            System Overview
+            System Status
           </h2>
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <Info
-              label="Environment"
-              value="Development"
-            />
-
-            <Info
               label="Platform"
-              value="AI Website Audit SaaS"
-            />
-
-            <Info
-              label="Current Theme"
-              value="Crawler Que Dark Neon"
+              value="Crawler Que — AI Website Growth Intelligence"
             />
 
             <Info
@@ -106,7 +96,7 @@ setAuditLogs(json.auditLogs || []);
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px]">
-              <thead>
+<thead>
                 <tr className="border-b border-[#222] text-left">
                   <th className="pb-4 text-sm font-semibold text-[#777]">
                     Email
@@ -127,6 +117,10 @@ setAuditLogs(json.auditLogs || []);
                   <th className="pb-4 text-sm font-semibold text-[#777]">
                     Status
                   </th>
+
+                  <th className="pb-4 text-sm font-semibold text-[#777]">
+                    Actions
+                  </th>
                 </tr>
               </thead>
 
@@ -134,7 +128,7 @@ setAuditLogs(json.auditLogs || []);
                 {users.map((user) => (
                   <tr
                     key={user.id}
-                    className="border-b border-[#1A1A1A]"
+                    className="border-b border-[#1A1A1A] transition hover:bg-white/[0.02]"
                   >
                     <td className="py-5 text-sm text-white">
                       {user.email}
@@ -161,9 +155,70 @@ setAuditLogs(json.auditLogs || []);
                     </td>
 
                     <td className="py-5">
-                      <span className="rounded-full bg-green-500/10 px-3 py-1 text-xs font-bold text-green-400">
-                        Active
+                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                        user.status === "active" || !user.status
+                          ? "bg-green-500/10 text-green-400"
+                          : "bg-red-500/10 text-red-400"
+                      }`}>
+                        {user.status || "Active"}
                       </span>
+                    </td>
+
+                    <td className="py-5">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newAudits = prompt(
+                              `Reset audit count for ${user.email}?\nEnter new count (current: ${user.auditsUsed}):`,
+                              "0"
+                            );
+                            if (newAudits !== null && !isNaN(Number(newAudits))) {
+                              fetch(`/api/admin/users/${user.id}`, {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ auditsUsed: Number(newAudits) }),
+                              })
+                                .then((r) => r.json())
+                                .then((json) => {
+                                  if (json.success) {
+                                    window.location.reload();
+                                  } else {
+                                    alert(json.error || "Update failed");
+                                  }
+                                });
+                            }
+                          }}
+                          className="rounded-lg border border-[#C5FF3D]/20 bg-[#C5FF3D]/8 px-2 py-1 font-mono text-[9px] uppercase tracking-wider text-[#C5FF3D] transition hover:border-[#C5FF3D]/40"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const suspend = user.status !== "suspended";
+                            if (confirm(`${suspend ? "Suspend" : "Reactivate"} ${user.email}?`)) {
+                              fetch(`/api/admin/users/${user.id}`, {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ status: suspend ? "suspended" : "active" }),
+                              })
+                                .then((r) => r.json())
+                                .then((json) => {
+                                  if (json.success) window.location.reload();
+                                  else alert(json.error || "Update failed");
+                                });
+                            }
+                          }}
+                          className={`rounded-lg px-2 py-1 font-mono text-[9px] uppercase tracking-wider transition ${
+                            user.status === "suspended"
+                              ? "border border-green-500/20 bg-green-500/8 text-green-400 hover:border-green-500/40"
+                              : "border border-amber-500/20 bg-amber-500/8 text-amber-400 hover:border-amber-500/40"
+                          }`}
+                        >
+                          {user.status === "suspended" ? "Activate" : "Suspend"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -256,11 +311,11 @@ setAuditLogs(json.auditLogs || []);
             </h2>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-3">
+<div className="grid gap-5 md:grid-cols-3">
             {packages.map((pkg) => (
               <div
                 key={pkg.id}
-                className="rounded-2xl border border-[#222] bg-[#181818] p-6"
+                className="rounded-2xl border border-[#222] bg-[#181818] p-6 transition hover:border-[#C5FF3D]/20"
               >
                 <h3 className="text-2xl font-bold text-white">
                   {pkg.name}
@@ -277,6 +332,63 @@ setAuditLogs(json.auditLogs || []);
                   <p>History: {pkg.historyDays || 30} days</p>
                   <p>PDF Export: {pkg.allowPdf ? "Yes" : "No"}</p>
                   <p>White Label: {pkg.allowWhiteLabel ? "Yes" : "No"}</p>
+                </div>
+
+                <div className="mt-6 flex gap-2 border-t border-[#222] pt-5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newLimit = prompt(
+                        `New monthly audit limit for ${pkg.name} (current: ${pkg.monthlyAudits}):`,
+                        String(pkg.monthlyAudits)
+                      );
+                      if (newLimit && !isNaN(Number(newLimit)) && Number(newLimit) > 0) {
+                        fetch(`/api/admin/packages/${pkg.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ monthlyAudits: Number(newLimit) }),
+                        })
+                          .then((r) => r.json())
+                          .then((json) => {
+                            if (json.success) {
+                              alert(`Updated ${pkg.name} to ${newLimit} audits/month`);
+                              window.location.reload();
+                            } else {
+                              alert(json.error || "Update failed");
+                            }
+                          });
+                      }
+                    }}
+                    className="flex-1 rounded-xl border border-[#C5FF3D]/20 bg-[#C5FF3D]/8 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-[#C5FF3D] transition hover:border-[#C5FF3D]/40 hover:bg-[#C5FF3D]/15"
+                  >
+                    Edit Limits
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        confirm(
+                          `Delete package "${pkg.name}"?\n\nThis will unlink all users on this plan. This cannot be undone.`
+                        )
+                      ) {
+                        fetch(`/api/admin/packages/${pkg.id}`, {
+                          method: "DELETE",
+                        })
+                          .then((r) => r.json())
+                          .then((json) => {
+                            if (json.success) {
+                              alert(`Package "${pkg.name}" deleted`);
+                              window.location.reload();
+                            } else {
+                              alert(json.error || "Delete failed");
+                            }
+                          });
+                      }
+                    }}
+                    className="rounded-xl border border-red-500/20 bg-red-500/8 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-red-400 transition hover:border-red-500/40 hover:bg-red-500/15"
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}
