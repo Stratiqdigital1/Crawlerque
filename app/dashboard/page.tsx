@@ -1573,8 +1573,7 @@ const isLargeSiteWarning =
   data?.traffic?.confidence !== "insufficient-data";
 
   return (
-    <div className="si-dashboard flex min-h-screen bg-[#0A0A0A] text-white [&_.bg-white]:bg-[#111111] [&_.bg-slate-50]:bg-[#181818] [&_.border-slate-200]:border-[#222222] [&_.border-slate-100]:border-[#222222] [&_.text-slate-950]:text-white [&_.text-slate-700]:text-[#CCCCCC] [&_.text-slate-600]:text-[#A0A0A0] [&_.text-slate-500]:text-[#8A8A8A] [&_.text-blue-600]:text-[#C5FF3D] [&_.bg-blue-600]:bg-[#C5FF3D] [&_.hover\:bg-blue-700:hover]:bg-[#B7EF35] [&_.text-white]:text-white">
-
+<div className="si-dashboard flex min-h-screen bg-[#0A0A0A] text-white [&_.bg-white]:bg-[#111111] [&_.bg-slate-50]:bg-[#181818] [&_.bg-slate-100]:bg-[#181818] [&_.bg-slate-200]:bg-[#222222] [&_.bg-slate-950]:bg-[#0d0d0d] [&_.border-slate-200]:border-[#222222] [&_.border-slate-100]:border-[#222222] [&_.text-slate-950]:text-white [&_.text-slate-900]:text-white [&_.text-slate-800]:text-[#EEEEEE] [&_.text-slate-700]:text-[#CCCCCC] [&_.text-slate-600]:text-[#A0A0A0] [&_.text-slate-500]:text-[#8A8A8A] [&_.text-slate-400]:text-[#666666] [&_.text-slate-300]:text-[#AAAAAA] [&_.text-blue-600]:text-[#C5FF3D] [&_.text-blue-700]:text-[#C5FF3D] [&_.bg-blue-600]:bg-[#C5FF3D] [&_.bg-blue-100]:bg-[#C5FF3D]/10 [&_.text-blue-700]:text-[#C5FF3D] [&_.bg-green-100]:bg-[#C5FF3D]/10 [&_.text-green-700]:text-[#C5FF3D] [&_.bg-green-600]:bg-[#C5FF3D] [&_.text-green-600]:text-[#C5FF3D] [&_.shadow-sm]:shadow-none [&_.hover\\:bg-blue-700:hover]:bg-[#B7EF35] [&_.text-white]:text-white">
       {/* Sidebar */}
       <div className="sticky top-0 h-screen w-72 overflow-y-auto border-r border-[#222] bg-[#0A0A0A] p-5">
 <div className="mb-6">
@@ -1805,10 +1804,10 @@ disabled={!data}
     </div>
 )}
 {error && (
-  <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/8 p-5">
+<div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/8 p-5">
     <p className="font-semibold text-red-400">Audit failed</p>
-    <p className="mt-1 text-sm text-red-400/80">
-      {typeof error === "string" ? error : JSON.stringify(error)}
+    <p className="mt-1 text-sm text-red-400/70">
+      {typeof error === "string" ? error : "An unexpected error occurred. Please try again."}
     </p>
   </div>
 )}
@@ -2241,8 +2240,8 @@ disabled={!data}
 )}
 {/* UNIFIED OVERVIEW — merged into Overview tab */}
 {activeTab === "overview" && data && (
-  <Section title="Intelligence Summary">
-    <p className="mb-5 text-sm text-slate-500">
+<Section title="Intelligence Summary">
+    <p className="mb-5 text-sm text-[#8A8A8A]">
       Combined executive summary across SEO, AI visibility, SERP, keyword data, backlinks, OnPage, content, and local/business signals.
     </p>
 
@@ -2404,20 +2403,46 @@ value={
             };
             return shouldShowSection(keyMap[name]);
           })
-          .map(([name, status]: any, i) => {
-            const ok = status === "available";
+.map(([name, status]: any, i) => {
+            const isOk      = status === "available" || status === "completed";
+            const isPartial = status === "partial";
+            const isSkipped = status === "skipped" || status === "not_selected";
+            const isPending = status === "pending_or_not_available" || status === "pending";
+
+            const dotColor = isOk
+              ? "bg-[#C5FF3D]"
+              : isPartial
+              ? "bg-amber-400"
+              : isSkipped
+              ? "bg-[#444]"
+              : isPending
+              ? "bg-amber-400"
+              : "bg-red-500";
+
+            const statusText = isOk
+              ? "Connected Successfully"
+              : isPartial
+              ? "Partial data returned"
+              : isSkipped
+              ? "Not selected for this audit"
+              : isPending
+              ? "Pending or not available"
+              : "Data not available";
+
+            const borderColor = isOk
+              ? "border-[#C5FF3D]/15"
+              : isSkipped
+              ? "border-[#1a1a1a]"
+              : "border-[#222]";
+
             return (
-              <div key={i} className="rounded-2xl border border-[#222] bg-[#111] p-4">
+              <div key={i} className={`rounded-2xl border ${borderColor} bg-[#111] p-4`}>
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-white">{name}</p>
-                  <div className={`h-3 w-3 rounded-full ${ok ? "bg-[#C5FF3D]" : "bg-red-500"}`} />
+                  <div className={`h-2.5 w-2.5 rounded-full ${dotColor}`} />
                 </div>
-                <p className="mt-2 text-xs text-[#8A8A8A]">
-                  {status === "available"
-                    ? "Connected Successfully"
-                    : status === "pending_or_not_available"
-                    ? "Pending or not available"
-                    : "Data not available"}
+                <p className={`mt-2 text-xs ${isSkipped ? "text-[#555]" : "text-[#8A8A8A]"}`}>
+                  {statusText}
                 </p>
               </div>
             );
@@ -2435,50 +2460,50 @@ value={
       </>
     )}
 
-    <div className="mb-6 grid gap-4 md:grid-cols-3">
-      <div className="rounded-2xl bg-slate-950 p-6 text-white shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+<div className="mb-6 grid gap-4 md:grid-cols-3">
+      <div className="rounded-2xl border border-[#C5FF3D]/15 bg-[#0d1500] p-6">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C5FF3D]/60">
           Website Health
         </p>
-        <h2 className="mt-3 text-3xl font-bold">
+        <h2 className="mt-3 text-3xl font-extrabold text-white">
           {data.overallScore == null
-            ? "Data not available"
+            ? "No data"
             : data.overallScore >= 80
             ? "Strong"
             : data.overallScore >= 60
             ? "Moderate"
             : "Needs Attention"}
         </h2>
-        <p className="mt-3 text-sm leading-6 text-slate-300">
+        <p className="mt-3 text-sm leading-6 text-[#8A8A8A]">
           Based on SEO, AI visibility, traffic, keyword gaps, backlinks, and technical signals.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <div className="rounded-2xl border border-red-500/15 bg-red-500/5 p-6">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-red-400/70">
           Biggest Issue
         </p>
-        <p className="mt-3 text-xl font-bold text-slate-950">
+        <p className="mt-3 text-xl font-bold text-white">
           {typeof data?.summary?.biggestIssue === "object"
-  ? data?.summary?.biggestIssue?.title ||
-    data?.summary?.biggestIssue?.label ||
-    "Issue data available"
-  : data?.summary?.biggestIssue ||
-    data?.issues?.[0]?.title ||
-    "Data not available"}
+            ? data?.summary?.biggestIssue?.title ||
+              data?.summary?.biggestIssue?.label ||
+              "Review audit issues"
+            : data?.summary?.biggestIssue ||
+              data?.issues?.[0]?.title ||
+              "No issues detected"}
         </p>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <div className="rounded-2xl border border-[#C5FF3D]/15 bg-[#C5FF3D]/4 p-6">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C5FF3D]/60">
           Biggest Opportunity
         </p>
-        <p className="mt-3 text-xl font-bold text-slate-950">
+        <p className="mt-3 text-xl font-bold text-white">
           {typeof data?.summary?.biggestOpportunity === "object"
-  ? data?.summary?.biggestOpportunity?.title ||
-    data?.summary?.biggestOpportunity?.label ||
-    "Opportunity data available"
-  : data?.summary?.biggestOpportunity || "Data not available"}
+            ? data?.summary?.biggestOpportunity?.title ||
+              data?.summary?.biggestOpportunity?.label ||
+              "Review opportunities"
+            : data?.summary?.biggestOpportunity || "No opportunities detected"}
         </p>
       </div>
     </div>
