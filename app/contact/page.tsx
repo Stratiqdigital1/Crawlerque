@@ -183,18 +183,20 @@ export default function ContactPage() {
             <div className="rounded-2xl border border-white/6 bg-[#0c0c0c] p-6">
               <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[#C5FF3D]/60">Quick Links</div>
               <div className="space-y-2">
-{[
-                ["/privacy-policy", "Privacy Policy"],
-                ["/return-policy",  "Return Policy"],
-                ["/#pricing",       "View Plans"],
-                ["/login",          "Log In"],
-              ].map((item) => (
+{(
+                [
+                  { url: "/privacy-policy", text: "Privacy Policy" },
+                  { url: "/return-policy",  text: "Return Policy" },
+                  { url: "/#pricing",       text: "View Plans" },
+                  { url: "/login",          text: "Log In" },
+                ] as { url: string; text: string }[]
+              ).map((link) => (
                 
-                  key={item[1]}
-                  href={item[0]}
+                  key={link.text}
+                  href={link.url}
                   className="flex items-center justify-between rounded-lg border border-white/5 px-3 py-2.5 text-sm text-white/45 transition hover:border-white/10 hover:text-white"
                 >
-                  {item[1]}
+                  {link.text}
                   <span className="text-white/20">&#8594;</span>
                 </a>
               ))}
