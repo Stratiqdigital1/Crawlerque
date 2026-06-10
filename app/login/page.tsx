@@ -27,7 +27,6 @@ export default function LoginPage() {
   </h1>
 
   <p className="mt-2 text-sm text-[#8A8A8A]">
-    by Strat IQ Digital
   </p>
 </div>
 
