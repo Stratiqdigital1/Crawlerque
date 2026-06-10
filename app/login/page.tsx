@@ -13,7 +13,7 @@ export default function LoginPage() {
 
     <div className="relative z-10 mx-auto max-w-md rounded-2xl border border-[#C5FF3D]/25 bg-[#0d1500] p-8 shadow-2xl">
       <a href="/" className="mb-8 block text-xl font-extrabold tracking-tight text-white">
-        Crawler Que<span className="text-[#C5FF3D]"> by Strat IQ Digital</span>
+        Crawler<span className="text-[#C5FF3D]"> Que</span>
       </a>
 
       <div className="mb-5 inline-flex items-center gap-2 rounded bg-[#C5FF3D]/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[#C5FF3D]">
@@ -36,7 +36,7 @@ export default function LoginPage() {
 </h2>
 
       <p className="mt-2 text-sm leading-6 text-[#8A8A8A]">
-        Login to access Crawler Que by Strat IQ Digital.
+        Login to access Crawler Que
       </p>
 
       <div className="mt-6 space-y-4">
