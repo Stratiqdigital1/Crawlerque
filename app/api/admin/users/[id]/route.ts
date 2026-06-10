@@ -18,8 +18,9 @@ async function getAdminUser() {
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const admin = await getAdminUser();
   if (!admin) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -28,7 +29,7 @@ export async function PATCH(
   const body = await req.json();
 
   const updated = await prisma.user.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       ...(body.auditsUsed  !== undefined && { auditsUsed:  Number(body.auditsUsed) }),
       ...(body.status      !== undefined && { status:      String(body.status) }),

@@ -18,8 +18,9 @@ async function getAdminUser() {
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const admin = await getAdminUser();
   if (!admin) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -28,7 +29,7 @@ export async function PATCH(
   const body = await req.json();
 
   const pkg = await prisma.package.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       ...(body.monthlyAudits !== undefined && { monthlyAudits: Number(body.monthlyAudits) }),
       ...(body.priceMonthly  !== undefined && { priceMonthly:  Number(body.priceMonthly) }),
@@ -42,13 +43,14 @@ export async function PATCH(
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await getAdminUser();
   if (!admin) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  await prisma.package.delete({ where: { id: params.id } });
+  const { id } = await params;
+  await prisma.package.delete({ where: { id } });
   return NextResponse.json({ success: true });
 }
