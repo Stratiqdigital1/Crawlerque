@@ -1628,7 +1628,7 @@ const isLargeSiteWarning =
       {/* Main */}
       <div className="flex-1 bg-[#0A0A0A] p-8">
 
-{currentUser?.package && (
+{currentUser?.package && activeTab === "overview" && (
   <div className="mb-6 rounded-2xl border border-[#C5FF3D]/25 bg-[#0d1500] p-5">
     <div className="flex items-center justify-between gap-4">
       <div className="flex-1">
@@ -1668,7 +1668,8 @@ const isLargeSiteWarning =
   </div>
 )}
 
-        {/* Top Input */}
+{/* Top Input — only show on overview tab */}
+{(activeTab === "overview" || activeTab === "unified") && (
 <div className="mb-6 rounded-2xl border border-[#C5FF3D]/25 bg-[#0d1500] p-6 shadow-2xl">
   <div className="mb-4 flex items-center justify-between gap-4">
     <div>
@@ -1766,6 +1767,7 @@ disabled={!data}
 
   </div>
 </div>
+)}
 {data?.onPage?.taskId &&
   data?.onPage?.crawlStatus !== "completed" && (
     <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-5">

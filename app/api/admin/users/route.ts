@@ -61,8 +61,10 @@ export async function POST(req: Request) {
     );
   }
 
-  const randomPassword = generateRandomPassword();
-  const hashedPassword = await hashPassword(randomPassword);
+// Use provided password if given, otherwise generate a random one
+  const rawPassword     = body.password || generateRandomPassword();
+  const hashedPassword  = await hashPassword(rawPassword);
+  const mustChange      = !body.password; // only force change if password was auto-generated
 
   const user = await prisma.user.create({
     data: {
@@ -71,7 +73,8 @@ export async function POST(req: Request) {
       passwordHash: hashedPassword,
       role,
       packageId,
-      mustChangePassword: true,
+      monthlyAudits: body.monthlyAudits ? Number(body.monthlyAudits) : undefined,
+      mustChangePassword: mustChange,
       status: "active",
     },
     include: { package: true },
@@ -98,7 +101,7 @@ export async function POST(req: Request) {
       <p>Hello ${name || "there"},</p>
       <p>You now have access to the Strat IQ Website Audit Tool.</p>
       <p><strong>Email:</strong> ${email}</p>
-      <p><strong>Temporary Password:</strong> ${randomPassword}</p>
+      <p><strong>Temporary Password:</strong> ${rawPassword}</p>
       <p>Please reset your password using the link below:</p>
       <p><a href="${resetUrl}">Reset your password</a></p>
       <p>This reset link expires in 24 hours.</p>

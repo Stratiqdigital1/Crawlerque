@@ -3,23 +3,73 @@
 import { useEffect, useState } from "react";
 
 export default function AdminPage() {
-  const [stats, setStats] = useState<any>(null);
-const [users, setUsers] = useState<any[]>([]);
-const [reports, setReports] = useState<any[]>([]);
-const [packages, setPackages] = useState<any[]>([]);
-const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [stats,     setStats]     = useState<any>(null);
+  const [users,     setUsers]     = useState<any[]>([]);
+  const [reports,   setReports]   = useState<any[]>([]);
+  const [packages,  setPackages]  = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+
+  // Manual user creation state
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [newEmail,       setNewEmail]       = useState("");
+  const [newPassword,    setNewPassword]    = useState("");
+  const [newName,        setNewName]        = useState("");
+  const [newPackageId,   setNewPackageId]   = useState("");
+  const [newAuditLimit,  setNewAuditLimit]  = useState("10");
+  const [creating,       setCreating]       = useState(false);
+  const [createError,    setCreateError]    = useState("");
+  const [createSuccess,  setCreateSuccess]  = useState("");
 
   useEffect(() => {
     fetch("/api/admin/stats")
       .then((res) => res.json())
       .then((json) => {
-  setStats(json);
-  setUsers(json?.users || []);
-setReports(json?.reports || []);
-setPackages(json?.packageRows || []);
-setAuditLogs(json.auditLogs || []);
-});
+        setStats(json);
+        setUsers(json?.users || []);
+        setReports(json?.reports || []);
+        setPackages(json?.packageRows || []);
+        setAuditLogs(json.auditLogs || []);
+      });
   }, []);
+
+  const handleCreateUser = async () => {
+    if (!newEmail || !newPassword) {
+      setCreateError("Email and password are required.");
+      return;
+    }
+    setCreating(true);
+    setCreateError("");
+    setCreateSuccess("");
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email:        newEmail,
+          password:     newPassword,
+          name:         newName,
+          packageId:    newPackageId || null,
+          monthlyAudits: Number(newAuditLimit) || 10,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to create user");
+      setCreateSuccess(`User ${newEmail} created successfully.`);
+      setNewEmail("");
+      setNewPassword("");
+      setNewName("");
+      setNewPackageId("");
+      setNewAuditLimit("10");
+      // Reload users list
+      fetch("/api/admin/stats")
+        .then((r) => r.json())
+        .then((j) => setUsers(j?.users || []));
+    } catch (err: any) {
+      setCreateError(err.message);
+    } finally {
+      setCreating(false);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-[#0A0A0A] p-8 text-white">
@@ -82,17 +132,127 @@ setAuditLogs(json.auditLogs || []);
             />
           </div>
                   <div className="mt-10 rounded-2xl border border-[#222] bg-[#111] p-6">
-          <div className="mb-6 flex items-center justify-between">
+<div className="mb-6 flex items-center justify-between">
             <div>
               <p className="font-mono text-xs uppercase tracking-[0.18em] text-[#C5FF3D]">
                 User Management
               </p>
-
               <h2 className="mt-2 text-3xl font-extrabold">
                 Platform Users
               </h2>
             </div>
+            <button
+              type="button"
+              onClick={() => { setShowCreateUser(!showCreateUser); setCreateError(""); setCreateSuccess(""); }}
+              className="rounded-xl bg-[#C5FF3D] px-5 py-2.5 font-mono text-sm font-bold uppercase tracking-wider text-black transition hover:bg-white"
+            >
+              {showCreateUser ? "Cancel" : "+ Add User"}
+            </button>
           </div>
+
+          {/* CREATE USER FORM */}
+          {showCreateUser && (
+            <div className="mb-8 rounded-2xl border border-[#C5FF3D]/25 bg-[#0d1500] p-6">
+              <p className="mb-5 font-mono text-[10px] uppercase tracking-[0.2em] text-[#C5FF3D]">
+                Create User — No Payment Required
+              </p>
+
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div>
+                  <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-wider text-[#8A8A8A]">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="John Smith"
+                    className="w-full rounded-xl border border-[#222] bg-[#0A0A0A] px-4 py-3 text-sm text-white outline-none transition focus:border-[#C5FF3D]/40"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-wider text-[#8A8A8A]">
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="user@agency.com"
+                    className="w-full rounded-xl border border-[#222] bg-[#0A0A0A] px-4 py-3 text-sm text-white outline-none transition focus:border-[#C5FF3D]/40"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-wider text-[#8A8A8A]">
+                    Password *
+                  </label>
+                  <input
+                    type="text"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Min 8 characters"
+                    className="w-full rounded-xl border border-[#222] bg-[#0A0A0A] px-4 py-3 text-sm text-white outline-none transition focus:border-[#C5FF3D]/40"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-wider text-[#8A8A8A]">
+                    Package (optional)
+                  </label>
+                  <select
+                    value={newPackageId}
+                    onChange={(e) => setNewPackageId(e.target.value)}
+                    className="w-full rounded-xl border border-[#222] bg-[#0A0A0A] px-4 py-3 text-sm text-white outline-none transition focus:border-[#C5FF3D]/40"
+                  >
+                    <option value="">No package (free access)</option>
+                    {packages.map((pkg: any) => (
+                      <option key={pkg.id} value={pkg.id}>
+                        {pkg.name} — {pkg.monthlyAudits} audits/mo
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-wider text-[#8A8A8A]">
+                    Monthly Audit Limit
+                  </label>
+                  <input
+                    type="number"
+                    value={newAuditLimit}
+                    onChange={(e) => setNewAuditLimit(e.target.value)}
+                    min="1"
+                    max="1000"
+                    className="w-full rounded-xl border border-[#222] bg-[#0A0A0A] px-4 py-3 text-sm text-white outline-none transition focus:border-[#C5FF3D]/40"
+                  />
+                </div>
+
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={handleCreateUser}
+                    disabled={creating}
+                    className="w-full rounded-xl bg-[#C5FF3D] px-5 py-3 font-mono text-sm font-bold uppercase tracking-wider text-black transition hover:bg-white disabled:opacity-50"
+                  >
+                    {creating ? "Creating..." : "Create User"}
+                  </button>
+                </div>
+              </div>
+
+              {createError && (
+                <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/8 px-4 py-3 text-sm text-red-400">
+                  {createError}
+                </div>
+              )}
+              {createSuccess && (
+                <div className="mt-4 rounded-xl border border-[#C5FF3D]/20 bg-[#C5FF3D]/8 px-4 py-3 text-sm text-[#C5FF3D]">
+                  {createSuccess}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px]">
