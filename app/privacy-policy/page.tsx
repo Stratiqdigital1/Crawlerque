@@ -44,12 +44,12 @@ export default function PrivacyPolicyPage() {
 
           <div>
             <h2 className="mb-3 text-lg font-bold text-white">5. Cookies</h2>
-            <p>We use a single session cookie named <code className="rounded bg-white/8 px-1.5 py-0.5 font-mono text-sm text-[#C5FF3D]">stratiq_session</code> to keep you logged in. This cookie contains a signed JWT token and no personal data. It expires after 7 days.</p>
+            <p>We use a single session cookie named <code className="rounded bg-white/8 px-1.5 py-0.5 font-mono text-sm text-[#C5FF3D]">crawlerque_session</code> to keep you logged in. This cookie contains a signed JWT token and no personal data. It expires after 7 days.</p>
           </div>
 
           <div>
             <h2 className="mb-3 text-lg font-bold text-white">6. Your Rights</h2>
-            <p>You may request deletion of your account and all associated data at any time by contacting us at <a href="mailto:hello@stratiqdigital.com" className="text-[#C5FF3D] underline">hello@stratiqdigital.com</a>. We will process deletion requests within 30 days.</p>
+            <p>You may request deletion of your account and all associated data at any time by contacting us at <a href="mailto:info@crawlerque.com" className="text-[#C5FF3D] underline">info@crawlerque.com</a>. We will process deletion requests within 30 days.</p>
           </div>
 
           <div>

@@ -34,7 +34,7 @@ export default function ReturnPolicyPage() {
 
           <div>
             <h2 className="mb-3 text-lg font-bold text-white">3. Refund Eligibility</h2>
-            <p>Refunds may be issued at our discretion in the following circumstances: if you were charged due to a technical error on our platform, if you cancel within 48 hours of your first charge and have not used the service. To request a refund, contact us within 7 days of the charge at <a href="mailto:hello@stratiqdigital.com" className="text-[#C5FF3D] underline">hello@stratiqdigital.com</a> with your account email and a brief description.</p>
+            <p>Refunds may be issued at our discretion in the following circumstances: if you were charged due to a technical error on our platform, if you cancel within 48 hours of your first charge and have not used the service. To request a refund, contact us within 7 days of the charge at <a href="mailto:info@crawlerque.com" className="text-[#C5FF3D] underline">info@crawlerque.com</a> with your account email and a brief description.</p>
           </div>
 
           <div>

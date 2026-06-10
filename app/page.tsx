@@ -16,6 +16,7 @@ const FOOTER_LINKS = [
   ["/sample-report",        "Sample Report"],
   ["/ai-search-visibility", "AI Visibility"],
   ["/login",                "Login"],
+  ["/contact",              "Contact"],
   ["/privacy-policy",       "Privacy Policy"],
   ["/return-policy",        "Return Policy"],
 ];
@@ -524,7 +525,7 @@ export default function HomePage() {
           </div>
 
           <p className="mt-8 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-white/18">
-            All plans include a 7-day free trial &#183; Cancel any time &#183; Secure payment via Stripe
+            Cancel any time &#183; Secure payment via Stripe
           </p>
         </div>
       </section>
