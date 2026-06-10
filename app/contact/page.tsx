@@ -4,14 +4,17 @@
 import { useState } from "react";
 
 export default function ContactPage() {
-  const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState("");
+  const [name,     setName]     = useState("");
+  const [email,    setEmail]    = useState("");
+  const [subject,  setSubject]  = useState("");
+  const [message,  setMessage]  = useState("");
+  const [sending,  setSending]  = useState(false);
+  const [sent,     setSent]     = useState(false);
+  const [error,    setError]    = useState("");
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.message) {
+    if (!name || !email || !message) {
       setError("Please fill in all required fields.");
       return;
     }
@@ -21,13 +24,13 @@ export default function ContactPage() {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ name, email, subject, message }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to send");
       setSent(true);
-    } catch (e: any) {
-      setError(e.message || "Something went wrong. Please try again.");
+    } catch (err) {
+      setError(err.message || "Something went wrong. Please try again.");
     } finally {
       setSending(false);
     }
@@ -46,14 +49,14 @@ export default function ContactPage() {
             <span className="text-sm font-bold text-white">Crawler Que</span>
           </a>
           <a href="/" className="font-mono text-[11px] uppercase tracking-wider text-white/40 transition hover:text-white">
-            &#8592; Back to Home
+            Back to Home
           </a>
         </div>
       </nav>
 
       <div className="mx-auto max-w-4xl px-5 py-16 md:px-8">
 
-        <div className="mb-4 font-mono text-[10px] uppercase tracking-[0.25em] text-[#C5FF3D]">&#9646; Get In Touch</div>
+        <div className="mb-4 font-mono text-[10px] uppercase tracking-[0.25em] text-[#C5FF3D]">Get In Touch</div>
         <h1 className="text-[clamp(2rem,5vw,3.5rem)] font-extrabold leading-tight tracking-tight text-white">
           Contact Us
         </h1>
@@ -61,46 +64,50 @@ export default function ContactPage() {
           Have a question about your plan, a billing issue, or a feature request? We respond within 2 business days.
         </p>
 
-        <div className="mt-14 grid gap-10 lg:grid-cols-[1fr_360px]">
+        <div className="mt-14 grid gap-10 lg:grid-cols-[1fr_340px]">
 
           {/* FORM */}
           <div>
             {sent ? (
               <div className="rounded-2xl border border-[#C5FF3D]/20 bg-[#0d1500] p-10 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#C5FF3D]/10">
-                  <span className="text-2xl">&#10003;</span>
+                <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#C5FF3D]/10">
+                  <span className="text-2xl text-[#C5FF3D]">&#10003;</span>
                 </div>
                 <h2 className="text-xl font-bold text-white">Message sent</h2>
                 <p className="mt-2 text-sm text-white/40">
-                  Thanks for reaching out. We will get back to you at <span className="text-white/70">{form.email}</span> within 2 business days.
+                  Thanks for reaching out. We will get back to you within 2 business days.
                 </p>
-                <a href="/" className="mt-6 inline-block rounded-xl bg-[#C5FF3D] px-6 py-3 font-mono text-sm font-bold uppercase tracking-wider text-black transition hover:bg-white">
+                <a
+                  href="/"
+                  className="mt-6 inline-block rounded-xl bg-[#C5FF3D] px-6 py-3 font-mono text-sm font-bold uppercase tracking-wider text-black transition hover:bg-white"
+                >
                   Back to Home
                 </a>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-5">
+
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div>
                     <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
-                      Full Name <span className="text-[#C5FF3D]">*</span>
+                      Full Name *
                     </label>
                     <input
                       type="text"
-                      value={form.name}
-                      onChange={e => setForm({ ...form, name: e.target.value })}
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
                       placeholder="Your name"
                       className="w-full rounded-xl border border-white/8 bg-[#0c0c0c] px-4 py-3.5 text-sm text-white outline-none placeholder:text-white/18 transition focus:border-[#C5FF3D]/35 focus:ring-1 focus:ring-[#C5FF3D]/12"
                     />
                   </div>
                   <div>
                     <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
-                      Email Address <span className="text-[#C5FF3D]">*</span>
+                      Email Address *
                     </label>
                     <input
                       type="email"
-                      value={form.email}
-                      onChange={e => setForm({ ...form, email: e.target.value })}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@youragency.com"
                       className="w-full rounded-xl border border-white/8 bg-[#0c0c0c] px-4 py-3.5 text-sm text-white outline-none placeholder:text-white/18 transition focus:border-[#C5FF3D]/35 focus:ring-1 focus:ring-[#C5FF3D]/12"
                     />
@@ -112,28 +119,28 @@ export default function ContactPage() {
                     Subject
                   </label>
                   <select
-                    value={form.subject}
-                    onChange={e => setForm({ ...form, subject: e.target.value })}
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
                     className="w-full rounded-xl border border-white/8 bg-[#0c0c0c] px-4 py-3.5 text-sm text-white outline-none transition focus:border-[#C5FF3D]/35 focus:ring-1 focus:ring-[#C5FF3D]/12"
                   >
-                    <option value="" className="bg-[#111]">Select a topic</option>
-                    <option value="Billing question" className="bg-[#111]">Billing question</option>
-                    <option value="Technical issue" className="bg-[#111]">Technical issue</option>
-                    <option value="Feature request" className="bg-[#111]">Feature request</option>
-                    <option value="Account help" className="bg-[#111]">Account help</option>
-                    <option value="White-label setup" className="bg-[#111]">White-label setup</option>
-                    <option value="Partnership enquiry" className="bg-[#111]">Partnership enquiry</option>
-                    <option value="Other" className="bg-[#111]">Other</option>
+                    <option value="" style={{ background: "#111" }}>Select a topic</option>
+                    <option value="Billing question" style={{ background: "#111" }}>Billing question</option>
+                    <option value="Technical issue" style={{ background: "#111" }}>Technical issue</option>
+                    <option value="Feature request" style={{ background: "#111" }}>Feature request</option>
+                    <option value="Account help" style={{ background: "#111" }}>Account help</option>
+                    <option value="White-label setup" style={{ background: "#111" }}>White-label setup</option>
+                    <option value="Partnership enquiry" style={{ background: "#111" }}>Partnership enquiry</option>
+                    <option value="Other" style={{ background: "#111" }}>Other</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
-                    Message <span className="text-[#C5FF3D]">*</span>
+                    Message *
                   </label>
                   <textarea
-                    value={form.message}
-                    onChange={e => setForm({ ...form, message: e.target.value })}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
                     placeholder="Describe your question or issue in detail..."
                     rows={6}
                     className="w-full resize-none rounded-xl border border-white/8 bg-[#0c0c0c] px-4 py-3.5 text-sm text-white outline-none placeholder:text-white/18 transition focus:border-[#C5FF3D]/35 focus:ring-1 focus:ring-[#C5FF3D]/12"
@@ -151,21 +158,23 @@ export default function ContactPage() {
                   disabled={sending}
                   className="w-full rounded-xl bg-[#C5FF3D] px-5 py-4 font-mono text-sm font-bold uppercase tracking-wider text-black transition hover:bg-white disabled:opacity-50"
                 >
-                  {sending ? "Sending..." : "Send Message &#8594;"}
+                  {sending ? "Sending..." : "Send Message"}
                 </button>
 
                 <p className="text-center font-mono text-[10px] uppercase tracking-wider text-white/18">
-                  Or email us directly at{" "}
+                  Or email us at{" "}
                   <a href="mailto:info@crawlerque.com" className="text-[#C5FF3D] transition hover:underline">
                     info@crawlerque.com
                   </a>
                 </p>
+
               </form>
             )}
           </div>
 
-          {/* SIDEBAR INFO */}
+          {/* SIDEBAR */}
           <div className="space-y-5">
+
             <div className="rounded-2xl border border-white/6 bg-[#0c0c0c] p-6">
               <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#C5FF3D]/60">Email</div>
               <a href="mailto:info@crawlerque.com" className="text-base font-semibold text-white transition hover:text-[#C5FF3D]">
@@ -177,40 +186,27 @@ export default function ContactPage() {
             <div className="rounded-2xl border border-white/6 bg-[#0c0c0c] p-6">
               <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#C5FF3D]/60">Response Time</div>
               <p className="text-base font-semibold text-white">Within 2 business days</p>
-              <p className="mt-1.5 text-xs text-white/30">Mon–Fri, excluding public holidays</p>
+              <p className="mt-1.5 text-xs text-white/30">Mon to Fri, excluding public holidays</p>
             </div>
 
             <div className="rounded-2xl border border-white/6 bg-[#0c0c0c] p-6">
               <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[#C5FF3D]/60">Quick Links</div>
               <div className="space-y-2">
-{(
-                [
-                  { url: "/privacy-policy", text: "Privacy Policy" },
-                  { url: "/return-policy",  text: "Return Policy" },
-                  { url: "/#pricing",       text: "View Plans" },
-                  { url: "/login",          text: "Log In" },
-                ] as { url: string; text: string }[]
-              ).map((link) => (
-                
-                  key={link.text}
-                  href={link.url}
-                  className="flex items-center justify-between rounded-lg border border-white/5 px-3 py-2.5 text-sm text-white/45 transition hover:border-white/10 hover:text-white"
-                >
-                  {link.text}
-                  <span className="text-white/20">&#8594;</span>
-                </a>
-              ))}
+                <QuickLink url="/privacy-policy" text="Privacy Policy" />
+                <QuickLink url="/return-policy"  text="Return Policy" />
+                <QuickLink url="/#pricing"       text="View Plans" />
+                <QuickLink url="/login"          text="Log In" />
               </div>
             </div>
 
             <div className="rounded-2xl border border-[#C5FF3D]/10 bg-[#0d1500] p-6">
               <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#C5FF3D]/60">Billing Issues</div>
               <p className="text-sm leading-relaxed text-white/40">
-                For subscription changes, cancellations, or refund requests, log into your dashboard and use the Manage Subscription button in the Subscription tab.
+                For subscription changes, cancellations, or refund requests — log into your dashboard and use the Manage Subscription button in the Subscription tab.
               </p>
             </div>
-          </div>
 
+          </div>
         </div>
       </div>
 
@@ -231,5 +227,17 @@ export default function ContactPage() {
       </footer>
 
     </main>
+  );
+}
+
+function QuickLink({ url, text }: { url: string; text: string }) {
+  return (
+    <a
+      href={url}
+      className="flex items-center justify-between rounded-lg border border-white/5 px-3 py-2.5 text-sm text-white/45 transition hover:border-white/10 hover:text-white"
+    >
+      <span>{text}</span>
+      <span className="text-white/20">&#8594;</span>
+    </a>
   );
 }
