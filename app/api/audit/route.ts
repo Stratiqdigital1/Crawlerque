@@ -1528,24 +1528,31 @@ await updateAuditJob(auditJob.id, {
 } catch (error) {
   console.error("Audit API failed:", error);
 
+  const errorMessage =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+      ? error
+      : "Audit API failed. Please try again.";
+
   if (auditJob?.id) {
     await updateAuditJob(auditJob.id, {
       status: "failed",
       progress: 100,
       currentModule: "Failed",
-      error: error instanceof Error ? error.message : "Audit failed",
+      error: errorMessage,
       failedAt: new Date(),
     });
   }
 
   return withSecurityHeaders(
-  NextResponse.json(
-    {
-      success: false,
-      error: error instanceof Error ? error.message : "Audit API failed",
-    },
-    { status: 500 }
-  )
-);
+    NextResponse.json(
+      {
+        success: false,
+        error: errorMessage,
+      },
+      { status: 500 }
+    )
+  );
   }
 }

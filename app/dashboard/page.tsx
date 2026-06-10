@@ -175,6 +175,16 @@ const pollAuditJobStatus = (jobId: string) => {
 const runAudit = async () => {
   if (!url) return;
 
+  // Normalize URL before anything else
+  let normalizedUrl = url.trim();
+  if (
+    !normalizedUrl.startsWith("http://") &&
+    !normalizedUrl.startsWith("https://")
+  ) {
+    normalizedUrl = `https://${normalizedUrl}`;
+    setUrl(normalizedUrl);
+  }
+
   const userRes = await fetch("/api/user/me", {
     cache: "no-store",
   });
@@ -220,16 +230,21 @@ try {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          url,
+body: JSON.stringify({
+          url: normalizedUrl,
           reportTypes: selectedReportTypes,
         }),
       });
 
       const startJson = await startRes.json();
 
-      if (!startRes.ok || !startJson?.success) {
-        throw new Error(startJson?.error || "Failed to start audit job.");
+if (!startRes.ok || !startJson?.success) {
+        const errMsg = typeof startJson?.error === "string"
+          ? startJson.error
+          : startJson?.error?.message
+          ? startJson.error.message
+          : "Failed to start audit job. Please try again.";
+        throw new Error(errMsg);
       }
 
       const startedJobId = startJson.auditJobId;
@@ -243,8 +258,8 @@ try {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-  url,
+body: JSON.stringify({
+  url: normalizedUrl,
   reportTypes: selectedReportTypes,
   auditJobId: startedJobId,
 }),
@@ -253,7 +268,12 @@ try {
       const json = await res.json();
 
 if (!res.ok || json?.success === false) {
-  throw new Error(json?.error || "Audit failed");
+  const errMsg = typeof json?.error === "string"
+    ? json.error
+    : json?.error?.message
+    ? json.error.message
+    : "Audit failed. Please try again.";
+  throw new Error(errMsg);
 }
 
 let report = {
@@ -349,9 +369,14 @@ if (progressInterval) {
 
 setAuditProgress(100);
 setAuditCurrentModule("Completed");
-    } catch (e: any) {
+} catch (e: any) {
   console.error(e);
-  setError(e?.message || "Something went wrong while running the audit.");
+  const errMsg = typeof e?.message === "string"
+    ? e.message
+    : typeof e === "string"
+    ? e
+    : "Something went wrong while running the audit. Please try again.";
+  setError(errMsg);
   setAuditCurrentModule("Failed");
 }
 
@@ -1673,10 +1698,10 @@ const isLargeSiteWarning =
 <div className="mb-6 rounded-2xl border border-[#C5FF3D]/25 bg-[#0d1500] p-6 shadow-2xl">
   <div className="mb-4 flex items-center justify-between gap-4">
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+<p className="text-xs font-semibold uppercase tracking-wide text-[#C5FF3D]">
         Website Intelligence Report
       </p>
-      <h1 className="mt-1 text-2xl font-bold text-slate-950">
+      <h1 className="mt-1 text-2xl font-bold text-white">
         {data?.domain || "Run a new audit"}
       </h1>
       <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
@@ -1704,9 +1729,9 @@ const isLargeSiteWarning =
     className="h-12 w-full rounded-xl border border-[#2a2a2a] bg-[#0A0A0A] px-4 font-mono text-sm text-white outline-none placeholder:text-[#444] focus:border-[#C5FF3D]/60"
   />
 
-  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+<div className="rounded-2xl border border-[#222] bg-[#111] p-4">
   <div className="mb-3 flex items-center justify-between">
-    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <p className="text-xs font-semibold uppercase tracking-wide text-[#8A8A8A]">
       Report Modules
     </p>
 
@@ -1717,7 +1742,7 @@ const isLargeSiteWarning =
           reportOptions.map(([value]) => value)
         )
       }
-      className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+      className="text-xs font-semibold text-[#C5FF3D] hover:text-white"
     >
       Select All
     </button>
@@ -1780,9 +1805,11 @@ disabled={!data}
     </div>
 )}
 {error && (
-  <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-5">
-    <p className="font-semibold text-red-700">Audit failed</p>
-    <p className="mt-1 text-sm text-red-600">{error}</p>
+  <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/8 p-5">
+    <p className="font-semibold text-red-400">Audit failed</p>
+    <p className="mt-1 text-sm text-red-400/80">
+      {typeof error === "string" ? error : JSON.stringify(error)}
+    </p>
   </div>
 )}
         {loading && (
