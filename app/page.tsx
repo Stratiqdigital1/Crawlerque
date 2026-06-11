@@ -28,9 +28,9 @@ const PLANS = [
     price:   "$49",
     period:  "/mo",
     priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER || "",
-    desc:    "For freelancers auditing client sites.",
-    features:["10 full audits / month","All 8 audit modules","Branded PDF export","30-day report history","1 user seat"],
-    usage:   "Perfect for freelancers with up to 5 regular clients.",
+desc:    "For individuals and small teams auditing websites.",
+features:["10 full website audits / month","SEO, technical, traffic, AI, keyword, competitor and backlink insights","Crawler Que branded report export","30-day report history","1 user seat"],
+usage:   "Best for checking your own website or a small number of websites each month.",
     badge:   null,
   },
   {
@@ -38,9 +38,9 @@ const PLANS = [
     price:   "$99",
     period:  "/mo",
     priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_AGENCY || "",
-    desc:    "For agencies producing client deliverables.",
-    features:["40 full audits / month","White-label PDF reports","Comparison reports","90-day report history","3 user seats"],
-    usage:   "40 audits covers 20+ recurring client reports monthly. Every PDF carries your brand.",
+desc:    "For growing teams that need deeper reporting and more audit volume.",
+features:["40 full website audits / month","White-label report export","Comparison reports","90-day report history","3 user seats"],
+usage:   "Best for teams managing multiple websites, recurring audits, or client reporting.",
     badge:   "Most Popular",
   },
   {
@@ -48,9 +48,9 @@ const PLANS = [
     price:   "$299",
     period:  "/mo",
     priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE || "",
-    desc:    "For high-volume agencies and consultancies.",
-    features:["150 full audits / month","White-label PDF reports","Priority support","Unlimited report history","10 user seats"],
-    usage:   "Scale to 50+ clients with 150 audits per month and dedicated priority support.",
+desc:    "For high-volume teams managing many websites.",
+features:["150 full website audits / month","White-label report export","Priority support","Unlimited report history","10 user seats"],
+usage:   "Best for larger teams that need frequent audits, long-term history, and priority support.",
     badge:   null,
   },
 ];
@@ -59,15 +59,15 @@ const MODULES = [
   { tag:"SEO",     name:"SEO Intelligence",    desc:"Title, H1, meta, crawlability, keyword density and structured data signals.",                        pills:["On-page","Technical"] },
   { tag:"TRAFFIC", name:"Traffic Modelling",    desc:"CTR-curve traffic estimation across all ranked keywords with confidence scoring.",                    pills:["CTR-curve","Keywords"] },
   { tag:"SPEED",   name:"Core Web Vitals",      desc:"Google PageSpeed mobile and desktop scores with prioritised fix recommendations.",                    pills:["LCP","CLS","FCP"] },
-  { tag:"AI",      name:"AI Search Visibility", desc:"Track how your client's brand appears in AI-generated search results across ChatGPT and Gemini.",     pills:["LLM rank","GEO"] },
+  { tag:"AI",      name:"AI Search Visibility", desc:"Track how a brand appears in AI-generated search results across ChatGPT and Gemini.",     pills:["LLM rank","GEO"] },
   { tag:"COMPETE", name:"Competitor Intel",     desc:"Benchmark against organic competitors and surface the keyword gaps worth closing.",                   pills:["Gap analysis","Threats"] },
   { tag:"LINKS",   name:"Backlink Authority",   desc:"Backlink profile, referring domains, and authority gap signals with trust scoring.",                  pills:["Backlinks","Trust"] },
 ];
 
 const SCREENSHOTS = [
   { key:"overview",        label:"Overview",        src:"/screenshots/dashboard-overview.png",        caption:"Every score, issue, and opportunity for a domain — on one screen." },
-  { key:"ai",              label:"AI Visibility",   src:"/screenshots/dashboard-ai-visibility.png",   caption:"See whether AI assistants like ChatGPT and Gemini actually mention your client's brand." },
-  { key:"recommendations", label:"Recommendations", src:"/screenshots/dashboard-recommendations.png", caption:"AI-generated action cards with owner, timeline, and impact — ready for the client PDF." },
+  { key:"ai",              label:"AI Visibility",   src:"/screenshots/dashboard-ai-visibility.png",   caption:"See whether AI assistants like ChatGPT and Gemini actually mention the audited brand." },
+  { key:"recommendations", label:"Recommendations", src:"/screenshots/dashboard-recommendations.png", caption:"AI-generated action cards with owner, timeline, and impact, ready for execution." },
 ];
 
 export default function HomePage() {
@@ -158,19 +158,19 @@ export default function HomePage() {
           <div>
             <p className="cq-eyebrow cq-eyebrow--signal">AI website growth intelligence</p>
             <h1 className="mt-5 font-[var(--font-space)] text-[clamp(2.5rem,6vw,4.5rem)] font-bold leading-[1.02]">
-              Other tools give you data.
-              <br />
-              We give you a <span className="text-[var(--cq-signal)]">growth plan.</span>
+              Audit your website.
+<br />
+Find the path to <span className="text-[var(--cq-signal)]">better growth.</span>
             </h1>
             <p className="mt-7 max-w-xl text-[17px] leading-[1.75] text-[var(--cq-text-2)]">
-              Built for agencies producing client deliverables. Run audits across
-              8 intelligence modules, export white-label PDFs, and show clients
-              exactly what to fix and why.
+Run a complete website audit in minutes. Crawler Que checks SEO,
+technical performance, traffic signals, keywords, competitors,
+backlinks, AI search visibility, and gives you a clear growth plan.
             </p>
 
             <div className="mt-9 flex flex-wrap gap-4">
-              <a href="#pricing" className="cq-btn cq-btn--primary">Start free trial</a>
-              <a href="/sample-report" className="cq-btn cq-btn--ghost">View a sample report</a>
+              <a href="#pricing" className="cq-btn cq-btn--primary">Run free audit</a>
+              <a href="/sample-report" className="cq-btn cq-btn--ghost">View sample audit</a>
             </div>
 
             {/* Proof strip — data set in real mono */}
@@ -202,14 +202,14 @@ export default function HomePage() {
             </div>
             <div className="p-6">
               <p className="cq-eyebrow cq-eyebrow--signal">Free audit · no signup</p>
-              <h2 className="mt-2 text-xl font-bold">Point the crawler at a site</h2>
+              <h2 className="mt-2 text-xl font-bold">Check your website growth signals</h2>
               <p className="mt-1.5 text-[15px] text-[var(--cq-text-2)]">
-                Enter any URL to get a growth intelligence snapshot.
+                Enter your website URL to check SEO, technical performance, and on-page signals.
               </p>
 
               <div className="mt-5 space-y-3">
                 <input
-                  type="text" placeholder="https://yourclient.com" value={url}
+                  type="text" placeholder="https://yourwebsite.com" value={url}
                   onChange={e => setUrl(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAudit()}
                   className="cq-input font-mono !text-sm"
                 />
@@ -237,8 +237,8 @@ export default function HomePage() {
                         </div>
                       </div>
                       <div className="mt-3 border border-[var(--cq-signal)]/25 bg-[var(--cq-signal)]/6 p-4">
-                        <p className="text-[15px] font-semibold">Want the full 8-module report?</p>
-                        <p className="mt-1 text-sm leading-relaxed text-[var(--cq-text-2)]">AI visibility, competitor intel, keyword gaps, backlinks, and a white-label PDF.</p>
+                        <p className="text-[15px] font-semibold">Want the complete website growth audit?</p>
+                        <p className="mt-1 text-sm leading-relaxed text-[var(--cq-text-2)]">Unlock AI visibility, competitor intelligence, keyword gaps, backlinks, traffic insights, recommendations, and export-ready reporting.</p>
                         <div className="mt-3 flex flex-wrap gap-2">
                           <a href="/sample-report" className="cq-btn cq-btn--ghost !px-4 !py-2 !text-sm">Sample report</a>
                           <a href="#pricing" className="cq-btn cq-btn--primary !px-4 !py-2 !text-sm">View plans →</a>
@@ -267,7 +267,7 @@ export default function HomePage() {
       {/* STATS STRIP */}
       <div className="border-y border-[var(--cq-line-soft)] bg-[var(--cq-surface)] px-5 py-5 md:px-8">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-10 gap-y-3 md:justify-between">
-          {[["14,000+","Keywords analysed"],["8","Audit modules"],["3×","Faster reporting"],["100%","White-labelable"],["AI","Visibility scoring"]].map(([v,l]) => (
+          {[["14,000+","Keywords analysed"],["8","Audit modules"],["3×","Faster reporting"],["90-day","Action roadmap"],["AI","Visibility scoring"]].map(([v,l]) => (
             <div key={l} className="flex items-baseline gap-2.5">
               <span className="font-mono text-lg font-bold text-[var(--cq-signal)]">{v}</span>
               <span className="text-sm text-[var(--cq-text-2)]">{l}</span>
@@ -276,20 +276,20 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* WHO IT'S FOR */}
+      {/* Who can use it */}
       <section className="border-b border-[var(--cq-line-soft)] px-5 py-24 md:px-8">
         <div className="mx-auto max-w-7xl">
-          <p className="cq-eyebrow cq-eyebrow--signal">Who it's for</p>
-          <h2 className="mt-3 max-w-2xl font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Built for the people who deliver results.</h2>
-          <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">Whether you run a full-service agency or freelance for three clients, Crawler Que is built around your workflow.</p>
+          <p className="cq-eyebrow cq-eyebrow--signal">Who can use it</p>
+          <h2 className="mt-3 max-w-2xl font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Built for anyone who wants better website growth.</h2>
+          <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">Whether you own a business, manage a website, run marketing, or handle SEO for others, Crawler Que helps you understand what is holding the website back.</p>
           <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {[
-              { title:"SEO Agencies",          desc:"Run modular audits for every client. Export white-label PDFs. Save hours per report.", badge:"Most common" },
-              { title:"Web Design Agencies",   desc:"Add SEO intelligence to every website handover. Show clients their growth baseline.", badge:"" },
-              { title:"Marketing Consultants", desc:"Back every recommendation with data. Export executive reports clients actually read.", badge:"" },
-              { title:"Freelancers",           desc:"Look enterprise-level with branded PDF deliverables. Starter plan keeps costs low.", badge:"" },
-              { title:"White-Label Providers", desc:"Resell audits under your own brand. Agency and Enterprise plans fully white-labelable.", badge:"Popular" },
-            ].map(card => (
+  { title:"Business Owners",       desc:"Understand what is stopping your website from ranking, loading faster, and getting more traffic.", badge:"Best start" },
+  { title:"Marketing Teams",       desc:"Audit SEO, performance, AI visibility, competitors, keywords, and backlinks from one dashboard.", badge:"" },
+  { title:"SEO Teams",             desc:"Find technical issues, keyword gaps, traffic opportunities, and priority fixes faster.", badge:"" },
+  { title:"Agencies",              desc:"Manage multiple website audits, track opportunities, and export branded reports when needed.", badge:"Popular" },
+  { title:"Consultants",           desc:"Turn website audit data into a clear action plan with impact, timeline, and recommended owner.", badge:"" },
+].map(card => (
               <div key={card.title} className="cq-card relative p-6 transition-colors hover:border-[var(--cq-signal)]/40">
                 {card.badge && (
                   <div className="absolute -top-3 left-4 bg-[var(--cq-signal)] px-2.5 py-0.5 font-mono text-xs font-bold text-[#0C0F08]">{card.badge}</div>
@@ -307,7 +307,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl">
           <p className="cq-eyebrow mb-6 text-center">Intelligence powered by</p>
           <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-5">
-            {[{name:"Google PageSpeed Insights",desc:"Core Web Vitals"},{name:"DataForSEO",desc:"Keywords, traffic & backlinks"},{name:"Proprietary AI Engine",desc:"Recommendations & scoring"},{name:"Google Search Console",desc:"SERP intelligence"}].map(src => (
+            {[{name:"Google PageSpeed Insights",desc:"Core Web Vitals"},{name:"DataForSEO",desc:"Keywords, traffic & backlinks"},{name:"Proprietary AI Engine",desc:"Recommendations & scoring"},{name:"SERP Data",desc:"Rank position intelligence"}].map(src => (
               <div key={src.name} className="flex items-center gap-3">
                 <span className="h-3 w-3 border-l-2 border-t-2 border-[var(--cq-signal)]" />
                 <div>
@@ -325,12 +325,12 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl">
           <p className="cq-eyebrow cq-eyebrow--signal">How it works</p>
           <h2 className="mt-3 font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Audit. Analyse. Deliver.</h2>
-          <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">From URL to white-label client PDF in minutes.</p>
+          <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">From website URL to clear SEO, performance, traffic, competitor, backlink, AI visibility, and recommendation insights in minutes.</p>
           <div className="mt-12 grid gap-px overflow-hidden border border-[var(--cq-line)] bg-[var(--cq-line)] md:grid-cols-3">
             {[
-              {n:"01",t:"Enter any URL",         d:"Paste a client domain. Crawler Que runs all selected modules simultaneously against live data — no install needed."},
+              {n:"01",t:"Enter any URL",         d:"Paste any website URL. Crawler Que runs selected audit modules against live data with no install needed."},
               {n:"02",t:"AI analyses everything", d:"SEO, speed, traffic, AI visibility, competitors, backlinks, keywords — processed, scored, and ranked by impact."},
-              {n:"03",t:"Export white-label PDF", d:"Download a branded PDF with scores, insights, and a 90-day action roadmap ready to share with clients."},
+              {n:"03",t:"Use the growth report", d:"Review the dashboard, prioritize fixes, track opportunities, and export a report when you need to share the results."},
             ].map(s => (
               <div key={s.n} className="bg-[var(--cq-surface)] p-8">
                 <div className="font-mono text-sm font-bold text-[var(--cq-signal)]">{s.n}</div>
@@ -346,7 +346,7 @@ export default function HomePage() {
       <section className="border-b border-[var(--cq-line-soft)] px-5 py-24 md:px-8">
         <div className="mx-auto max-w-7xl">
           <p className="cq-eyebrow cq-eyebrow--signal">Inside the platform</p>
-          <h2 className="mt-3 font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">See exactly what your clients will see.</h2>
+          <h2 className="mt-3 font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">See exactly what your website audit includes.</h2>
           <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">A real look at the dashboard — no mockups. Click through the views.</p>
 
           {/* Tab switcher */}
@@ -378,7 +378,7 @@ export default function HomePage() {
                 alt={`Crawler Que dashboard — ${activeShot.label}`}
                 fill
                 sizes="(max-width: 1280px) 100vw, 1216px"
-                className="object-cover object-top"
+                className="object-contain object-top"
                 priority={activeShot.key === "overview"}
               />
             </div>
@@ -392,7 +392,7 @@ export default function HomePage() {
       <section id="modules" className="border-b border-[var(--cq-line-soft)] px-5 py-24 md:px-8">
         <div className="mx-auto max-w-7xl">
           <p className="cq-eyebrow cq-eyebrow--signal">Audit modules</p>
-          <h2 className="mt-3 font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Every intelligence layer your client needs.</h2>
+          <h2 className="mt-3 font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Every intelligence layer your website needs.</h2>
           <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">Modular by design. Run a full audit or go deep on a single signal.</p>
           <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {MODULES.map(mod => (
@@ -415,8 +415,8 @@ export default function HomePage() {
       <section className="border-b border-[var(--cq-line-soft)] px-5 py-24 md:px-8">
         <div className="mx-auto max-w-7xl">
           <p className="cq-eyebrow cq-eyebrow--signal">How we compare</p>
-          <h2 className="mt-3 font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Built differently. For a different workflow.</h2>
-          <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">Traditional SEO tools are built for data analysts. Crawler Que is built for agencies producing client deliverables.</p>
+          <h2 className="mt-3 font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Built for clearer website decisions.</h2>
+          <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">Traditional SEO tools can be complex and data-heavy. Crawler Que turns website audit data into clear priorities, insights, and action steps.</p>
           <div className="mt-12 overflow-x-auto border border-[var(--cq-line)]">
             <table className="w-full min-w-[580px] border-collapse">
               <thead>
@@ -428,7 +428,7 @@ export default function HomePage() {
                 </tr>
               </thead>
               <tbody>
-                {[["White-Label PDF Reports","✅","Partial","❌"],["AI Search Visibility","✅","❌","❌"],["Agency Workflow Focus","✅","❌","❌"],["Client-Ready Deliverables","✅","Limited","Limited"],["Keyword Gap Intelligence","✅","✅","✅"],["Core Web Vitals Audit","✅","✅","✅"],["GEO / AI Visibility Score","✅","❌","❌"],["Modular Report Selection","✅","❌","❌"],["Price (Agency-tier)","$99/mo","$229/mo","$199/mo"]].map(([feat,cq,sem,ah],i) => (
+                {[["White-Label Reporting","✅","Partial","❌"],["AI Search Visibility","✅","❌","❌"],["Clear Growth Workflow","✅","Partial","Partial"],["Action Plan Recommendations","✅","Limited","Limited"],["Keyword Gap Intelligence","✅","✅","✅"],["Core Web Vitals Audit","✅","✅","✅"],["GEO / AI Visibility Score","✅","❌","❌"],["Modular Report Selection","✅","❌","❌"],["Price (Agency-tier)","$99/mo","$229/mo","$199/mo"]].map(([feat,cq,sem,ah],i) => (
                   <tr key={String(feat)} className={i%2===0 ? "bg-[var(--cq-ink)]" : "bg-[var(--cq-surface)]"}>
                     <td className="border-t border-[var(--cq-line-soft)] px-5 py-3.5 text-[15px] text-[var(--cq-text-2)]">{feat}</td>
                     <td className="border-t border-[var(--cq-signal)]/15 bg-[var(--cq-signal)]/8 px-5 py-3.5 text-center text-[15px] font-bold text-[var(--cq-signal)]">{cq}</td>
@@ -446,8 +446,8 @@ export default function HomePage() {
       <section id="pricing" className="border-b border-[var(--cq-line-soft)] px-5 py-24 md:px-8">
         <div className="mx-auto max-w-7xl">
           <p className="cq-eyebrow cq-eyebrow--signal">Pricing</p>
-          <h2 className="mt-3 font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">The PDF is the product.</h2>
-          <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">Agency-first pricing. Pick the audit volume that matches your client workload.</p>
+          <h2 className="mt-3 font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Website growth intelligence for every stage.</h2>
+          <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">Choose the plan that matches how many websites you want to audit each month.</p>
 
           {checkoutError && (
             <div className="mt-6 rounded-lg border border-[var(--cq-danger)]/30 bg-[var(--cq-danger)]/10 px-5 py-4 text-[15px] text-[var(--cq-danger)]">{checkoutError}</div>
@@ -517,25 +517,25 @@ export default function HomePage() {
       {/* ROI CALCULATOR */}
       <section className="border-b border-[var(--cq-line-soft)] px-5 py-24 md:px-8">
         <div className="mx-auto max-w-7xl">
-          <p className="cq-eyebrow cq-eyebrow--signal">ROI calculator</p>
-          <h2 className="mt-3 font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">What does $99/month actually cost you?</h2>
-          <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">The Agency plan pays for itself with a single client report. Here is the math.</p>
+          <p className="cq-eyebrow cq-eyebrow--signal">Website audit value</p>
+<h2 className="mt-3 font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">What can one missed website issue cost you?</h2>
+<p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">Crawler Que helps you find SEO, speed, traffic, AI visibility, keyword, competitor, and backlink issues before they keep costing you traffic and leads.</p>
           <div className="mt-12 grid gap-5 lg:grid-cols-3">
-            {[{plan:"Starter",price:"$49",charge:150,clients:5},{plan:"Agency",price:"$99",charge:300,clients:15},{plan:"Enterprise",price:"$299",charge:500,clients:40}].map(row => {
+            {[{plan:"SEO Issues",price:"Fix ranking blockers",charge:150,clients:5},{plan:"Speed Issues",price:"Improve user experience",charge:300,clients:15},{plan:"Competitor Gaps",price:"Find missed opportunities",charge:500,clients:40}].map(row => {
               const revenue = row.charge * row.clients;
-              const profit  = revenue - parseInt(row.price.replace("$",""));
+const profit  = revenue;
               return (
                 <div key={row.plan} className="cq-card p-7 transition-colors hover:border-[var(--cq-signal)]/35">
-                  <div className="cq-eyebrow cq-eyebrow--signal mb-5">{row.plan} plan — {row.price}/mo</div>
+                  <div className="cq-eyebrow cq-eyebrow--signal mb-5">{row.plan}</div>
                   <div className="space-y-3">
-                    {[["Charge per audit",`$${row.charge}`],["Clients per month",`${row.clients} clients`],["Revenue generated",`$${revenue.toLocaleString()}`],["Platform cost",`−${row.price}`]].map(([l,v]) => (
+                    {[["What it helps with",row.price],["Signals checked",`${row.clients}+ checks`],["Estimated opportunity impact",`$${revenue.toLocaleString()}`],["Action priority","High"]].map(([l,v]) => (
                       <div key={l} className="flex justify-between border-b border-[var(--cq-line-soft)] pb-3 text-[15px]">
                         <span className="text-[var(--cq-text-2)]">{l}</span>
                         <span className="font-mono font-semibold">{v}</span>
                       </div>
                     ))}
                     <div className="flex items-center justify-between pt-1">
-                      <span className="text-[15px] font-semibold">Net profit</span>
+                      <span className="text-[15px] font-semibold">Potential value</span>
                       <span className="font-mono text-2xl font-bold text-[var(--cq-signal)]">${profit.toLocaleString()}</span>
                     </div>
                   </div>
@@ -543,7 +543,7 @@ export default function HomePage() {
               );
             })}
           </div>
-          <p className="mt-6 text-center text-sm text-[var(--cq-text-3)]">Based on typical agency audit pricing. Your rates may vary.</p>
+          <p className="mt-6 text-center text-sm text-[var(--cq-text-3)]">These are example opportunity values. Actual results depend on the website, market, traffic, and execution quality.</p>
         </div>
       </section>
 
@@ -552,13 +552,13 @@ export default function HomePage() {
         <div className="mx-auto max-w-3xl">
           <p className="cq-eyebrow cq-eyebrow--signal">Get started today</p>
           <h2 className="mt-4 font-[var(--font-space)] text-[clamp(2.2rem,5.5vw,3.6rem)] font-bold leading-[1.05]">
-            Stop explaining SEO.
-            <br />
-            <span className="text-[var(--cq-signal)]">Start showing results.</span>
+Find what is holding your website back.
+<br />
+<span className="text-[var(--cq-signal)]">Start with a free audit.</span>
           </h2>
           <div className="cq-scanline mx-auto mt-8 max-w-xs" />
           <p className="mx-auto mt-8 max-w-md text-[16px] leading-relaxed text-[var(--cq-text-2)]">
-            Run your first audit free. No signup needed. When you are ready to deliver it to a client, pick a plan.
+            Run your first website audit free. No signup needed. Upgrade when you want deeper traffic, AI visibility, competitor, keyword, backlink, and reporting intelligence.
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-4">
             <button
