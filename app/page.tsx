@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 
 const NAV_LINKS = [
   ["#modules",       "Modules"],
@@ -63,8 +64,21 @@ const MODULES = [
   { tag:"LINKS",   name:"Backlink Authority",   desc:"Backlink profile, referring domains, and authority gap signals with trust scoring.",                  pills:["Backlinks","Trust"] },
 ];
 
+const SCREENSHOTS = [
+  { key:"overview",        label:"Overview",        src:"/screenshots/dashboard-overview.png",        caption:"Every score, issue, and opportunity for a domain — on one screen." },
+  { key:"ai",              label:"AI Visibility",   src:"/screenshots/dashboard-ai-visibility.png",   caption:"See whether AI assistants like ChatGPT and Gemini actually mention your client's brand." },
+  {
+  key: "recommendations",
+  label: "SEO Recommendations",
+  src: "/screenshots/dashboard-competitors.png",
+  caption: "AI-powered SEO recommendations and priority actions to improve rankings, traffic, and website performance."
+},
+  { key:"recommendations", label:"Recommendations", src:"/screenshots/dashboard-recommendations.png", caption:"AI-generated action cards with owner, timeline, and impact — ready for the client PDF." },
+];
+
 export default function HomePage() {
   const [url,             setUrl]             = useState("");
+  const [activeShot,      setActiveShot]      = useState(SCREENSHOTS[0]);
   const [result,          setResult]          = useState(null);
   const [loading,         setLoading]         = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(null);
@@ -330,6 +344,52 @@ export default function HomePage() {
                 <p className="mt-2.5 text-[15px] leading-relaxed text-[var(--cq-text-2)]">{s.d}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+{/* PRODUCT TOUR — dashboard screenshots */}
+      <section className="border-b border-[var(--cq-line-soft)] px-5 py-24 md:px-8">
+        <div className="mx-auto max-w-7xl">
+          <p className="cq-eyebrow cq-eyebrow--signal">Inside the platform</p>
+          <h2 className="mt-3 font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">See exactly what your clients will see.</h2>
+          <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">A real look at the dashboard — no mockups. Click through the views.</p>
+
+          {/* Tab switcher */}
+          <div className="mt-10 flex flex-wrap gap-2">
+            {SCREENSHOTS.map(shot => (
+              <button
+                key={shot.key}
+                onClick={() => setActiveShot(shot)}
+                className={`border px-4 py-2 font-mono text-sm transition-colors ${
+                  activeShot.key === shot.key
+                    ? "border-[var(--cq-signal)] bg-[var(--cq-signal)]/10 text-[var(--cq-signal)]"
+                    : "border-[var(--cq-line)] text-[var(--cq-text-2)] hover:border-[var(--cq-text-3)] hover:text-[var(--cq-text)]"
+                }`}
+              >
+                {shot.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Framed screenshot — same browser chrome as the hero console */}
+          <div className="cq-card cq-frame mt-6 overflow-hidden !rounded-none">
+            <div className="flex items-center justify-between border-b border-[var(--cq-line)] bg-[var(--cq-surface-2)] px-5 py-3">
+              <span className="font-mono text-xs text-[var(--cq-text-3)]">crawlerque.com/dashboard</span>
+              <span className="font-mono text-xs text-[var(--cq-signal)]">{activeShot.label}</span>
+            </div>
+            <div className="relative aspect-[16/9] w-full bg-[var(--cq-ink)]">
+              <Image
+                src={activeShot.src}
+                alt={`Crawler Que dashboard — ${activeShot.label}`}
+                fill
+                sizes="(max-width: 1280px) 100vw, 1216px"
+                className="object-cover object-top"
+                priority={activeShot.key === "overview"}
+              />
+            </div>
+            <div className="cq-scanline" />
+            <p className="px-5 py-4 text-[15px] text-[var(--cq-text-2)]">{activeShot.caption}</p>
           </div>
         </div>
       </section>
