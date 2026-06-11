@@ -4,18 +4,18 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 function SignupForm() {
-  const params      = useSearchParams();
-  const router      = useRouter();
-  const sessionId   = params.get("session_id");
-  const plan        = params.get("plan");
+  const params = useSearchParams();
+  const router = useRouter();
+  const sessionId = params.get("session_id");
+  const plan = params.get("plan");
 
-  const [email,     setEmail]     = useState("");
-  const [name,      setName]      = useState("");
-  const [password,  setPassword]  = useState("");
-  const [loading,   setLoading]   = useState(false);
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(true);
-  const [verified,  setVerified]  = useState(false);
-  const [error,     setError]     = useState("");
+  const [verified, setVerified] = useState(false);
+  const [error, setError] = useState("");
 
   // Verify the Stripe session is real and paid before showing the form
   useEffect(() => {
@@ -29,7 +29,7 @@ function SignupForm() {
       .then((r) => r.json())
       .then((data) => {
         if (data.email) setEmail(data.email);
-        if (data.name)  setName(data.name);
+        if (data.name) setName(data.name);
         setVerified(data.paid === true);
         if (!data.paid) setError("Payment not confirmed. Please try again or contact support.");
       })
@@ -64,10 +64,10 @@ function SignupForm() {
 
   if (verifying) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A]">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-[#C5FF3D] border-t-transparent" />
-          <p className="font-mono text-sm text-[#8A8A8A]">Verifying payment...</p>
+      <div className="flex min-h-screen items-center justify-center bg-[var(--cq-ink)]">
+        <div className="w-64 text-center">
+          <p className="text-sm text-[var(--cq-text-2)]">Verifying payment…</p>
+          <div className="cq-scanline mt-4" />
         </div>
       </div>
     );
@@ -75,11 +75,13 @@ function SignupForm() {
 
   if (!sessionId || !verified) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A] px-6">
-        <div className="w-full max-w-md rounded-2xl border border-red-500/30 bg-red-500/10 p-8 text-center">
-          <p className="font-bold text-red-400">Payment verification failed</p>
-          <p className="mt-2 text-sm text-red-300">{error || "No valid payment session found."}</p>
-          <a href="/#pricing" className="mt-5 inline-block font-mono text-xs text-[#C5FF3D] underline">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--cq-ink)] px-6">
+        <div className="cq-card w-full max-w-md border-[var(--cq-danger)]/30 p-8 text-center">
+          <p className="text-lg font-bold text-[var(--cq-danger)]">Payment verification failed</p>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--cq-text-2)]">
+            {error || "No valid payment session found."}
+          </p>
+          <a href="/#pricing" className="cq-btn cq-btn--ghost mt-6 w-full">
             ← Back to pricing
           </a>
         </div>
@@ -88,39 +90,44 @@ function SignupForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A] px-6">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--cq-ink)] px-6 py-16">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <a href="/" className="text-lg font-bold">
-            Crawler Que<span className="text-[#C5FF3D]"> by Strat IQ Digital</span>
+          <a href="/" className="inline-flex items-center gap-3">
+            <span className="cq-frame flex h-9 w-9 items-center justify-center bg-[var(--cq-surface)]">
+              <span className="font-mono text-xs font-bold text-[var(--cq-signal)]">CQ</span>
+            </span>
+            <span className="font-[var(--font-space)] text-xl font-bold tracking-tight">
+              Crawler Que
+            </span>
           </a>
-          <div className="mt-3 inline-flex rounded-full border border-[#C5FF3D]/30 px-4 py-1 font-mono text-xs text-[#C5FF3D]">
+          <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-[var(--cq-signal)]/30 bg-[var(--cq-signal)]/8 px-4 py-1.5 font-mono text-xs text-[var(--cq-signal)]">
             ✓ Payment confirmed · {plan} plan
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[#C5FF3D]/25 bg-[#0d1500] p-8">
-          <h1 className="text-2xl font-bold text-white">Create your account</h1>
-          <p className="mt-2 text-sm text-[#8A8A8A]">
-            Your subscription is active. Set a password to access your dashboard.
+        <div className="cq-card cq-frame p-8">
+          <h1 className="text-2xl font-bold">Create your account</h1>
+          <p className="mt-2 text-[15px] leading-relaxed text-[var(--cq-text-2)]">
+            Your subscription is active. Set a password to open your dashboard.
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <form onSubmit={handleSubmit} className="mt-7 space-y-4">
             <div>
-              <label className="mb-1 block font-mono text-xs uppercase tracking-wider text-[#8A8A8A]">
-                Full Name
+              <label className="mb-1.5 block text-sm font-medium text-[var(--cq-text-2)]">
+                Full name
               </label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full rounded-lg border border-[#2a2a2a] bg-[#0A0A0A] px-4 py-3 text-sm text-white outline-none focus:border-[#C5FF3D]/60"
+                className="cq-input"
                 placeholder="Your name"
               />
             </div>
 
             <div>
-              <label className="mb-1 block font-mono text-xs uppercase tracking-wider text-[#8A8A8A]">
+              <label className="mb-1.5 block text-sm font-medium text-[var(--cq-text-2)]">
                 Email
               </label>
               <input
@@ -128,13 +135,13 @@ function SignupForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 type="email"
                 required
-                className="w-full rounded-lg border border-[#2a2a2a] bg-[#0A0A0A] px-4 py-3 text-sm text-white outline-none focus:border-[#C5FF3D]/60"
+                className="cq-input"
                 placeholder="you@youragency.com"
               />
             </div>
 
             <div>
-              <label className="mb-1 block font-mono text-xs uppercase tracking-wider text-[#8A8A8A]">
+              <label className="mb-1.5 block text-sm font-medium text-[var(--cq-text-2)]">
                 Password
               </label>
               <input
@@ -143,13 +150,13 @@ function SignupForm() {
                 type="password"
                 required
                 minLength={8}
-                className="w-full rounded-lg border border-[#2a2a2a] bg-[#0A0A0A] px-4 py-3 text-sm text-white outline-none focus:border-[#C5FF3D]/60"
+                className="cq-input"
                 placeholder="Minimum 8 characters"
               />
             </div>
 
             {error && (
-              <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              <div className="rounded-lg border border-[var(--cq-danger)]/30 bg-[var(--cq-danger)]/10 px-4 py-3 text-sm text-[var(--cq-danger)]">
                 {error}
               </div>
             )}
@@ -157,16 +164,16 @@ function SignupForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-[#C5FF3D] px-5 py-3 font-mono text-sm font-bold uppercase tracking-wider text-black disabled:opacity-50"
+              className="cq-btn cq-btn--primary w-full"
             >
-              {loading ? "Creating account..." : "Create account & go to dashboard →"}
+              {loading ? "Creating account…" : "Create account → dashboard"}
             </button>
           </form>
         </div>
 
-        <p className="mt-5 text-center font-mono text-xs text-[#444]">
+        <p className="mt-6 text-center text-sm text-[var(--cq-text-3)]">
           Already have an account?{" "}
-          <a href="/login" className="text-[#C5FF3D]">Log in</a>
+          <a href="/login" className="text-[var(--cq-signal)] hover:underline">Log in</a>
         </p>
       </div>
     </div>
@@ -175,11 +182,13 @@ function SignupForm() {
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#C5FF3D] border-t-transparent" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[var(--cq-ink)]">
+          <div className="cq-scanline w-64" />
+        </div>
+      }
+    >
       <SignupForm />
     </Suspense>
   );

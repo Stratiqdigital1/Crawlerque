@@ -588,7 +588,7 @@ const comparisonBrandName = canWhiteLabel
   ? currentUser?.agencyName ||
     currentUser?.companyName ||
     "Your Agency"
-  : "Crawler Que by Strat IQ Digital";
+  : "Crawler Que";
 
   const comparisonFilePrefix = comparisonBrandName
     .replace(/[^a-z0-9]/gi, "-")
@@ -671,8 +671,8 @@ const exportPDF = async () => {
 
   // ── BRAND ─────────────────────────────────────────────────────────────
   const canWL     = pdfUser?.canUseWhiteLabel === true && pdfUser?.whiteLabelEnabled === true;
-  const brandName = canWL ? (pdfUser?.agencyName || pdfUser?.companyName || "Your Agency") : "Crawler Que by Strat IQ Digital";
-  const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligence Report") : "AI Website Growth Intelligence";
+const brandName = canWL ? (pdfUser?.agencyName || pdfUser?.companyName || "Your Agency") : "Crawler Que";
+const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligence Report") : "Powered By Strat IQ Digital";
   const accentHex = canWL && pdfUser?.brandColor ? pdfUser.brandColor : "#C5FF3D";
 
   // ── DATA ──────────────────────────────────────────────────────────────
@@ -1573,16 +1573,21 @@ const isLargeSiteWarning =
   data?.traffic?.confidence !== "insufficient-data";
 
   return (
-<div className="si-dashboard flex min-h-screen bg-[#0A0A0A] text-white [&_.bg-white]:bg-[#111111] [&_.bg-slate-50]:bg-[#181818] [&_.bg-slate-100]:bg-[#181818] [&_.bg-slate-200]:bg-[#222222] [&_.bg-slate-950]:bg-[#0d0d0d] [&_.border-slate-200]:border-[#222222] [&_.border-slate-100]:border-[#222222] [&_.text-slate-950]:text-white [&_.text-slate-900]:text-white [&_.text-slate-800]:text-[#EEEEEE] [&_.text-slate-700]:text-[#CCCCCC] [&_.text-slate-600]:text-[#A0A0A0] [&_.text-slate-500]:text-[#8A8A8A] [&_.text-slate-400]:text-[#666666] [&_.text-slate-300]:text-[#AAAAAA] [&_.text-blue-600]:text-[#C5FF3D] [&_.text-blue-700]:text-[#C5FF3D] [&_.bg-blue-600]:bg-[#C5FF3D] [&_.bg-blue-100]:bg-[#C5FF3D]/10 [&_.text-blue-700]:text-[#C5FF3D] [&_.bg-green-100]:bg-[#C5FF3D]/10 [&_.text-green-700]:text-[#C5FF3D] [&_.bg-green-600]:bg-[#C5FF3D] [&_.text-green-600]:text-[#C5FF3D] [&_.shadow-sm]:shadow-none [&_.hover\\:bg-blue-700:hover]:bg-[#B7EF35] [&_.text-white]:text-white">
+<div className="si-dashboard flex min-h-screen bg-[#0A0A0A] text-white [&_.bg-white]:bg-[#111111] [&_.bg-slate-50]:bg-[#181818] [&_.bg-slate-100]:bg-[#181818] [&_.bg-slate-200]:bg-[#222222] [&_.bg-slate-950]:bg-[#0d0d0d] [&_.border-slate-200]:border-[#222222] [&_.border-slate-100]:border-[#222222] [&_.text-slate-950]:text-white [&_.text-slate-900]:text-white [&_.text-slate-800]:text-[#EEEEEE] [&_.text-slate-700]:text-[#CCCCCC] [&_.text-slate-600]:text-[#A0A0A0] [&_.text-slate-500]:text-[#8A8A8A] [&_.text-slate-400]:text-[#666666] [&_.text-slate-300]:text-[#AAAAAA] [&_.text-blue-600]:text-[#C5FF3D] [&_.text-blue-700]:text-[#C5FF3D] [&_.bg-blue-600]:bg-[#C5FF3D] [&_.bg-blue-100]:bg-[#C5FF3D]/10 [&_.text-blue-700]:text-[#C5FF3D] [&_.bg-green-100]:bg-[#C5FF3D]/10 [&_.text-green-700]:text-[#C5FF3D] [&_.bg-green-600]:bg-[#C5FF3D] [&_.text-green-600]:text-[#C5FF3D] [&_.shadow-sm]:shadow-none [&_.text-white]:text-white">
       {/* Sidebar */}
       <div className="sticky top-0 h-screen w-72 overflow-y-auto border-r border-[#222] bg-[#0A0A0A] p-5">
-<div className="mb-6">
-    <h1 className="text-xl font-extrabold tracking-tight text-white">
-      Crawler Que
-    </h1>
-    <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[#8A8A8A]">
-      AI Website Growth Intelligence
-    </p>
+<div className="mb-6 flex items-center gap-3">
+    <span className="cq-frame flex h-9 w-9 shrink-0 items-center justify-center bg-[var(--cq-surface)]">
+      <span className="font-mono text-xs font-bold text-[var(--cq-signal)]">CQ</span>
+    </span>
+    <div>
+      <h1 className="text-lg font-bold tracking-tight text-[var(--cq-text)]">
+        Crawler Que
+      </h1>
+      <p className="cq-eyebrow mt-0.5">
+        Growth Intelligence
+      </p>
+    </div>
   </div>
 
         {[
@@ -1610,17 +1615,17 @@ const isLargeSiteWarning =
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`group mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+            className={`group mb-1 flex w-full items-center gap-3 rounded-lg border-l-2 px-3 py-2.5 text-[15px] font-medium transition ${
   activeTab === key
-    ? "border-[#C5FF3D]/30 bg-[#C5FF3D]/12 text-[#D9FF7A]"
-    : "text-[#8A8A8A] hover:bg-[#111] hover:text-white"
+    ? "border-l-[var(--cq-signal)] bg-[var(--cq-surface-2)] text-[var(--cq-text)]"
+    : "border-l-transparent text-[var(--cq-text-2)] hover:bg-[var(--cq-surface)] hover:text-[var(--cq-text)]"
 }`}
           >
-            <span
+<span
   className={`flex h-8 w-8 items-center justify-center rounded-lg ${
     activeTab === key
-      ? "bg-black/10 text-black"
-      : "bg-[#111] text-[#8A8A8A] group-hover:text-[#C5FF3D]"
+      ? "bg-[var(--cq-signal)]/15 text-[var(--cq-signal)]"
+      : "bg-[var(--cq-surface)] text-[var(--cq-text-3)] group-hover:text-[var(--cq-signal)]"
   }`}
 >
   <Icon className="h-4 w-4" />
@@ -1653,7 +1658,7 @@ const isLargeSiteWarning =
       <div className="flex-1 bg-[#0A0A0A] p-8">
 
 {currentUser?.package && activeTab === "overview" && (
-  <div className="mb-6 rounded-2xl border border-[#C5FF3D]/25 bg-[#0d1500] p-5">
+  <div className="cq-card cq-frame mb-6 !rounded-none p-5">
     <div className="flex items-center justify-between gap-4">
       <div className="flex-1">
         <p className="text-xs font-semibold uppercase tracking-wide text-[#C5FF3D]">
@@ -1694,7 +1699,7 @@ const isLargeSiteWarning =
 
 {/* Top Input — only show on overview tab */}
 {(activeTab === "overview" || activeTab === "unified") && (
-<div className="mb-6 rounded-2xl border border-[#C5FF3D]/25 bg-[#0d1500] p-6 shadow-2xl">
+<div className="cq-card cq-frame mb-6 !rounded-none p-6">
   <div className="mb-4 flex items-center justify-between gap-4">
     <div>
 <p className="text-xs font-semibold uppercase tracking-wide text-[#C5FF3D]">
@@ -4473,14 +4478,14 @@ function MetricCard({
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#8A8A8A]">
+            <p className="cq-eyebrow">
               {label}
             </p>
 
             {tooltip && (
               <span
                 title={tooltip}
-                className="cursor-help rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500"
+                className="cursor-help rounded-full border border-[var(--cq-line)] bg-[var(--cq-surface-2)] px-1.5 py-0.5 text-[11px] font-bold text-[var(--cq-text-2)]"
               >
                 i
               </span>
@@ -4498,7 +4503,7 @@ function MetricCard({
           ) : null}
         </div>
 
-        <div className="h-10 w-10 rounded-xl border border-[#C5FF3D]/20 bg-[#C5FF3D]/10 transition group-hover:bg-[#C5FF3D]/20" />
+        <div className="cq-frame h-10 w-10 bg-[var(--cq-surface-2)]" />
       </div>
     </div>
   );
@@ -4506,13 +4511,15 @@ function MetricCard({
 
 function Section({ title, children }: any) {
   return (
-    <div className="mb-6 rounded-2xl border border-[#222] bg-[#111] p-6 shadow-sm">
-      <div className="mb-5 flex items-center justify-between">
-        <h2 className="text-lg font-bold tracking-tight text-white">
-          {title}
-        </h2>
-
-        <div className="h-2 w-2 animate-pulse rounded-full bg-[#C5FF3D]" />
+    <div className="cq-card mb-6 p-6">
+      <div className="mb-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold tracking-tight text-[var(--cq-text)]">
+            {title}
+          </h2>
+          <span className="h-1 w-6 bg-[var(--cq-signal)]" />
+        </div>
+        <div className="cq-scanline mt-3" />
       </div>
 
       {children}
@@ -4522,12 +4529,12 @@ function Section({ title, children }: any) {
 
 function IssueCard({ issue }: any) {
   return (
-    <div className="mb-3 rounded-2xl border border-[#C5FF3D]/25 bg-[#0d1500] p-5">
+    <div className="cq-card mb-3 border-l-2 border-l-[var(--cq-signal)] p-5">
       <div className="mb-2 flex items-center justify-between">
-        <p className="font-semibold text-white">{issue.title}</p>
+        <p className="text-[15px] font-semibold text-[var(--cq-text)]">{issue.title}</p>
 
-        <span className="rounded-full bg-[#C5FF3D]/15 px-3 py-1 text-xs font-semibold text-[#C5FF3D]">
-          Issue
+        <span className="border border-[var(--cq-signal)]/30 px-3 py-1 font-mono text-xs text-[var(--cq-signal)]">
+          ISSUE
         </span>
       </div>
 

@@ -4,12 +4,68 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ============================================================
+   CRAWLER QUE — DESIGN SYSTEM v2 ("Audit Console")
+   Ink is green-cast, not flat black. Signal Green is the only
+   accent. JetBrains Mono is used ONLY for data and micro-labels.
+   ============================================================ */
+
+:root {
+  /* Core palette */
+  --cq-ink:         #0C0F08;   /* page background — green-cast near-black */
+  --cq-surface:     #12160C;   /* cards, panels */
+  --cq-surface-2:   #181D11;   /* raised cards, inner blocks, hovers */
+  --cq-line:        #272E1C;   /* default hairline borders */
+  --cq-line-soft:   #1C2214;   /* subtle dividers */
+  --cq-signal:      #C5FF3D;   /* brand accent */
+  --cq-signal-deep: #97CC21;   /* accent on light, hovers */
+  --cq-text:        #EEF3E3;   /* primary text — off-white, easier than #FFF */
+  --cq-text-2:      #A9B496;   /* secondary text */
+  --cq-text-3:      #707B58;   /* metadata, captions */
+  --cq-danger:      #FF7A6B;
+
+  /* shadcn compatibility — remapped to the CQ palette so any
+     shadcn/ui component automatically matches the new theme */
+  --background: var(--cq-ink);
+  --foreground: var(--cq-text);
+  --card: var(--cq-surface);
+  --card-foreground: var(--cq-text);
+  --popover: var(--cq-surface-2);
+  --popover-foreground: var(--cq-text);
+  --primary: var(--cq-signal);
+  --primary-foreground: #0C0F08;
+  --secondary: var(--cq-surface-2);
+  --secondary-foreground: var(--cq-text);
+  --muted: var(--cq-surface-2);
+  --muted-foreground: var(--cq-text-2);
+  --accent: var(--cq-surface-2);
+  --accent-foreground: var(--cq-text);
+  --destructive: var(--cq-danger);
+  --border: var(--cq-line);
+  --input: var(--cq-line);
+  --ring: var(--cq-signal);
+  --chart-1: #C5FF3D;
+  --chart-2: #97CC21;
+  --chart-3: #6F9A18;
+  --chart-4: #A9B496;
+  --chart-5: #707B58;
+  --radius: 0.625rem;
+  --sidebar: var(--cq-ink);
+  --sidebar-foreground: var(--cq-text);
+  --sidebar-primary: var(--cq-signal);
+  --sidebar-primary-foreground: #0C0F08;
+  --sidebar-accent: var(--cq-surface-2);
+  --sidebar-accent-foreground: var(--cq-text);
+  --sidebar-border: var(--cq-line);
+  --sidebar-ring: var(--cq-signal);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-data);
+  --font-heading: var(--font-space);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,75 +104,9 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-:root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
-
+/* ============================================================
+   BASE TYPOGRAPHY — the readability layer
+   ============================================================ */
 @layer base {
   * {
     @apply outline-ring/50;
@@ -124,37 +114,209 @@
 
   html {
     font-family: var(--font-inter);
-    background: #0A0A0A;
+    background: var(--cq-ink);
   }
 
   body {
-    background: #0A0A0A;
-    color: #ffffff;
+    background: var(--cq-ink);
+    color: var(--cq-text);
     font-family: var(--font-inter);
+    font-size: 16px;
+    line-height: 1.7;
+    letter-spacing: 0; /* body text never gets letter-spacing */
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-space);
+    letter-spacing: -0.02em; /* was -0.03em — too tight at small sizes */
+    color: var(--cq-text);
+  }
+
+  ::selection {
+    background: var(--cq-signal);
+    color: #0C0F08;
   }
 }
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-family: var(--font-space);
-  letter-spacing: -0.03em;
-}
 
+/* REAL monospace. Previously .font-mono was Inter + 0.08em tracking,
+   which made every label hard to read. JetBrains Mono, no tracking. */
 .font-mono {
-  font-family: var(--font-inter);
-  letter-spacing: 0.08em;
+  font-family: var(--font-data), ui-monospace, "SF Mono", monospace;
+  letter-spacing: 0;
 }
 
+/* ============================================================
+   CQ COMPONENT CLASSES — use these instead of repeating
+   utility soups. They are also the migration path for the
+   dashboard: swap a className, get the new look.
+   ============================================================ */
+
+/* Micro-label / eyebrow — the ONLY sanctioned uppercase style.
+   12px minimum, modest tracking. */
+.cq-eyebrow {
+  font-family: var(--font-data), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--cq-text-3);
+}
+.cq-eyebrow--signal { color: var(--cq-signal); }
+
+/* Cards */
+.cq-card {
+  background: var(--cq-surface);
+  border: 1px solid var(--cq-line);
+  border-radius: 14px;
+}
+.cq-card--raised { background: var(--cq-surface-2); }
+
+/* SIGNATURE №1 — the audit frame: corner ticks like crop marks
+   on a measurement plate. Apply alongside .cq-card on key cards
+   (hero widget, pricing highlight, score cards). */
+.cq-frame {
+  position: relative;
+  border-radius: 4px; /* frames are squared — they're instruments */
+}
+.cq-frame::before,
+.cq-frame::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+}
+.cq-frame::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid var(--cq-signal);
+  border-left: 2px solid var(--cq-signal);
+}
+.cq-frame::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid var(--cq-signal);
+  border-right: 2px solid var(--cq-signal);
+}
+
+/* SIGNATURE №2 — the crawl line: a hairline with a light pulse
+   travelling along it, like the crawler walking a sitemap.
+   Use as a section divider or loading indicator. */
+.cq-scanline {
+  position: relative;
+  height: 1px;
+  background: var(--cq-line);
+  overflow: hidden;
+}
+.cq-scanline::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -80px;
+  height: 1px;
+  width: 80px;
+  background: linear-gradient(90deg, transparent, var(--cq-signal), transparent);
+  animation: cq-crawl 5s linear infinite;
+}
+@keyframes cq-crawl {
+  to { left: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cq-scanline::after { animation: none; opacity: 0; }
+}
+
+/* Buttons */
+.cq-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 8px;
+  font-family: var(--font-inter);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;            /* sentence case, no tracking */
+  padding: 0.8rem 1.5rem;
+  transition: background-color .2s, color .2s, border-color .2s;
+  cursor: pointer;
+}
+.cq-btn--primary {
+  background: var(--cq-signal);
+  color: #0C0F08;
+  border: 1px solid var(--cq-signal);
+}
+.cq-btn--primary:hover { background: var(--cq-signal-deep); border-color: var(--cq-signal-deep); }
+.cq-btn--primary:disabled { opacity: .45; cursor: not-allowed; }
+.cq-btn--ghost {
+  background: transparent;
+  color: var(--cq-text-2);
+  border: 1px solid var(--cq-line);
+}
+.cq-btn--ghost:hover { color: var(--cq-text); border-color: var(--cq-text-3); }
+
+/* Inputs */
+.cq-input {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--cq-line);
+  background: var(--cq-ink);
+  padding: 0.85rem 1rem;
+  font-family: var(--font-inter);
+  font-size: 15px;
+  color: var(--cq-text);
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+.cq-input::placeholder { color: var(--cq-text-3); }
+.cq-input:focus {
+  border-color: var(--cq-signal);
+  box-shadow: 0 0 0 3px rgba(197, 255, 61, 0.12);
+}
+
+/* ============================================================
+   DASHBOARD READABILITY LAYER — scoped to .si-dashboard.
+   These rules upgrade the existing 4,500-line dashboard WITHOUT
+   editing its JSX: they raise micro text to legible sizes, relax
+   letter-spacing, and re-tint surfaces to the new palette.
+   ============================================================ */
 .si-dashboard {
   font-family: var(--font-inter);
+  font-size: 15px;
+  line-height: 1.65;
+  background: var(--cq-ink);
 }
-
 .si-dashboard h1,
 .si-dashboard h2,
 .si-dashboard h3,
 .si-dashboard h4 {
   font-family: var(--font-space);
+}
+
+/* Raise illegible micro sizes to a 12px floor */
+.si-dashboard .text-\[9px\]  { font-size: 12px !important; }
+.si-dashboard .text-\[10px\] { font-size: 12px !important; }
+.si-dashboard .text-\[11px\] { font-size: 13px !important; }
+.si-dashboard .text-xs       { font-size: 13px; }
+
+/* Tame extreme letter-spacing on uppercase labels */
+.si-dashboard .tracking-\[0\.18em\],
+.si-dashboard .tracking-\[0\.2em\],
+.si-dashboard .tracking-\[0\.22em\],
+.si-dashboard .tracking-widest { letter-spacing: 0.07em !important; }
+.si-dashboard .tracking-wider,
+.si-dashboard .tracking-wide   { letter-spacing: 0.05em !important; }
+
+/* Re-tint old hardcoded greys to the new palette */
+.si-dashboard .bg-\[\#0A0A0A\]   { background-color: var(--cq-ink) !important; }
+.si-dashboard .bg-\[\#111\],
+.si-dashboard .bg-\[\#111111\]   { background-color: var(--cq-surface) !important; }
+.si-dashboard .bg-\[\#181818\]   { background-color: var(--cq-surface-2) !important; }
+.si-dashboard .bg-\[\#0d1500\]   { background-color: var(--cq-surface-2) !important; }
+.si-dashboard .border-\[\#222\],
+.si-dashboard .border-\[\#222222\] { border-color: var(--cq-line) !important; }
+.si-dashboard .text-\[\#8A8A8A\] { color: var(--cq-text-2) !important; }
+.si-dashboard .text-\[\#A0A0A0\] { color: var(--cq-text-2) !important; }
+.si-dashboard .hover\:bg-blue-700:hover {
+  background-color: var(--cq-signal-deep) !important;
 }
