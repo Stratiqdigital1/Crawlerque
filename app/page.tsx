@@ -67,12 +67,7 @@ const MODULES = [
 const SCREENSHOTS = [
   { key:"overview",        label:"Overview",        src:"/screenshots/dashboard-overview.png",        caption:"Every score, issue, and opportunity for a domain — on one screen." },
   { key:"ai",              label:"AI Visibility",   src:"/screenshots/dashboard-ai-visibility.png",   caption:"See whether AI assistants like ChatGPT and Gemini actually mention your client's brand." },
-  {
-  key: "recommendations",
-  label: "SEO Recommendations",
-  src: "/screenshots/dashboard-competitors.png",
-  caption: "AI-powered SEO recommendations and priority actions to improve rankings, traffic, and website performance."
-},
+  { key: "recommendations", label: "SEO Recommendations", src: "/screenshots/dashboard-competitors.png",  caption: "AI-powered SEO recommendations and priority actions to improve rankings, traffic, and website performance." },
   { key:"recommendations", label:"Recommendations", src:"/screenshots/dashboard-recommendations.png", caption:"AI-generated action cards with owner, timeline, and impact — ready for the client PDF." },
 ];
 
