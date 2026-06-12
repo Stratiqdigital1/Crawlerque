@@ -320,6 +320,9 @@ h1, h2, h3, h4, h5, h6 {
 .si-dashboard .border-\[\#222\],
 .si-dashboard .border-\[\#222222\] { border-color: var(--cq-line) !important; }
 .si-dashboard .text-\[\#8A8A8A\] { color: var(--cq-text-2) !important; }
+.si-dashboard .text-\[\#666666\] { color: var(--cq-text-3) !important; }
+.si-dashboard .text-\[\#777\]    { color: var(--cq-text-3) !important; }
+.si-dashboard .text-\[\#CCCCCC\] { color: var(--cq-text-2) !important; }
 .si-dashboard .text-\[\#A0A0A0\] { color: var(--cq-text-2) !important; }
 .si-dashboard .hover\:bg-blue-700:hover {
   background-color: var(--cq-signal-deep) !important;

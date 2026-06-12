@@ -72,17 +72,19 @@ export default function AdminPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0A0A0A] p-8 text-white">
+    <main className="si-dashboard min-h-screen p-8 text-[var(--cq-text)]">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex items-center justify-between">
-          <div>
-            <p className="font-mono text-xs uppercase tracking-[0.18em] text-[#C5FF3D]">
-              Admin Panel
-            </p>
-
-            <h1 className="mt-2 text-5xl font-extrabold tracking-tight">
-              Crawler Que
-            </h1>
+<div className="flex items-center gap-4">
+            <span className="cq-frame flex h-11 w-11 items-center justify-center bg-[var(--cq-surface)]">
+              <span className="font-mono text-sm font-bold text-[var(--cq-signal)]">CQ</span>
+            </span>
+            <div>
+              <p className="cq-eyebrow cq-eyebrow--signal">Admin Panel</p>
+              <h1 className="mt-1 text-3xl font-extrabold tracking-tight">
+                Crawler Que
+              </h1>
+            </div>
           </div>
 
           <a
@@ -144,7 +146,7 @@ export default function AdminPage() {
             <button
               type="button"
               onClick={() => { setShowCreateUser(!showCreateUser); setCreateError(""); setCreateSuccess(""); }}
-              className="rounded-xl bg-[#C5FF3D] px-5 py-2.5 font-mono text-sm font-bold uppercase tracking-wider text-black transition hover:bg-white"
+              className="cq-btn cq-btn--primary !py-2.5"
             >
               {showCreateUser ? "Cancel" : "+ Add User"}
             </button>
@@ -647,13 +649,13 @@ function Card({
   title: string;
   value: any;
 }) {
-  return (
-    <div className="rounded-2xl border border-[#222] bg-[#111] p-6">
-      <p className="text-sm text-[#8A8A8A]">
+return (
+    <div className="cq-card cq-frame p-6">
+      <p className="cq-eyebrow">
         {title}
       </p>
 
-      <h2 className="mt-3 text-5xl font-extrabold text-[#C5FF3D]">
+      <h2 className="mt-3 font-mono text-5xl font-extrabold text-[var(--cq-signal)]">
         {value}
       </h2>
     </div>
@@ -667,13 +669,13 @@ function Info({
   label: string;
   value: string;
 }) {
-  return (
-    <div className="rounded-xl border border-[#222] bg-[#181818] p-4">
-      <p className="text-xs uppercase tracking-wider text-[#777]">
+return (
+    <div className="cq-card cq-card--raised p-4">
+      <p className="cq-eyebrow">
         {label}
       </p>
 
-      <p className="mt-2 text-lg font-semibold text-white">
+      <p className="mt-2 text-lg font-semibold text-[var(--cq-text)]">
         {value}
       </p>
     </div>
