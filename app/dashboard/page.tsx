@@ -900,14 +900,23 @@ const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligenc
   const lbl = (t: string, col: RGB = C.muted) => { doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(...col); doc.text(ell(cl(t, "").toUpperCase(), CW), ML, y); y += 4; };
   const divLine = () => { ensure(4); doc.setDrawColor(...C.faint); doc.setLineWidth(0.2); doc.line(ML, y, PW - MR, y); y += 5; };
 
-  // ── SECTION HEADERS ───────────────────────────────────────────────────
+// ── SECTION HEADERS (v2.1: flow with the document, auto-numbered) ─────
+  let secCounter = 0;
+  const nextSec = () => String(++secCounter).padStart(2, "0");
+
   const secHdr = (num: string, title: string, subtitle?: string) => {
-    newPage();
-    doc.setFillColor(...C.card); doc.rect(0, 0, PW, 18, "F");
-    doc.setFillColor(...C.accent); doc.rect(0, 0, 3, 18, "F");
-    doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(...C.accent); doc.text(`SECTION ${num}`, ML + 5, 7);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.setTextColor(...C.white); doc.text(ell(cl(title), CW - 10), ML + 5, 14.5);
-    y = 25; if (subtitle) { sub(subtitle); gap(2); }
+    // Start on the current page if there's room for the header plus a
+    // meaningful amount of content; otherwise break to a fresh page.
+    if (y > BOT - 75) { newPage(); } else { y += 8; }
+    const bandH = 14;
+    doc.setFillColor(...C.card); doc.roundedRect(ML, y, CW, bandH, 2, 2, "F");
+    doc.setFillColor(...C.accent); doc.rect(ML, y, 3, bandH, "F");
+    doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(...C.accent);
+    doc.text(`SECTION ${num}`, ML + 7, y + 5.5);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12.5); doc.setTextColor(...C.white);
+    doc.text(ell(cl(title), CW - 14), ML + 7, y + 11.5);
+    y += bandH + 5;
+    if (subtitle) { sub(subtitle); gap(1); }
   };
 
   const secTitle = (title: string, s?: string) => {
@@ -1146,27 +1155,28 @@ const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligenc
   //  PAGE 2 — TABLE OF CONTENTS
   // ════════════════════════════════════════════════════════════════════
   newPage(); lbl("REPORT CONTENTS",C.accent); gap(4); h1("Table of Contents");
-  sub("This report covers every module run in this audit, organised for executive review through to detailed evidence appendices.");
+sub("From executive summary to action roadmap — everything your team needs to turn this audit into growth.");
   divLine();
+  let tocNo = 0;
+  const tocN = () => String(++tocNo).padStart(2,"0");
   const toc = [
-    ["01","Executive Snapshot","Scores, benchmarks, biggest risk & opportunity"],
-    ["02","Unified Overview","Combined intelligence summary across all modules"],
-    ["03","Organic Traffic Intelligence","Modelled traffic, keyword footprint, top keywords"],
-    ["04","Domain Analytics","Organic vs paid traffic and keyword signals"],
-    ["05","SEO Foundation","Metadata, headings, alt text, technical issues"],
-    ["06","Performance & Core Web Vitals","Speed scores, LCP, CLS, FCP, TBT"],
-    ["07","AI Search Visibility","Brand mentions, model coverage, GEO readiness"],
-    ["08","Competitor Intelligence","Threat scores, shared keywords, winning factors"],
-    ["09","Keyword Gap & Labs","Missing keywords, opportunities, content ideas"],
-    ["10","Keyword Research","Seed keyword suggestions and intent signals"],
-    ["11","SERP Rankings","Live Google rank positions per keyword"],
-    ["12","Backlink Authority","Domain trust, referring domains, top backlinks"],
-    ["13","Technical SEO Audit","OnPage crawl status, pages, broken links"],
-    ["14","Content Quality","Page content, content analysis results"],
-    ["15","Local SEO","Business listings, ratings, reviews"],
-    ["16","Recommendations","Prioritised action cards from AI engine"],
-    ["17","Action Roadmap","30/60/90 day execution plan"],
-    ["A", "Appendix","Full evidence tables for all modules"],
+    [tocN(),"Executive Snapshot","Scores, benchmarks, biggest risk & opportunity"],
+    [tocN(),"Organic Traffic Intelligence","Modelled traffic, keyword footprint, top keywords"],
+    [tocN(),"Domain Analytics","Organic vs paid traffic and keyword signals"],
+    [tocN(),"SEO Foundation","Metadata, headings, alt text, technical issues"],
+    [tocN(),"Performance & Core Web Vitals","Speed scores, LCP, CLS, FCP, TBT"],
+    [tocN(),"AI Search Visibility","Brand mentions, model coverage, GEO readiness"],
+    [tocN(),"Competitor Intelligence","Threat scores, shared keywords, winning factors"],
+    [tocN(),"Keyword Gap & Labs","Missing keywords, opportunities, content ideas"],
+    [tocN(),"Keyword Research","Seed keyword suggestions and intent signals"],
+    [tocN(),"SERP Rankings","Live Google rank positions per keyword"],
+    [tocN(),"Backlink Authority","Domain trust, referring domains, top backlinks"],
+    [tocN(),"Technical SEO Audit","Crawled pages, broken links, technical signals"],
+    [tocN(),"Content Quality","Page content, content analysis results"],
+    [tocN(),"Local SEO","Business listings, ratings, reviews"],
+    [tocN(),"Recommendations","Prioritised action cards from AI engine"],
+    [tocN(),"Action Roadmap","30/60/90 day execution plan"],
+    [tocN(),"Benchmark Reference","What each score means and what to aim for"],
   ];
   toc.forEach(([num,t,d],i)=>{
     ensure(10); const ry=y;
@@ -1185,7 +1195,7 @@ const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligenc
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 01 — EXECUTIVE SNAPSHOT
   // ════════════════════════════════════════════════════════════════════
-  secHdr("01","Executive Snapshot","High-level digital health, benchmark scores, and primary business risks at a glance.");
+  secHdr(nextSec(),"Executive Snapshot","High-level digital health, benchmark scores, and primary business risks at a glance.");
   kpiRow([
     {label:"Overall Score",value:`${cl(String(normalized.scores.overall??"—"))}/100`,sub:sLbl(normalized.scores.overall),col:sCol(normalized.scores.overall)},
     {label:"SEO Foundation",value:`${cl(String(normalized.scores.seo??"—"))}/100`,sub:sLbl(normalized.scores.seo),col:sCol(normalized.scores.seo)},
@@ -1211,51 +1221,10 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   hiBox("Biggest Opportunity",cl(normalized.summary.biggestOpportunity),"green");
 
   // ════════════════════════════════════════════════════════════════════
-  //  SECTION 02 — UNIFIED OVERVIEW
-  // ════════════════════════════════════════════════════════════════════
-  secHdr("02","Unified Overview","Combined intelligence summary: status, data coverage, source modules, and module-level execution results.");
-  kpiRow([
-    {label:"Overall Status",value:cl(data?.unifiedOverview?.overallStatus),col:C.accent},
-    {label:"Primary Opportunity",value:cl(data?.unifiedOverview?.primaryOpportunity),col:C.amber},
-    {label:"Sources Active",value:cl(String(data?.unifiedOverview?.sourceCoverage?.length??"—")),col:C.blue},
-    {label:"Detected Niche",value:cl(data?.dataforseo?.detectedNiche),col:C.muted},
-  ]);
-  secTitle("Source Coverage");
-  if(data?.unifiedOverview?.sourceCoverage?.length){
-    tbl(["Data Source"],[...data.unifiedOverview.sourceCoverage.map((s:string)=>({col1:cl(s)}))],[CW]);
-  } else { body_("No source coverage data returned."); }
-  secTitle("API Module Execution Status");
-  if(data?.moduleStatus && Object.keys(data.moduleStatus).length){
-    tbl(["Module","Status","Meaning"],
-      Object.entries(data.moduleStatus).map(([mod,status]:any)=>({
-        col1: mod.replace(/([A-Z])/g," $1"),
-        col2: statusLabel(status),
-        col3: statusMeaning(status),
-      })),[50,30,CW-80]);
-  } else { body_("No module status data."); }
-  secTitle("Key Metrics Overview");
-  const km=data?.unifiedOverview?.keyMetrics||{};
-  tbl(["Metric","Value"],
-    [
-      {col1:"SEO Score",col2:cl(String(km.seoScore??"—"))},
-      {col1:"AI Visibility",col2:cl(String(km.aiVisibility??"—"))},
-      {col1:"Est. Monthly Traffic",col2:fmt(km.monthlyTraffic)},
-      {col1:"Traffic Confidence",col2:cl(km.trafficConfidence)},
-      {col1:"Organic Keywords",col2:fmt(km.organicKeywords)},
-      {col1:"Competitors Found",col2:cl(String(km.competitorsFound??"—"))},
-      {col1:"Backlinks",col2:fmt(km.backlinks)},
-      {col1:"SERP Keywords Checked",col2:cl(String(km.serpKeywordsChecked??"—"))},
-      {col1:"SERP Found Count",col2:cl(String(km.serpFoundCount??"—"))},
-      {col1:"Pages Crawled",col2:cl(String(km.pagesCrawled??"—"))},
-      {col1:"Local Listings",col2:cl(String(km.localListings??"—"))},
-      {col1:"Content Results",col2:cl(String(km.contentResultsFound??"—"))},
-    ],[70,CW-70]);
-
-  // ════════════════════════════════════════════════════════════════════
   //  SECTION 03 — ORGANIC TRAFFIC
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("traffic")){
-    secHdr("03","Organic Traffic Intelligence","Modelled from ranked keyword visibility and CTR curves. Treat as directional organic visibility, not exact analytics data.");
+    secHdr(nextSec(),"Organic Traffic Intelligence","Modelled from ranked keyword visibility and CTR curves. Treat as directional organic visibility, not exact analytics data.");
     kpiRow([
       {label:"Est. Monthly Visits",value:fmt(data?.traffic?.rawMonthly??data?.traffic?.monthly),sub:`Confidence: ${cl(normalized.traffic.confidence)}`,col:C.accent},
       {label:"Daily Visits",value:fmt(normalized.traffic.daily),sub:"Monthly ÷ 30",col:C.blue},
@@ -1287,22 +1256,13 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
         normalized.topPages.slice(0,10).map((p:any)=>({col1:cl(p.url),col2:cl(String(p.keywords??"—")),col3:cl(String(p.traffic??"—"))})),
         [100,28,CW-128]);
     }
-    if(data?.traffic?.keywords?.length){
-      secTitle("Traffic Debug — Top Keyword Contributions");
-      tbl(["Keyword","Position","Volume","CTR","Method"],
-        (data.traffic?.debug?.length?data.traffic.debug:data.traffic.keywords).slice(0,12).map((k:any)=>({
-          col1:cl(k.keyword),col2:cl(String(k.position??"—")),col3:fmt(k.searchVolume??k.volume),
-          col4:cl(k.ctr!=null?`${(Number(k.ctr)*100).toFixed(1)}%`:"—"),
-          col5:cl(k.method??"ctr_curve"),
-        })),[65,20,25,20,CW-130]);
-    }
-  }
+}
 
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 04 — DOMAIN ANALYTICS
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("domainAnalytics")){
-    secHdr("04","Domain Analytics","Organic and paid visibility signals from DataForSEO Domain Analytics API.");
+    secHdr(nextSec(),"Domain Analytics","Organic and paid visibility signals from DataForSEO Domain Analytics API.");
     kpiRow([
       {label:"Organic Keywords",value:fmt(data?.domainAnalytics?.organicKeywords),col:C.accent},
       {label:"Est. Organic Traffic",value:fmt(data?.domainAnalytics?.organicTraffic),col:C.green},
@@ -1321,7 +1281,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   //  SECTION 05 — SEO FOUNDATION
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("seo")){
-    secHdr("05","SEO Foundation Audit","Core SEO elements: metadata, heading structure, alt text, and basic on-page signals.");
+    secHdr(nextSec(),"SEO Foundation Audit","Core SEO elements: metadata, heading structure, alt text, and basic on-page signals.");
     kpiRow([
       {label:"SEO Score",value:`${cl(String(data?.seoScore??"—"))}/100`,sub:sLbl(data?.seoScore),col:sCol(data?.seoScore)},
       {label:"UX Score",value:`${cl(String(data?.uxScore??"—"))}/100`,sub:sLbl(data?.uxScore),col:sCol(data?.uxScore)},
@@ -1343,13 +1303,9 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
       secTitle("Detected Meta Description");
       hiBox("Meta Description",cl(data.description),"blue");
     }
-    if(data?.recommendations?.length){
-      secTitle("SEO Recommendations");
-      data.recommendations.slice(0,8).forEach((rec:string,i:number)=>{
-        actCard(`Recommendation ${i+1}`,i<3?"High":i<6?"Medium":"Low Win",i<3?"7–30 days":i<6?"30–60 days":"60–90 days",rec,i<3?"high":i<6?"medium":"low");
-      });
-    }
     if(data?.issues?.length){
+
+
       secTitle("Priority SEO Issues");
       simpleList(data.issues.slice(0,8),"No SEO issues returned.");
     }
@@ -1359,7 +1315,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   //  SECTION 06 — PERFORMANCE & CORE WEB VITALS
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("technical")){
-    secHdr("06","Performance & Core Web Vitals","PageSpeed scores and Core Web Vitals from Google PageSpeed Insights API.");
+    secHdr(nextSec(),"Performance & Core Web Vitals","PageSpeed scores and Core Web Vitals from Google PageSpeed Insights API.");
     const mob=data?.pageSpeed?.mobile||{}, dsk=data?.pageSpeed?.desktop||{};
     kpiRow([
       {label:"Mobile Score",value:`${cl(String(mob.score??"—"))}/100`,sub:sLbl(mob.score),col:sCol(mob.score)},
@@ -1384,7 +1340,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   //  SECTION 07 — AI VISIBILITY
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("ai")&&(data?.aiOptimization||data?.aiVisibility)){
-    secHdr("07","AI Search Visibility & GEO Readiness","Brand discoverability in AI-generated responses, generative search, and answer engines.");
+    secHdr(nextSec(),"AI Search Visibility & GEO Readiness","Brand discoverability in AI-generated responses, generative search, and answer engines.");
     const aiScore=n(normalized.scores.ai)??0, aiConf=cl(data?.aiVisibility?.confidence??data?.aiOptimization?.confidence,"Low"), aiMent=n(data?.aiOptimization?.totalMentions)??0, aiMods=n(data?.aiOptimization?.totalModels)??0;
     const sov=Math.round((Number(data?.aiVisibility?.totalMentions??0))/(Math.max(1,Number(data?.aiOptimization?.totalMentions??1)))*100);
     kpiRow([
@@ -1420,7 +1376,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   //  SECTION 08 — COMPETITOR INTELLIGENCE
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("competitors")&&data?.competitors?.length){
-    secHdr("08","Competitor Threat Intelligence","Domains capturing organic visibility through stronger content, authority, or keyword coverage.");
+    secHdr(nextSec(),"Competitor Threat Intelligence","Domains capturing organic visibility through stronger content, authority, or keyword coverage.");
     kpiRow([
       {label:"Competitors Found",value:String(data.competitors.length),sub:"Organic overlap",col:C.accent},
       {label:"Top Competitor",value:cl(data.competitors[0]?.domain),sub:"Highest overlap",col:C.amber},
@@ -1443,7 +1399,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   //  SECTION 09 — KEYWORD GAP & LABS
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("keywords")||pdfShow("labs")){
-    secHdr("09","Keyword Gap & SEO Labs Intelligence","Missing keywords competitors rank for, plus ranked keyword intelligence from DataForSEO Labs.");
+    secHdr(nextSec(),"Keyword Gap & SEO Labs Intelligence","Missing keywords competitors rank for, plus ranked keyword intelligence from DataForSEO Labs.");
     if(data?.dataforseo?.keywordGap){
       kpiRow([
         {label:"Own Keywords",value:fmt(data?.dataforseo?.keywordGap?.ownKeywords),col:C.accent},
@@ -1494,7 +1450,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   //  SECTION 10 — KEYWORD RESEARCH
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("keywords")&&data?.keywordResearch?.suggestions?.length){
-    secHdr("10","Keyword Research","Seed keyword suggestions from DataForSEO Keyword Suggestions API with intent and CPC signals.");
+    secHdr(nextSec(),"Keyword Research","Seed keyword suggestions from DataForSEO Keyword Suggestions API with intent and CPC signals.");
     kpiRow([
       {label:"Seed Keyword",value:cl(data?.keywordResearch?.seedKeyword),col:C.accent},
       {label:"Suggestions Found",value:fmt(data?.keywordResearch?.suggestions?.length),col:C.blue},
@@ -1512,7 +1468,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   //  SECTION 11 — SERP RANKINGS
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("serp")&&data?.serpData){
-    secHdr("11","Live SERP Rankings","Google rank positions checked by DataForSEO SERP API for tracked keywords.");
+    secHdr(nextSec(),"Live SERP Rankings","Google rank positions checked by DataForSEO SERP API for tracked keywords.");
     kpiRow([
       {label:"Keywords Checked",value:cl(String(data?.serpData?.checkedKeywords??"—")),col:C.accent},
       {label:"Keywords Found",value:cl(String(data?.serpData?.foundCount??"—")),col:C.green},
@@ -1533,7 +1489,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   //  SECTION 12 — BACKLINK AUTHORITY
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("backlinks")&&data?.backlinks){
-    secHdr("12","Backlink Authority & Trust Signals","Domain trust, referring domains, and top backlink sources from DataForSEO Backlinks API.");
+    secHdr(nextSec(),"Backlink Authority & Trust Signals","Domain trust, referring domains, and top backlink sources from DataForSEO Backlinks API.");
     kpiRow([
       {label:"Backlink Rank",value:cl(String(data?.dataforseo?.backlinkRank??normalized.backlinks.rank??"—")),sub:"Authority signal",col:sCol(n(normalized.backlinks.rank))},
       {label:"Total Backlinks",value:fmt(data?.backlinks?.backlinks??normalized.backlinks.total),col:C.accent},
@@ -1568,7 +1524,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   //  SECTION 13 — TECHNICAL SEO AUDIT
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("technical")&&data?.onPage){
-    secHdr("13","Technical SEO Audit","OnPage crawl status, page-level issues, broken links, and crawl signals from DataForSEO OnPage API.");
+    secHdr(nextSec(),"Technical SEO Audit","OnPage crawl status, page-level issues, broken links, and crawl signals from DataForSEO OnPage API.");
     kpiRow([
       {label:"Pages Crawled",value:fmt(data?.onPage?.crawledPages),col:C.accent},
       {label:"Broken Links",value:fmt(data?.onPage?.brokenLinks),col:n(data?.onPage?.brokenLinks)&&n(data.onPage.brokenLinks)!==null&&(n(data.onPage.brokenLinks)??0)>0?C.red:C.green},
@@ -1597,7 +1553,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   //  SECTION 14 — CONTENT QUALITY
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("content")){
-    secHdr("14","Content Quality & Relevance","On-page content signals and DataForSEO Content Analysis results.");
+    secHdr(nextSec(),"Content Quality & Relevance","On-page content signals and DataForSEO Content Analysis results.");
     kpiRow([
       {label:"Title Found",value:data?.title?"Yes":"Missing",col:data?.title?C.accent:C.red},
       {label:"Meta Description",value:data?.description?"Yes":"Missing",col:data?.description?C.accent:C.red},
@@ -1625,7 +1581,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   //  SECTION 15 — LOCAL SEO
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("local")&&data?.businessData?.listings?.length){
-    secHdr("15","Local SEO & Business Listings","Business listing visibility, ratings, and review signals from DataForSEO Business Data API.");
+    secHdr(nextSec(),"Local SEO & Business Listings","Business listing visibility, ratings, and review signals from DataForSEO Business Data API.");
     kpiRow([
       {label:"Listings Found",value:fmt(data?.businessData?.listings?.length),col:C.accent},
       {label:"Search Query",value:cl(data?.businessData?.keyword),col:C.blue},
@@ -1643,7 +1599,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   //  SECTION 16 — RECOMMENDATIONS
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("recommendations")){
-    secHdr("16","AI Recommendations Engine","Prioritised strategic actions generated from real audit data across all selected modules.");
+    secHdr(nextSec(),"AI Recommendations Engine","Prioritised strategic actions generated from real audit data across all selected modules.");
     kpiRow([
       {label:"Recommendations",value:fmt(data?.recommendations?.length),col:C.accent},
       {label:"Source",value:cl(data?.aiRecommendations?.source,"AI Engine"),col:C.muted},
@@ -1670,7 +1626,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 17 — ACTION ROADMAP
   // ════════════════════════════════════════════════════════════════════
-  secHdr("17","30 / 60 / 90 Day Action Roadmap","A practical execution sequence for agencies, consultants, and growth teams.");
+  secHdr(nextSec(),"30 / 60 / 90 Day Action Roadmap","A practical execution sequence for agencies, consultants, and growth teams.");
   secTitle("Priority Execution Matrix");
 tbl(["Priority","Focus","Timeline","Actions"],[
     {col1:"P1 — Immediate",col2:"High impact / Fast fix",col3:"0–30 days",col4:"Critical SEO, speed, metadata, crawlability, broken links"},
@@ -1686,19 +1642,8 @@ tbl(["Priority","Focus","Timeline","Actions"],[
   // ════════════════════════════════════════════════════════════════════
   //  APPENDIX — EVIDENCE
   // ════════════════════════════════════════════════════════════════════
-  secHdr("A","Appendix — Supporting Evidence","Full data tables from each audit module for detailed review and client validation.");
-  if(data?.issues?.length){ secTitle("Appendix A — All Priority Issues"); simpleList(data.issues.slice(0,15),"No issue evidence available."); }
-  if(normalized.topKeywords?.length){ secTitle("Appendix B — Top Keyword Evidence"); tbl(["Keyword","Position","Volume","Traffic Est."],normalized.topKeywords.slice(0,15).map((k:any)=>({col1:cl(k.keyword),col2:cl(String(k.position??"—")),col3:fmt(k.volume),col4:fmt(k.traffic)})),[80,22,28,CW-130]); }
-  if(normalized.keywordGaps?.length){ secTitle("Appendix C — Keyword Gap Evidence"); simpleList(normalized.keywordGaps.slice(0,15),"No keyword gap evidence."); }
-  if(normalized.competitors?.length){ secTitle("Appendix D — Competitor Evidence"); tbl(["Domain","Traffic","Shared KWs","Winning Factor"],normalized.competitors.slice(0,12).map((c:any)=>({col1:cl(c.domain),col2:fmt(c.traffic),col3:fmt(c.sharedKeywords),col4:cl(c.winningFactor,"—")})),[50,28,25,CW-103]); }
-  if(normalized.backlinks?.samples?.length){ secTitle("Appendix E — Backlink Evidence"); tbl(["Anchor","Source","Target"],normalized.backlinks.samples.slice(0,12).map((l:any)=>({col1:cl(l.anchor,"No anchor"),col2:cl(l.source,"—"),col3:cl(l.target,"—")})),[42,68,CW-110]); }
-  if(normalized.ai?.prompts?.length){ secTitle("Appendix F — AI Visibility Evidence"); tbl(["Prompt","Mentioned","Result"],normalized.ai.prompts.slice(0,12).map((item:any)=>({col1:cl(item.prompt,"—"),col2:cl(item.mentioned,"—"),col3:cl(item.result,"—")})),[88,18,CW-106]); }
-  if(data?.onPage?.pages?.length){ secTitle("Appendix G — Crawled Page Evidence"); tbl(["Status","Title","URL","Load"],data.onPage.pages.slice(0,12).map((p:any)=>({col1:cl(String(p.statusCode??"—")),col2:cl(p.title,"Untitled"),col3:cl(p.url,"—"),col4:cl(p.loadTime?`${p.loadTime}ms`:"—")})),[16,48,80,CW-144]); }
-  if(data?.serpData?.results?.length){ secTitle("Appendix H — SERP Evidence"); tbl(["Keyword","Found","Rank","URL"],data.serpData.results.slice(0,12).map((r:any)=>({col1:cl(r.keyword),col2:r.found?"Yes":"No",col3:r.found?`#${cl(String(r.rank),"—")}`:"—",col4:r.found?cl(r.url,"—"):"Not in top 100"})),[55,14,14,CW-83]); }
-  if(data?.businessData?.listings?.length){ secTitle("Appendix I — Business Listing Evidence"); tbl(["Business","Rating","Reviews","Address"],data.businessData.listings.slice(0,10).map((item:any)=>({col1:cl(item.title,"Unknown"),col2:cl(String(item.rating??"—")),col3:cl(String(item.reviews??"—")),col4:cl(item.address,"—")})),[50,16,16,CW-82]); }
-
-  // Benchmark guide
-  secTitle("Benchmark & Metric Reference");
+// Benchmark guide
+  secHdr(nextSec(),"Benchmark & Metric Reference","What each score in this report means and the target to aim for.");
   tbl(["Metric","Range","Target","What it means"],[
     {col1:"Overall Score",col2:"0–100",col3:"80+",col4:"Combined SEO, tech, visibility, authority, and growth readiness"},
     {col1:"SEO Score",col2:"0–100",col3:"80+",col4:"Title tags, meta, headings, crawlability, and technical foundations"},
