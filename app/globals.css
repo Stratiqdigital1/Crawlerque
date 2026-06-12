@@ -324,3 +324,182 @@ h1, h2, h3, h4, h5, h6 {
 .si-dashboard .hover\:bg-blue-700:hover {
   background-color: var(--cq-signal-deep) !important;
 }
+/* ================================================================
+   CRAWLER QUE — EFFECTS LAYER v1
+   Paste this ENTIRE block at the very END of app/globals.css.
+   No JSX changes needed — it upgrades the existing cq- classes.
+   ================================================================ */
+
+/* ── 1. LAYERED BACKGROUND ─────────────────────────────────────
+   Three depths: a faint engineering grid that fades toward the
+   horizon, a slow-drifting teal/blue aurora, and a film-grain
+   noise that kills the "flat fill" look. All behind content. */
+
+html {
+  background: var(--cq-ink);
+}
+
+html::before {
+  /* crawl grid + noise */
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-size: 44px 44px, 44px 44px, 160px 160px;
+  -webkit-mask-image: radial-gradient(ellipse 100% 80% at 50% 0%, black 25%, transparent 80%);
+  mask-image: radial-gradient(ellipse 100% 80% at 50% 0%, black 25%, transparent 80%);
+}
+
+html::after {
+  /* drifting aurora */
+  content: "";
+  position: fixed;
+  inset: -25%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(38% 30% at 18% 10%, color-mix(in srgb, var(--cq-signal) 11%, transparent), transparent 70%),
+    radial-gradient(30% 26% at 86% 6%,  rgba(14,165,233,0.09), transparent 70%),
+    radial-gradient(42% 36% at 72% 94%, color-mix(in srgb, var(--cq-signal) 6%, transparent), transparent 70%);
+  animation: cq-aurora 28s ease-in-out infinite alternate;
+}
+
+@keyframes cq-aurora {
+  from { transform: translate3d(-2.5%, -1.5%, 0) scale(1); }
+  to   { transform: translate3d(2.5%, 2%, 0) scale(1.07); }
+}
+
+/* Let the layers show through: page wrappers go transparent and
+   content sits above the fixed layers. */
+body { background: transparent; position: relative; z-index: 1; }
+.bg-\[var\(--cq-ink\)\] { background-color: transparent !important; }
+.si-dashboard { background: transparent !important; }
+
+/* ── 2. CARD HOVER — lift, teal edge-light, deep shadow ──────── */
+.cq-card {
+  position: relative;
+  transition: transform .28s cubic-bezier(.21,.8,.35,1),
+              border-color .28s ease,
+              box-shadow .28s ease,
+              background-color .28s ease;
+}
+.cq-card:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--cq-signal) 38%, transparent);
+  background-color: color-mix(in srgb, var(--cq-surface-2) 65%, var(--cq-surface));
+  box-shadow:
+    0 16px 36px -14px rgba(0, 0, 0, 0.6),
+    0 0 0 1px color-mix(in srgb, var(--cq-signal) 10%, transparent),
+    inset 0 1px 0 0 color-mix(in srgb, var(--cq-signal) 40%, transparent);
+}
+
+/* ── 3. SIGNATURE: corner ticks grow on hover ────────────────── */
+.cq-frame::before,
+.cq-frame::after {
+  transition: width .3s cubic-bezier(.21,.8,.35,1),
+              height .3s cubic-bezier(.21,.8,.35,1),
+              border-color .3s ease;
+}
+.cq-frame:hover::before,
+.cq-frame:hover::after {
+  width: 26px;
+  height: 26px;
+}
+
+/* ── 4. BUTTONS — lift, glow, shine sweep ────────────────────── */
+.cq-btn {
+  position: relative;
+  overflow: hidden;
+  transition: transform .22s ease, box-shadow .22s ease,
+              background-color .22s ease, color .22s ease, border-color .22s ease;
+}
+.cq-btn--primary::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -160%;
+  height: 100%;
+  width: 55%;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,0.38), transparent);
+  transform: skewX(-20deg);
+  transition: left .65s ease;
+  pointer-events: none;
+}
+.cq-btn--primary:hover::after { left: 170%; }
+.cq-btn--primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -8px color-mix(in srgb, var(--cq-signal) 55%, transparent);
+}
+.cq-btn--primary:active { transform: translateY(0); }
+.cq-btn--ghost:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--cq-signal) 55%, transparent);
+  color: var(--cq-text);
+  box-shadow: 0 10px 24px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* ── 5. INPUTS — soft glow lift on focus ─────────────────────── */
+.cq-input { transition: border-color .22s, box-shadow .22s, transform .22s; }
+.cq-input:focus {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--cq-signal) 14%, transparent),
+    0 8px 20px -10px rgba(0, 0, 0, 0.5);
+}
+
+/* ── 6. DASHBOARD — row highlights, pill hovers, accent retint ─ */
+.si-dashboard tbody tr { transition: background-color .15s ease; }
+.si-dashboard tbody tr:hover {
+  background-color: color-mix(in srgb, var(--cq-signal) 6%, transparent) !important;
+}
+.si-dashboard button { transition: transform .18s ease, border-color .18s, background-color .18s, color .18s; }
+.si-dashboard button:hover { transform: translateY(-1px); }
+
+/* Retint leftover GREEN accent classes (#C5FF3D era) to the teal
+   theme — module pills, selected states, icons. */
+.si-dashboard [class*="text-[#C5FF3D]"],
+.si-dashboard [class*="text-[#D9FF7A]"]  { color: var(--cq-signal) !important; }
+.si-dashboard [class*="border-[#C5FF3D]"] { border-color: color-mix(in srgb, var(--cq-signal) 40%, transparent) !important; }
+.si-dashboard [class*="bg-[#C5FF3D]/"]    { background-color: color-mix(in srgb, var(--cq-signal) 12%, transparent) !important; }
+.si-dashboard .bg-\[\#C5FF3D\]            { background-color: var(--cq-signal) !important; }
+.si-dashboard .bg-\[\#C5FF3D\] ~ *,
+.si-dashboard .bg-\[\#C5FF3D\]            { color: var(--cq-on-signal); }
+
+/* ── 7. SCROLL REVEAL — cards rise in as they enter the viewport.
+   Pure CSS (scroll-driven animations). Browsers without support
+   simply show content normally — nothing breaks.
+   Uses the `translate` property so it NEVER fights the hover
+   `transform` lift. ─────────────────────────────────────────── */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .cq-card {
+      animation: cq-rise both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 35%;
+    }
+  }
+}
+@keyframes cq-rise {
+  from { opacity: 0; translate: 0 22px; }
+  to   { opacity: 1; translate: 0 0; }
+}
+
+/* ── 8. SCANLINE — slightly brighter pulse so the signature reads */
+.cq-scanline::after {
+  width: 110px;
+  box-shadow: 0 0 12px 1px color-mix(in srgb, var(--cq-signal) 45%, transparent);
+}
+
+/* ── 9. ACCESSIBILITY — respect reduced-motion everywhere ────── */
+@media (prefers-reduced-motion: reduce) {
+  html::after { animation: none; }
+  .cq-card, .cq-btn, .cq-frame::before, .cq-frame::after, .cq-input,
+  .si-dashboard button { transition: none; }
+  .cq-card:hover, .cq-btn--primary:hover, .cq-btn--ghost:hover { transform: none; }
+  .cq-btn--primary::after { display: none; }
+}
