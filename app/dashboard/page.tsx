@@ -714,181 +714,394 @@ const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligenc
   let y     = 0;
   let pageNum = 0;
 
+// =============================================================================
+// CRAWLER QUE — PDF RENDERING ENGINE v2  (overflow-proof, professional layout)
+// =============================================================================
+// HOW TO INSTALL — in app/dashboard/page.tsx, inside the exportPDF function:
+//
+//   1. Find the line:      // ── UTILS ─────────────────────────────────────
+//   2. Select from that line DOWN TO (and including) the entire simpleList
+//      function — i.e. everything up to, but NOT including, the line:
+//      //  PAGE 1 — COVER
+//   3. Delete that selection and paste this entire file in its place.
+//
+// Every helper keeps its original name and signature, so all section content
+// code below it continues to work unchanged.
+//
+// WHAT v2 FIXES:
+//   • Text can NEVER overflow a card, box, or table cell (auto-fit + ellipsis)
+//   • Cards and boxes auto-size their height to their content
+//   • Correct page numbers ("Page 4 of 33", not "Page 33" everywhere)
+//   • Emoji / unicode mojibake removed (the "Ø=Ý4" and "!'" garbage)
+//   • Raw floats formatted ($75.2K instead of 75198.56722317677)
+//   • Markdown stripped from AI response snippets (**bold** → bold)
+//   • Larger, more readable type scale with higher contrast
+// =============================================================================
+
   // ── UTILS ─────────────────────────────────────────────────────────────
+
+  // Characters outside jsPDF's WinAnsi encoding render as garbage in
+  // Helvetica. Map the common ones to safe equivalents, drop the rest.
+  const sanitize = (s: string): string =>
+    String(s)
+      .replace(/\*\*|__|`/g, "")            // strip markdown bold/code
+      .replace(/→/g, "->")
+      .replace(/⚠|❗|🔴/g, "!")
+      .replace(/✦|★|⭐|🟡|🔵|🟢/g, "*")
+      .replace(/✓|✔|✅/g, "OK")
+      .replace(/❌|✖/g, "X")
+      // keep printable ASCII + the WinAnsi punctuation jsPDF supports
+      .replace(/[^\x20-\x7E\u00A0-\u00FF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u2026·]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
   const cl = (v: any, fb = "—"): string => {
     if (v === null || v === undefined || v === "") return fb;
     if (typeof v === "object") return fb;
-    const s = String(v).trim(); return s || fb;
+    const s = sanitize(String(v));
+    return s || fb;
   };
+
   const n = (v: any): number | null => { const x = Number(v); return Number.isFinite(x) ? x : null; };
-  const clamp = (v: number, lo=0, hi=100) => Math.max(lo, Math.min(hi, v));
+  const clamp = (v: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
+
   const fmt = (v: any): string => {
     const x = n(v); if (x === null) return "—";
-    if (x >= 1_000_000) return `${(x/1_000_000).toFixed(1)}M`;
-    if (x >= 1_000)     return `${(x/1_000).toFixed(1)}K`;
+    if (x >= 1_000_000) return `${(x / 1_000_000).toFixed(1)}M`;
+    if (x >= 1_000)     return `${(x / 1_000).toFixed(1)}K`;
     return String(Math.round(x));
   };
-  const sCol = (s: any): RGB => { const x = n(s); if (x===null) return C.muted; if (x>=75) return C.accent; if (x>=55) return C.amber; return C.red; };
-  const sLbl = (s: any): string => { const x = n(s); if (x===null) return "No Data"; if (x>=90) return "Excellent"; if (x>=75) return "Strong"; if (x>=60) return "Moderate"; return "Needs Work"; };
+
+  // "$75.2K" instead of "75198.56722317677"
+  const fmtMoney = (v: any): string => {
+    const x = n(v); if (x === null) return "—";
+    if (x >= 1_000_000) return `$${(x / 1_000_000).toFixed(1)}M`;
+    if (x >= 1_000)     return `$${(x / 1_000).toFixed(1)}K`;
+    return `$${x.toFixed(2)}`;
+  };
+
+  // Competition arrives as 0.0099999997-style floats on a 0–1 scale
+  const fmtCompetition = (v: any): string => {
+    const x = n(v); if (x === null) return "—";
+    if (x <= 1) {
+      const pct = Math.round(x * 100);
+      const lvl = pct >= 67 ? "High" : pct >= 34 ? "Medium" : "Low";
+      return `${lvl} (${pct}%)`;
+    }
+    return String(Math.round(x));
+  };
+
+  // Catch raw float junk no matter where it slips in: if a string looks like
+  // a long decimal number, round it sensibly.
+  const fmtSmart = (v: any): string => {
+    const s = cl(v);
+    if (/^-?\d+\.\d{5,}$/.test(s)) {
+      const x = Number(s);
+      return x >= 1000 ? fmt(x) : String(Math.round(x * 100) / 100);
+    }
+    return s;
+  };
+
+  // Human labels for module execution statuses
+  const statusLabel = (s: any): string => {
+    const k = String(s || "").toLowerCase();
+    if (k === "completed") return "Completed";
+    if (k === "partial") return "Partial";
+    if (k === "failed") return "Failed";
+    if (k === "available") return "No data";
+    if (k === "not_available" || k === "pending_or_not_available") return "Not in plan";
+    if (k === "skipped") return "Skipped";
+    return cl(s);
+  };
+  const statusMeaning = (s: any): string => {
+    const k = String(s || "").toLowerCase();
+    if (k === "completed") return "Data returned successfully";
+    if (k === "partial") return "Some data returned, some unavailable";
+    if (k === "failed") return "Module failed — see logs";
+    if (k === "available") return "Module ran but the API returned no data";
+    if (k === "not_available" || k === "pending_or_not_available") return "Not included in current plan";
+    if (k === "skipped") return "Not selected for this audit";
+    return "—";
+  };
+  const statusColor = (s: any): RGB => {
+    const k = String(s || "").toLowerCase();
+    if (k === "completed") return C.accent;
+    if (k === "partial") return C.amber;
+    if (k === "failed") return C.red;
+    return C.muted;
+  };
+
+  const sCol = (s: any): RGB => { const x = n(s); if (x === null) return C.muted; if (x >= 75) return C.accent; if (x >= 55) return C.amber; return C.red; };
+  const sLbl = (s: any): string => { const x = n(s); if (x === null) return "No Data"; if (x >= 90) return "Excellent"; if (x >= 75) return "Strong"; if (x >= 60) return "Moderate"; return "Needs Work"; };
+
+  // ── OVERFLOW GUARDS (the heart of v2) ─────────────────────────────────
+
+  // Truncate with an ellipsis so text NEVER exceeds maxW at current font.
+  const ell = (text: string, maxW: number): string => {
+    const t = cl(text, "");
+    if (!t) return "—";
+    if (doc.getTextWidth(t) <= maxW) return t;
+    let lo = 0, hi = t.length;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (doc.getTextWidth(t.slice(0, mid) + "…") <= maxW) lo = mid; else hi = mid - 1;
+    }
+    return t.slice(0, Math.max(1, lo)).trimEnd() + "…";
+  };
+
+  // For URLs: keep the start and end, drop the middle.
+  const ellMid = (text: string, maxW: number): string => {
+    const t = cl(text, "");
+    if (!t || doc.getTextWidth(t) <= maxW) return t || "—";
+    let keep = Math.floor(t.length / 2);
+    while (keep > 4) {
+      const head = t.slice(0, Math.ceil(keep * 0.65));
+      const tail = t.slice(t.length - Math.floor(keep * 0.35));
+      const cand = head + "…" + tail;
+      if (doc.getTextWidth(cand) <= maxW) return cand;
+      keep -= 2;
+    }
+    return ell(t, maxW);
+  };
+
+  // Shrink the font until the text fits maxW (down to minSize), then
+  // ellipsize whatever still doesn't fit. Returns the size to use.
+  const fitSize = (text: string, maxW: number, maxSize: number, minSize: number, style: "bold" | "normal" = "bold"): number => {
+    const t = cl(text, "");
+    for (let s = maxSize; s >= minSize; s -= 0.5) {
+      doc.setFont("helvetica", style); doc.setFontSize(s);
+      if (doc.getTextWidth(t) <= maxW) return s;
+    }
+    return minSize;
+  };
 
   // ── PAGE OPS ──────────────────────────────────────────────────────────
-  const drawBg = () => { doc.setFillColor(...C.bg); doc.rect(0,0,PW,PH,"F"); doc.setFillColor(...C.accent); doc.rect(0,0,PW,0.5,"F"); };
-  const drawFooter = () => {
-    const fp = PH-10;
-    doc.setDrawColor(...C.border); doc.setLineWidth(0.25); doc.line(ML,fp-3,PW-MR,fp-3);
-    doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(...C.muted);
-    doc.text(brandName, ML, fp);
-    doc.text(`Page ${pageNum}`, PW/2, fp, {align:"center"});
-    doc.text(generatedDate, PW-MR, fp, {align:"right"});
+  const drawBg = () => { doc.setFillColor(...C.bg); doc.rect(0, 0, PW, PH, "F"); doc.setFillColor(...C.accent); doc.rect(0, 0, PW, 0.5, "F"); };
+
+  // v2: takes the real page index and total — fixes the "Page 33 everywhere" bug
+  const drawFooter = (pageIdx: number, total: number) => {
+    const fp = PH - 10;
+    doc.setDrawColor(...C.border); doc.setLineWidth(0.25); doc.line(ML, fp - 3, PW - MR, fp - 3);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(...C.muted);
+    doc.text(ell(brandName, 70), ML, fp);
+    doc.text(`Page ${pageIdx} of ${total}`, PW / 2, fp, { align: "center" });
+    doc.text(generatedDate, PW - MR, fp, { align: "right" });
   };
-  const newPage = () => { doc.addPage(); pageNum++; y=20; drawBg(); };
-  const ensure  = (needed=30) => { if (y+needed > BOT) newPage(); };
-  const gap     = (mm=5) => { y+=mm; };
 
-  // ── TYPOGRAPHY ────────────────────────────────────────────────────────
-  const h1 = (t: string) => { ensure(14); doc.setFont("helvetica","bold"); doc.setFontSize(18); doc.setTextColor(...C.white); doc.text(cl(t),ML,y); y+=8; };
-  const h2 = (t: string) => { ensure(10); doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(...C.white); doc.text(cl(t),ML,y); y+=6; };
-  const sub = (t: string) => { ensure(8); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...C.muted); const ls=doc.splitTextToSize(cl(t,""),CW); doc.text(ls,ML,y); y+=ls.length*4+2; };
-  const body_ = (t: string, x=ML, w=CW) => { ensure(8); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...C.soft); const ls=doc.splitTextToSize(cl(t,""),w); doc.text(ls,x,y); y+=ls.length*4.5+2; };
-  const lbl = (t: string, col: RGB=C.muted) => { doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(...col); doc.text(cl(t,"").toUpperCase(),ML,y); y+=4; };
-  const divLine = () => { ensure(4); doc.setDrawColor(...C.faint); doc.setLineWidth(0.2); doc.line(ML,y,PW-MR,y); y+=5; };
+  const newPage = () => { doc.addPage(); pageNum++; y = 20; drawBg(); };
+  const ensure  = (needed = 30) => { if (y + needed > BOT) newPage(); };
+  const gap     = (mm = 5) => { y += mm; };
 
-  // ── SECTION HEADER (new page + header bar) ────────────────────────────
+  // ── TYPOGRAPHY (larger, higher contrast than v1) ──────────────────────
+  const h1 = (t: string) => { ensure(14); doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.setTextColor(...C.white); doc.text(ell(t, CW), ML, y); y += 8; };
+  const h2 = (t: string) => { ensure(10); doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(...C.white); doc.text(ell(t, CW), ML, y); y += 6; };
+  const sub = (t: string) => { ensure(8); doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(...C.muted); const ls = doc.splitTextToSize(cl(t, ""), CW); doc.text(ls, ML, y); y += ls.length * 4.6 + 2; };
+  const body_ = (t: string, x = ML, w = CW) => { ensure(8); doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(...C.soft); const ls = doc.splitTextToSize(cl(t, ""), w); doc.text(ls, x, y); y += ls.length * 5 + 2; };
+  const lbl = (t: string, col: RGB = C.muted) => { doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(...col); doc.text(ell(cl(t, "").toUpperCase(), CW), ML, y); y += 4; };
+  const divLine = () => { ensure(4); doc.setDrawColor(...C.faint); doc.setLineWidth(0.2); doc.line(ML, y, PW - MR, y); y += 5; };
+
+  // ── SECTION HEADERS ───────────────────────────────────────────────────
   const secHdr = (num: string, title: string, subtitle?: string) => {
     newPage();
-    doc.setFillColor(...C.card); doc.rect(0,0,PW,16,"F");
-    doc.setFillColor(...C.accent); doc.rect(0,0,3,16,"F");
-    doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(...C.dimAcc); doc.text(`SECTION ${num}`, ML+5, 6);
-    doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(...C.white); doc.text(cl(title), ML+5, 13);
-    y=22; if (subtitle) { sub(subtitle); gap(2); }
+    doc.setFillColor(...C.card); doc.rect(0, 0, PW, 18, "F");
+    doc.setFillColor(...C.accent); doc.rect(0, 0, 3, 18, "F");
+    doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(...C.accent); doc.text(`SECTION ${num}`, ML + 5, 7);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.setTextColor(...C.white); doc.text(ell(cl(title), CW - 10), ML + 5, 14.5);
+    y = 25; if (subtitle) { sub(subtitle); gap(2); }
   };
 
-  // inline section title (within a page)
   const secTitle = (title: string, s?: string) => {
     ensure(20); gap(3);
-    doc.setFillColor(...C.accent); doc.rect(ML,y-1,2.5,8,"F");
-    doc.setFont("helvetica","bold"); doc.setFontSize(10.5); doc.setTextColor(...C.white); doc.text(cl(title),ML+6,y+5.5);
-    y+=11; if (s) { sub(s); } gap(2);
+    doc.setFillColor(...C.accent); doc.rect(ML, y - 1, 2.5, 8, "F");
+    doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(...C.white); doc.text(ell(cl(title), CW - 10), ML + 6, y + 5.5);
+    y += 11; if (s) { sub(s); } gap(2);
   };
 
-  // ── KPI CARD ROW ──────────────────────────────────────────────────────
-  const kpiRow = (cards: {label:string; value:any; sub?:string; col?:RGB}[]) => {
-    ensure(30); const n4=cards.length, g3=3, w=(CW-g3*(n4-1))/n4;
-    cards.forEach((c,i)=>{
-      const x=ML+i*(w+g3), yy=y, h=28;
-      doc.setFillColor(...C.card); doc.setDrawColor(...C.border); doc.roundedRect(x,yy,w,h,2,2,"FD");
-      const col=c.col||sCol(c.value);
-      doc.setFillColor(...col); doc.roundedRect(x,yy,w,1.5,0.5,0.5,"F");
-      doc.setFont("helvetica","normal"); doc.setFontSize(6); doc.setTextColor(...C.muted); doc.text(cl(c.label,"").toUpperCase(),x+4,yy+7);
-      doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(...col); doc.text(cl(String(c.value??"—")),x+4,yy+16);
-      if(c.sub){doc.setFont("helvetica","normal");doc.setFontSize(6);doc.setTextColor(...C.muted);doc.text(cl(c.sub,""),x+4,yy+22);}
+  // ── KPI CARD ROW (auto-fit values — nothing can overflow) ─────────────
+  const kpiRow = (cards: { label: string; value: any; sub?: string; col?: RGB }[]) => {
+    const H = 28;
+    ensure(H + 4);
+    const count = cards.length, g3 = 3, w = (CW - g3 * (count - 1)) / count;
+    cards.forEach((c, i) => {
+      const x = ML + i * (w + g3), yy = y;
+      const inner = w - 8; // 4mm padding each side
+      doc.setFillColor(...C.card); doc.setDrawColor(...C.border); doc.roundedRect(x, yy, w, H, 2, 2, "FD");
+      const col = c.col || sCol(c.value);
+      doc.setFillColor(...col); doc.roundedRect(x, yy, w, 1.5, 0.5, 0.5, "F");
+
+      // label — single line, ellipsized
+      doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(...C.muted);
+      doc.text(ell(cl(c.label, "").toUpperCase(), inner), x + 4, yy + 7);
+
+      // value — shrink to fit (15pt → 8pt), then ellipsize; floats formatted
+      const valText = fmtSmart(c.value ?? "—");
+      const vs = fitSize(valText, inner, 15, 8, "bold");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(vs); doc.setTextColor(...col);
+      doc.text(ell(valText, inner), x + 4, yy + 17);
+
+      // sub — single line, ellipsized
+      if (c.sub) {
+        doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(...C.muted);
+        doc.text(ell(cl(c.sub, ""), inner), x + 4, yy + 23.5);
+      }
     });
-    y+=30+3;
+    y += H + 4;
   };
 
   // ── SCORE BAR ─────────────────────────────────────────────────────────
-  const scoreBar = (lbl_: string, score: any, note="") => {
-    ensure(18); const s=clamp(n(score)??0), col=sCol(score), fw=(CW*s)/100;
-    doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(...C.soft); doc.text(cl(lbl_),ML,y);
-    doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(...col); doc.text(`${s}/100  ${sLbl(score)}`,PW-MR,y,{align:"right"});
-    y+=4;
-    doc.setFillColor(22,22,22); doc.roundedRect(ML,y,CW,7,2,2,"F");
-    if(fw>0){doc.setFillColor(...col); doc.roundedRect(ML,y,fw,7,2,2,"F");}
-    if(note){doc.setFont("helvetica","normal");doc.setFontSize(6);doc.setTextColor(...C.faint);doc.text(cl(note),PW-MR,y+10,{align:"right"});}
-    y+=14;
+  const scoreBar = (lbl_: string, score: any, note = "") => {
+    ensure(19); const s = clamp(n(score) ?? 0), col = sCol(score), fw = (CW * s) / 100;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(...C.soft); doc.text(ell(cl(lbl_), CW - 50), ML, y);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(...col); doc.text(`${s}/100  ${sLbl(score)}`, PW - MR, y, { align: "right" });
+    y += 4;
+    doc.setFillColor(22, 22, 22); doc.roundedRect(ML, y, CW, 6.5, 2, 2, "F");
+    if (fw > 0) { doc.setFillColor(...col); doc.roundedRect(ML, y, fw, 6.5, 2, 2, "F"); }
+    if (note) { doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(...C.muted); doc.text(ell(cl(note), CW), PW - MR, y + 10.5, { align: "right" }); }
+    y += 15;
   };
 
-  // ── HIGHLIGHT BOX ─────────────────────────────────────────────────────
-  type BoxType = "green"|"amber"|"red"|"blue"|"muted";
-  const hiBox = (title: string, body: string, type: BoxType="green") => {
-    ensure(26); const cmap:Record<BoxType,RGB>={green:C.accent,amber:C.amber,red:C.red,blue:C.blue,muted:C.muted};
-    const col=cmap[type], h=22;
-    doc.setFillColor(...C.card2); doc.setDrawColor(...C.border); doc.roundedRect(ML,y,CW,h,2,2,"FD");
-    doc.setFillColor(...col); doc.roundedRect(ML,y,2.5,h,1,1,"F");
-    doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(...col); doc.text(cl(title),ML+7,y+7);
-    doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(...C.soft);
-    const ls=doc.splitTextToSize(cl(body,""),CW-14); doc.text(ls.slice(0,2),ML+7,y+14);
-    y+=h+4;
+  // ── HIGHLIGHT BOX (auto-height — text always fits inside) ─────────────
+  type BoxType = "green" | "amber" | "red" | "blue" | "muted";
+  const hiBox = (title: string, body: string, type: BoxType = "green") => {
+    const cmap: Record<BoxType, RGB> = { green: C.accent, amber: C.amber, red: C.red, blue: C.blue, muted: C.muted };
+    const col = cmap[type];
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+    const lines = doc.splitTextToSize(cl(body, ""), CW - 14).slice(0, 4); // up to 4 lines
+    const h = 12 + lines.length * 4.3;
+    ensure(h + 5);
+    doc.setFillColor(...C.card2); doc.setDrawColor(...C.border); doc.roundedRect(ML, y, CW, h, 2, 2, "FD");
+    doc.setFillColor(...col); doc.roundedRect(ML, y, 2.5, h, 1, 1, "F");
+    doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(...col); doc.text(ell(cl(title), CW - 14), ML + 7, y + 7);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...C.soft);
+    doc.text(lines, ML + 7, y + 13);
+    y += h + 4;
   };
 
-  // ── DATA TABLE ────────────────────────────────────────────────────────
-  type TR = {col1:string; col2:string; col3?:string; col4?:string};
+  // ── DATA TABLE (per-cell ellipsis, URL-aware, wrapping first column) ──
+  type TR = { col1: string; col2: string; col3?: string; col4?: string; col5?: string; col6?: string; col7?: string };
   const tbl = (headers: string[], rows: TR[], colW?: number[]) => {
-    if(!rows.length){body_("No data available."); return;}
-    const nc=headers.length;
-    const def=colW||(nc===2?[70,CW-70]:nc===3?[55,55,CW-110]:[40,55,48,CW-143]);
-    const keys=(["col1","col2","col3","col4"] as (keyof TR)[]).slice(0,nc);
-    ensure(12+rows.length*10);
-    doc.setFillColor(24,24,24); doc.setDrawColor(...C.border); doc.roundedRect(ML,y,CW,9,1.5,1.5,"FD");
-    let cx=ML;
-    headers.forEach((h_,i)=>{doc.setFont("helvetica","bold");doc.setFontSize(6.5);doc.setTextColor(...C.accent);doc.text(cl(h_).toUpperCase(),cx+4,y+6);cx+=def[i];});
-    y+=9;
-    rows.forEach((row,ri)=>{
-      ensure(10); const rh=9;
-      doc.setFillColor(...(ri%2===0?C.card:C.card2)); doc.setDrawColor(...C.faint); doc.rect(ML,y,CW,rh,"FD");
-      cx=ML;
-      keys.forEach((k,ci)=>{
-        const val=cl(String(row[k]??""),"—"), isMuted=ci>0;
-        doc.setFont("helvetica",ci===0?"bold":"normal"); doc.setFontSize(7); doc.setTextColor(...(isMuted?C.muted:C.soft));
-        const tr=doc.splitTextToSize(val,def[ci]-6)[0]??val; doc.text(tr,cx+4,y+6.5); cx+=def[ci];
-      });
-      y+=rh;
+    if (!rows.length) { body_("No data available."); return; }
+    const nc = headers.length;
+    const def = colW || (
+      nc === 2 ? [70, CW - 70] :
+      nc === 3 ? [55, 55, CW - 110] :
+      nc === 4 ? [40, 55, 48, CW - 143] :
+      Array(nc).fill(CW / nc)
+    );
+    const keys = (["col1", "col2", "col3", "col4", "col5", "col6", "col7"] as (keyof TR)[]).slice(0, nc);
+
+    // header
+    ensure(14);
+    doc.setFillColor(24, 24, 24); doc.setDrawColor(...C.border); doc.roundedRect(ML, y, CW, 9, 1.5, 1.5, "FD");
+    let cx = ML;
+    headers.forEach((h_, i) => {
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(...C.accent);
+      doc.text(ell(cl(h_).toUpperCase(), def[i] - 6), cx + 4, y + 6);
+      cx += def[i];
     });
-    y+=5;
+    y += 9;
+
+    rows.forEach((row, ri) => {
+      // First column may wrap to two lines; measure first
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
+      const firstVal = fmtSmart(row.col1 ?? "");
+      const firstLines = doc.splitTextToSize(firstVal, def[0] - 6).slice(0, 2);
+      const rh = firstLines.length > 1 ? 12.5 : 9;
+      ensure(rh + 2);
+
+      doc.setFillColor(...(ri % 2 === 0 ? C.card : C.card2)); doc.setDrawColor(...C.faint); doc.rect(ML, y, CW, rh, "FD");
+      cx = ML;
+      keys.forEach((k, ci) => {
+        const raw = fmtSmart(row[k] ?? "");
+        const cellW = def[ci] - 6;
+        if (ci === 0) {
+          doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(...C.soft);
+          const ls = firstLines.map((l: string, li: number) => li === firstLines.length - 1 ? ell(l, cellW) : l);
+          doc.text(ls, cx + 4, y + 5.8);
+        } else {
+          const looksUrl = /^https?:\/\//.test(raw) || raw.length > 45;
+          doc.setFont("helvetica", "normal"); doc.setFontSize(looksUrl ? 6.5 : 7.5); doc.setTextColor(...C.muted);
+          doc.text(looksUrl ? ellMid(raw, cellW) : ell(raw, cellW), cx + 4, y + 5.8);
+        }
+        cx += def[ci];
+      });
+      y += rh;
+    });
+    y += 5;
   };
 
-  // ── ACTION CARD ───────────────────────────────────────────────────────
-  const actCard = (title: string, impact: string, timeline: string, detail: string, pri?: "high"|"medium"|"low") => {
-    ensure(30); const pc:RGB=pri==="high"?C.red:pri==="low"?C.blue:C.amber, h=28;
-    doc.setFillColor(...C.card); doc.setDrawColor(...C.border); doc.roundedRect(ML,y,CW,h,2,2,"FD");
-    doc.setFillColor(...pc); doc.roundedRect(ML,y,3,h,1,1,"F");
-    const bx=PW-MR-38;
-    doc.setFillColor(28,28,28); doc.roundedRect(bx,y+4,36,7,2,2,"F");
-    doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.setTextColor(...pc); doc.text(`${impact}  ·  ${timeline}`,bx+3,y+8.5);
-    doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(...C.white); doc.text(cl(title),ML+8,y+9);
-    doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(...C.muted);
-    const ls=doc.splitTextToSize(cl(detail),CW-50); doc.text(ls.slice(0,2),ML+8,y+16);
-    y+=h+4;
+  // ── ACTION CARD (auto-height; title never collides with the badge) ────
+  const actCard = (title: string, impact: string, timeline: string, detail: string, pri?: "high" | "medium" | "low") => {
+    const pc: RGB = pri === "high" ? C.red : pri === "low" ? C.blue : C.amber;
+
+    // measure badge
+    const badgeText = `${cl(impact, "Medium")}  ·  ${cl(timeline, "30 days")}`;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(6.5);
+    const badgeW = Math.min(60, doc.getTextWidth(badgeText) + 8);
+
+    // measure detail
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+    const detailLines = doc.splitTextToSize(cl(detail, ""), CW - 18).slice(0, 3);
+    const h = 14 + detailLines.length * 4.3;
+    ensure(h + 5);
+
+    doc.setFillColor(...C.card); doc.setDrawColor(...C.border); doc.roundedRect(ML, y, CW, h, 2, 2, "FD");
+    doc.setFillColor(...pc); doc.roundedRect(ML, y, 3, h, 1, 1, "F");
+
+    const bx = PW - MR - badgeW - 3;
+    doc.setFillColor(28, 28, 28); doc.roundedRect(bx, y + 3.5, badgeW, 7, 2, 2, "F");
+    doc.setFont("helvetica", "bold"); doc.setFontSize(6.5); doc.setTextColor(...pc);
+    doc.text(ell(badgeText, badgeW - 6), bx + 3, y + 8);
+
+    // title gets only the space LEFT of the badge — overlap is impossible
+    doc.setFont("helvetica", "bold"); doc.setFontSize(9.5); doc.setTextColor(...C.white);
+    doc.text(ell(cl(title), bx - ML - 14), ML + 8, y + 9);
+
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...C.muted);
+    doc.text(detailLines, ML + 8, y + 15.5);
+    y += h + 4;
   };
 
   // ── PILL ──────────────────────────────────────────────────────────────
   const pill_ = (text: string, x: number, yy: number): number => {
-    const w=Math.max(20,doc.getTextWidth(text)+10);
-    doc.setFillColor(20,20,20); doc.setDrawColor(...C.border); doc.roundedRect(x,yy,w,7,2,2,"FD");
-    doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.setTextColor(...C.accent); doc.text(text.toUpperCase(),x+5,yy+4.8);
-    return w+3;
+    const t = ell(cl(text), 40);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(6);
+    const w = Math.max(20, doc.getTextWidth(t.toUpperCase()) + 10);
+    doc.setFillColor(20, 20, 20); doc.setDrawColor(...C.border); doc.roundedRect(x, yy, w, 7, 2, 2, "FD");
+    doc.setTextColor(...C.accent); doc.text(t.toUpperCase(), x + 5, yy + 4.8);
+    return w + 3;
   };
 
   // ── MINI GAUGE ────────────────────────────────────────────────────────
   const gauge = (cx: number, cy: number, r: number, score: number, col: RGB) => {
-    doc.setFillColor(24,24,24); doc.circle(cx,cy,r,"F");
-    const pct=clamp(score)/100, steps=48, sa=-Math.PI/2, ea=sa+pct*2*Math.PI;
+    doc.setFillColor(24, 24, 24); doc.circle(cx, cy, r, "F");
+    const pct = clamp(score) / 100, steps = 48, sa = -Math.PI / 2, ea = sa + pct * 2 * Math.PI;
     doc.setDrawColor(...col); doc.setLineWidth(2);
-    for(let i=0;i<steps;i++){
-      const t1=sa+(i/steps)*(ea-sa), t2=sa+((i+1)/steps)*(ea-sa);
-      doc.line(cx+(r-1.5)*Math.cos(t1),cy+(r-1.5)*Math.sin(t1),cx+(r-1.5)*Math.cos(t2),cy+(r-1.5)*Math.sin(t2));
+    for (let i = 0; i < steps; i++) {
+      const t1 = sa + (i / steps) * (ea - sa), t2 = sa + ((i + 1) / steps) * (ea - sa);
+      doc.line(cx + (r - 1.5) * Math.cos(t1), cy + (r - 1.5) * Math.sin(t1), cx + (r - 1.5) * Math.cos(t2), cy + (r - 1.5) * Math.sin(t2));
     }
-    doc.setFillColor(...C.bg); doc.circle(cx,cy,r-3.5,"F");
-    doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.setTextColor(...col); doc.text(String(score),cx,cy+2.8,{align:"center"});
+    doc.setFillColor(...C.bg); doc.circle(cx, cy, r - 3.5, "F");
+    doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(...col); doc.text(String(score), cx, cy + 2.8, { align: "center" });
   };
 
   // ── pdfShouldShow ─────────────────────────────────────────────────────
   const pdfShow = (sec: string): boolean => {
-    if(!selectedModules||!selectedModules.length) return true;
-    if(selectedModules.includes("full")) return true;
-    const map:Record<string,string[]>={seo:["seo","technical"],technical:["seo","technical"],traffic:["traffic"],competitors:["competitors"],keywords:["keywords"],backlinks:["backlinks"],ai:["ai"],recommendations:["recommendations"],local:["local","localSeo"],content:["content"],serp:["seo","technical","keywords"],domainAnalytics:["traffic"],labs:["keywords","competitors"]};
-    return (map[sec]||[]).some(m=>selectedModules.includes(m));
+    if (!selectedModules || !selectedModules.length) return true;
+    if (selectedModules.includes("full")) return true;
+    const map: Record<string, string[]> = { seo: ["seo", "technical"], technical: ["seo", "technical"], traffic: ["traffic"], competitors: ["competitors"], keywords: ["keywords"], backlinks: ["backlinks"], ai: ["ai"], recommendations: ["recommendations"], local: ["local", "localSeo"], content: ["content"], serp: ["seo", "technical", "keywords"], domainAnalytics: ["traffic"], labs: ["keywords", "competitors"] };
+    return (map[sec] || []).some(m => selectedModules.includes(m));
   };
 
   // ── simpleList ────────────────────────────────────────────────────────
-  const simpleList = (items: any[], empty="No items available.") => {
-    const safe=Array.isArray(items)?items:[];
-    if(!safe.length){body_(empty);return;}
-    safe.slice(0,10).forEach((item:any,i:number)=>{
-      const t=cl(item?.title||item?.issue||item?.keyword||item?.domain||`Item ${i+1}`);
-      const d=cl(item?.detail||item?.description||item?.recommendation||item?.action||item?.summary||"Review this item.");
-      const imp=String(item?.impact||"Medium").toLowerCase();
-      actCard(t,item?.impact||"Medium",item?.timeline||"30 days",d,imp.includes("high")?"high":imp.includes("low")?"low":"medium");
+  const simpleList = (items: any[], empty = "No items available.") => {
+    const safe = Array.isArray(items) ? items : [];
+    if (!safe.length) { body_(empty); return; }
+    safe.slice(0, 10).forEach((item: any, i: number) => {
+      const t = cl(item?.title || item?.issue || item?.keyword || item?.domain || `Item ${i + 1}`);
+      const d = cl(item?.detail || item?.description || item?.recommendation || item?.action || item?.summary || "Review this item.");
+      const imp = String(item?.impact || "Medium").toLowerCase();
+      actCard(t, item?.impact || "Medium", item?.timeline || "30 days", d, imp.includes("high") ? "high" : imp.includes("low") ? "low" : "medium");
     });
   };
 
@@ -994,8 +1207,8 @@ const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligenc
   secTitle("Key Business Insights");
   normalized.executiveCards?.forEach((card:any)=>{ const imp=String(card.impact||"medium").toLowerCase(); hiBox(card.title,card.detail,imp.includes("high")?"red":imp.includes("low")?"blue":"amber"); });
   ensure(50); secTitle("Biggest Risk & Opportunity");
-  hiBox("⚠  Biggest Risk",cl(normalized.summary.biggestIssue),"red");
-  hiBox("✦  Biggest Opportunity",cl(normalized.summary.biggestOpportunity),"green");
+hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
+  hiBox("Biggest Opportunity",cl(normalized.summary.biggestOpportunity),"green");
 
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 02 — UNIFIED OVERVIEW
@@ -1016,8 +1229,8 @@ const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligenc
     tbl(["Module","Status","Meaning"],
       Object.entries(data.moduleStatus).map(([mod,status]:any)=>({
         col1: mod.replace(/([A-Z])/g," $1"),
-        col2: cl(String(status)),
-        col3: status==="completed"?"Data returned successfully":status==="partial"?"Partial data returned":status==="skipped"?"Module not selected":"Data unavailable — check API or module limits",
+        col2: statusLabel(status),
+        col3: statusMeaning(status),
       })),[50,30,CW-80]);
   } else { body_("No module status data."); }
   secTitle("Key Metrics Overview");
@@ -1093,13 +1306,13 @@ const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligenc
     kpiRow([
       {label:"Organic Keywords",value:fmt(data?.domainAnalytics?.organicKeywords),col:C.accent},
       {label:"Est. Organic Traffic",value:fmt(data?.domainAnalytics?.organicTraffic),col:C.green},
-      {label:"Organic Cost",value:cl(String(data?.domainAnalytics?.organicCost??"—")),col:C.muted},
+      {label:"Organic Cost",value:fmtMoney(data?.domainAnalytics?.organicCost),col:C.muted},
       {label:"Paid Keywords",value:fmt(data?.domainAnalytics?.paidKeywords),col:C.blue},
     ]);
     tbl(["Metric","Organic","Paid"],[
       {col1:"Keywords",col2:fmt(data?.domainAnalytics?.organicKeywords),col3:fmt(data?.domainAnalytics?.paidKeywords)},
       {col1:"Traffic",col2:fmt(data?.domainAnalytics?.organicTraffic),col3:fmt(data?.domainAnalytics?.paidTraffic)},
-      {col1:"Cost",col2:cl(String(data?.domainAnalytics?.organicCost??"—")),col3:cl(String(data?.domainAnalytics?.paidCost??"—"))},
+      {col1:"Cost",col2:fmtMoney(data?.domainAnalytics?.organicCost),col3:fmtMoney(data?.domainAnalytics?.paidCost)},
     ],[40,50,CW-90]);
     body_("Use this section to understand whether the domain relies more on organic discovery or paid acquisition for its current visibility.");
   }
@@ -1195,7 +1408,7 @@ const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligenc
         data.aiOptimization.models.slice(0,10).map((m:any)=>({
           col1:cl(m.model),
           col2:m.mentioned?"Yes":"No",
-          col3:m.responseSnippet&&m.responseSnippet!=="{}"?cl(m.responseSnippet).slice(0,80):"No response",
+          col3:m.responseSnippet&&m.responseSnippet!=="{}"?cl(m.responseSnippet):"No response",
         })),[40,18,CW-58]);
     }
     const opportunity=data?.aiOptimization?data.aiOptimization.totalMentions===0?"The brand is not currently mentioned in AI recommendations. Build entity signals, trusted citations, FAQ content, and topical authority.":(aiConf==="low"?"Brand appeared in a limited AI model sample. Treat as directional. Expand prompts, entity signals, expert content, and third-party mentions to improve confidence.":"Brand is surfaced in at least one AI result. Expand coverage across more models and prompts."):"Data not available from AI Optimization API.";
@@ -1291,7 +1504,7 @@ const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligenc
     tbl(["Keyword","Volume","CPC","Competition","Intent","KD"],
       data.keywordResearch.suggestions.slice(0,20).map((k:any)=>({
         col1:cl(k.keyword),col2:fmt(k.volume),col3:cl(k.cpc?`$${Number(k.cpc).toFixed(2)}`:"—"),
-        col4:cl(String(k.competition??"—")),col5:cl(k.intent,"—"),col6:cl(String(k.difficulty??"—")),
+        col4:fmtCompetition(k.competition),col5:cl(k.intent,"—"),col6:cl(String(k.difficulty??"—")),
       })),[65,22,18,22,18,CW-145]);
   }
 
@@ -1459,11 +1672,11 @@ const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligenc
   // ════════════════════════════════════════════════════════════════════
   secHdr("17","30 / 60 / 90 Day Action Roadmap","A practical execution sequence for agencies, consultants, and growth teams.");
   secTitle("Priority Execution Matrix");
-  tbl(["Priority","Focus","Timeline","Actions"],[
-    {col1:"🔴  Immediate",col2:"High impact / Fast fix",col3:"0–30 days",col4:"Critical SEO, speed, metadata, crawlability, broken links"},
-    {col1:"🟡  Growth",col2:"High impact / Medium effort",col3:"30–60 days",col4:"Keyword expansion, AI visibility, content, landing pages"},
-    {col1:"🔵  Authority",col2:"Medium–high impact",col3:"60–90 days",col4:"Backlinks, topical authority, competitor coverage"},
-    {col1:"🟢  Ongoing",col2:"Continuous optimisation",col3:"Continuous",col4:"A/B testing, CRO, monitoring, structured data"},
+tbl(["Priority","Focus","Timeline","Actions"],[
+    {col1:"P1 — Immediate",col2:"High impact / Fast fix",col3:"0–30 days",col4:"Critical SEO, speed, metadata, crawlability, broken links"},
+    {col1:"P2 — Growth",col2:"High impact / Medium effort",col3:"30–60 days",col4:"Keyword expansion, AI visibility, content, landing pages"},
+    {col1:"P3 — Authority",col2:"Medium–high impact",col3:"60–90 days",col4:"Backlinks, topical authority, competitor coverage"},
+    {col1:"P4 — Ongoing",col2:"Continuous optimisation",col3:"Continuous",col4:"A/B testing, CRO, monitoring, structured data"},
   ],[28,40,24,CW-92]);
   secTitle("Roadmap Phases");
   actCard("First 30 Days — Fix the Foundation","High Priority","0–30 days","Resolve critical SEO issues: missing metadata, heading structure, broken links, page speed, and crawl errors. Fast wins that improve indexing, UX, and conversion readiness.","high");
@@ -1516,7 +1729,7 @@ const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligenc
   //  FOOTERS ON ALL PAGES
   // ════════════════════════════════════════════════════════════════════
   const total=doc.getNumberOfPages();
-  for(let i=1;i<=total;i++){ doc.setPage(i); drawFooter(); }
+  for(let i=2;i<=total;i++){ doc.setPage(i); drawFooter(i,total); }
 
   // ════════════════════════════════════════════════════════════════════
   //  SAVE
@@ -1799,11 +2012,11 @@ disabled={!data}
 )}
 {data?.onPage?.taskId &&
   data?.onPage?.crawlStatus !== "completed" && (
-    <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-5">
-      <p className="font-semibold text-blue-900">
+<div className="cq-card mb-6 border-l-2 border-l-[var(--cq-signal)] p-5">
+      <p className="font-semibold text-[var(--cq-text)]">
         OnPage crawl is running in the background
       </p>
-      <p className="mt-1 text-sm text-blue-700">
+      <p className="mt-1 text-sm text-[var(--cq-text-2)]">
         You can export the PDF now. Technical crawl data will appear if it becomes available before export.
       </p>
     </div>
@@ -2321,16 +2534,10 @@ value={
           {module.replace(/([A-Z])/g, " $1")}
         </p>
 
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-            status === "available"
-              ? "bg-green-50 text-green-600"
-              : status === "pending_or_not_available"
-              ? "bg-yellow-50 text-yellow-600"
-              : "bg-slate-100 text-slate-500"
-          }`}
+<span
+          className={`rounded-full border px-3 py-1 text-xs font-semibold ${moduleStatusUI(status).cls}`}
         >
-          {status}
+          {moduleStatusUI(status).label}
         </span>
       </div>
     ))}
@@ -2364,10 +2571,10 @@ value={
             <div key={module} className="flex items-center justify-between rounded-lg bg-slate-50 p-3">
               <p className="font-medium capitalize">{module}</p>
               <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                className={`rounded-full border px-3 py-1 text-xs font-semibold ${
                   available
-                    ? "bg-green-50 text-green-600"
-                    : "bg-slate-100 text-slate-500"
+                    ? "border-[var(--cq-signal)]/40 bg-[var(--cq-signal)]/10 text-[var(--cq-signal)]"
+                    : "border-[var(--cq-line)] bg-[var(--cq-surface-2)] text-[var(--cq-text-2)]"
                 }`}
               >
                 {available ? "Available" : "Not available"}
@@ -3156,8 +3363,8 @@ value={
             </div>
 
             <p className="text-sm leading-6 text-slate-600 break-words">
-              {item.responseSnippet && item.responseSnippet !== "{}"
-  ? item.responseSnippet
+                            {item.responseSnippet && item.responseSnippet !== "{}"
+  ? String(item.responseSnippet).replace(/\*\*|__|`/g, "").trim()
       .replace(/\\n/g, " ")
       .replace(/\s+/g, " ")
       .slice(0, 700)
@@ -3486,7 +3693,9 @@ value={
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
                       CPC: {k.cpc || "Data not available"} | Competition:{" "}
-{k.competition || "Data not available"} | Intent:{" "}
+{Number.isFinite(Number(k.competition))
+  ? `${Math.round(Number(k.competition) * 100)}%`
+  : "Data not available"} | Intent:{" "}
 {k.intent || "N/A"} | KD: {k.difficulty || "N/A"}
                     </p>
                   </div>
@@ -4024,6 +4233,17 @@ value={
 
 /* COMPONENTS */
 
+const MODULE_STATUS_UI: Record<string, { label: string; cls: string }> = {
+  completed: { label: "Completed", cls: "border-[var(--cq-signal)]/40 bg-[var(--cq-signal)]/10 text-[var(--cq-signal)]" },
+  partial:   { label: "Partial",   cls: "border-amber-400/40 bg-amber-400/10 text-amber-300" },
+  failed:    { label: "Failed",    cls: "border-red-400/40 bg-red-400/10 text-red-300" },
+  available: { label: "No data",   cls: "border-[var(--cq-line)] bg-[var(--cq-surface-2)] text-[var(--cq-text-2)]" },
+  pending_or_not_available: { label: "Pending", cls: "border-[var(--cq-line)] bg-[var(--cq-surface-2)] text-[var(--cq-text-2)]" },
+};
+const moduleStatusUI = (s: any) =>
+  MODULE_STATUS_UI[String(s || "").toLowerCase()] ??
+  { label: String(s || "—"), cls: "border-[var(--cq-line)] bg-[var(--cq-surface-2)] text-[var(--cq-text-2)]" };
+
 function getScoreExplainer(label: string, score: number) {
   const cleanLabel = String(label || "").toLowerCase();
 
@@ -4078,7 +4298,7 @@ function getScoreExplainer(label: string, score: number) {
     return "Competitors appear to have stronger visibility across detected signals.";
   }
 
-  return "This score summarizes the current strength of this audit area in plain language.";
+  return null;
 }
 
 function LockedCard({
@@ -4503,7 +4723,6 @@ function MetricCard({
           ) : null}
         </div>
 
-        <div className="cq-frame h-10 w-10 bg-[var(--cq-surface-2)]" />
       </div>
     </div>
   );
