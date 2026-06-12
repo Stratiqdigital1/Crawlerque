@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import { SiteFooter } from "@/components/site-shell";
 import Image from "next/image";
 
 const NAV_LINKS = [
@@ -113,7 +114,7 @@ export default function HomePage() {
             <span className="cq-frame flex h-8 w-8 items-center justify-center bg-[var(--cq-surface)]">
               <span className="font-mono text-[11px] font-bold text-[var(--cq-signal)]">CQ</span>
             </span>
-            <span className="font-[var(--font-space)] text-[17px] font-bold tracking-tight">
+            <span className=" text-[17px] font-bold tracking-tight">
               Crawler Que
             </span>
           </a>
@@ -157,7 +158,7 @@ export default function HomePage() {
         <div className="mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[1fr_480px]">
           <div>
             <p className="cq-eyebrow cq-eyebrow--signal">AI website growth intelligence</p>
-            <h1 className="mt-5 font-[var(--font-space)] text-[clamp(2.5rem,6vw,4.5rem)] font-bold leading-[1.02]">
+            <h1 className="mt-5  text-[clamp(2.5rem,6vw,4.5rem)] font-bold leading-[1.02]">
               Audit your website.
 <br />
 Find the path to <span className="text-[var(--cq-signal)]">better growth.</span>
@@ -236,7 +237,7 @@ backlinks, AI search visibility, and gives you a clear growth plan.
                           ))}
                         </div>
                       </div>
-                      <div className="mt-3 border border-[var(--cq-signal)]/25 bg-[var(--cq-signal)]/6 p-4">
+                      <div className="mt-3 border border-[var(--cq-signal)]/25 bg-[var(--cq-signal)]/8 p-4">
                         <p className="text-[15px] font-semibold">Want the complete website growth audit?</p>
                         <p className="mt-1 text-sm leading-relaxed text-[var(--cq-text-2)]">Unlock AI visibility, competitor intelligence, keyword gaps, backlinks, traffic insights, recommendations, and export-ready reporting.</p>
                         <div className="mt-3 flex flex-wrap gap-2">
@@ -280,7 +281,7 @@ backlinks, AI search visibility, and gives you a clear growth plan.
       <section className="border-b border-[var(--cq-line-soft)] px-5 py-24 md:px-8">
         <div className="mx-auto max-w-7xl">
           <p className="cq-eyebrow cq-eyebrow--signal">Who can use it</p>
-          <h2 className="mt-3 max-w-2xl font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Built for anyone who wants better website growth.</h2>
+          <h2 className="mt-3 max-w-2xl  text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Built for anyone who wants better website growth.</h2>
           <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">Whether you own a business, manage a website, run marketing, or handle SEO for others, Crawler Que helps you understand what is holding the website back.</p>
           <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {[
@@ -292,7 +293,7 @@ backlinks, AI search visibility, and gives you a clear growth plan.
 ].map(card => (
               <div key={card.title} className="cq-card relative p-6 transition-colors hover:border-[var(--cq-signal)]/40">
                 {card.badge && (
-                  <div className="absolute -top-3 left-4 bg-[var(--cq-signal)] px-2.5 py-0.5 font-mono text-xs font-bold text-[#0C0F08]">{card.badge}</div>
+                  <div className="absolute -top-3 left-4 bg-[var(--cq-signal)] px-2.5 py-0.5 font-mono text-xs font-bold text-[var(--cq-on-signal)]">{card.badge}</div>
                 )}
                 <h3 className="text-[16px] font-bold">{card.title}</h3>
                 <p className="mt-2 text-[14px] leading-relaxed text-[var(--cq-text-2)]">{card.desc}</p>
@@ -324,7 +325,7 @@ backlinks, AI search visibility, and gives you a clear growth plan.
       <section className="border-b border-[var(--cq-line-soft)] px-5 py-24 md:px-8">
         <div className="mx-auto max-w-7xl">
           <p className="cq-eyebrow cq-eyebrow--signal">How it works</p>
-          <h2 className="mt-3 font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Audit. Analyse. Deliver.</h2>
+          <h2 className="mt-3  text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Audit. Analyse. Deliver.</h2>
           <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">From website URL to clear SEO, performance, traffic, competitor, backlink, AI visibility, and recommendation insights in minutes.</p>
           <div className="mt-12 grid gap-px overflow-hidden border border-[var(--cq-line)] bg-[var(--cq-line)] md:grid-cols-3">
             {[
@@ -346,7 +347,7 @@ backlinks, AI search visibility, and gives you a clear growth plan.
       <section className="border-b border-[var(--cq-line-soft)] px-5 py-24 md:px-8">
         <div className="mx-auto max-w-7xl">
           <p className="cq-eyebrow cq-eyebrow--signal">Inside the platform</p>
-          <h2 className="mt-3 font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">See exactly what your website audit includes.</h2>
+          <h2 className="mt-3  text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">See exactly what your website audit includes.</h2>
           <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">A real look at the dashboard — no mockups. Click through the views.</p>
 
           {/* Tab switcher */}
@@ -392,7 +393,7 @@ backlinks, AI search visibility, and gives you a clear growth plan.
       <section id="modules" className="border-b border-[var(--cq-line-soft)] px-5 py-24 md:px-8">
         <div className="mx-auto max-w-7xl">
           <p className="cq-eyebrow cq-eyebrow--signal">Audit modules</p>
-          <h2 className="mt-3 font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Every intelligence layer your website needs.</h2>
+          <h2 className="mt-3  text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Every intelligence layer your website needs.</h2>
           <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">Modular by design. Run a full audit or go deep on a single signal.</p>
           <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {MODULES.map(mod => (
@@ -415,7 +416,7 @@ backlinks, AI search visibility, and gives you a clear growth plan.
       <section className="border-b border-[var(--cq-line-soft)] px-5 py-24 md:px-8">
         <div className="mx-auto max-w-7xl">
           <p className="cq-eyebrow cq-eyebrow--signal">How we compare</p>
-          <h2 className="mt-3 font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Built for clearer website decisions.</h2>
+          <h2 className="mt-3  text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Built for clearer website decisions.</h2>
           <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">Traditional SEO tools can be complex and data-heavy. Crawler Que turns website audit data into clear priorities, insights, and action steps.</p>
           <div className="mt-12 overflow-x-auto border border-[var(--cq-line)]">
             <table className="w-full min-w-[580px] border-collapse">
@@ -423,7 +424,7 @@ backlinks, AI search visibility, and gives you a clear growth plan.
                 <tr className="border-b border-[var(--cq-line)]">
                   <th className="bg-[var(--cq-surface)] px-5 py-4 text-left font-mono text-sm font-medium text-[var(--cq-text-2)]">Feature</th>
                   {[{name:"Crawler Que",hl:true},{name:"SEMrush",hl:false},{name:"Ahrefs",hl:false}].map(col => (
-                    <th key={col.name} className={`px-5 py-4 font-mono text-sm font-medium ${col.hl ? "bg-[var(--cq-signal)] text-[#0C0F08]" : "bg-[var(--cq-surface)] text-[var(--cq-text-2)]"}`}>{col.name}</th>
+                    <th key={col.name} className={`px-5 py-4 font-mono text-sm font-medium ${col.hl ? "bg-[var(--cq-signal)] text-[var(--cq-on-signal)]" : "bg-[var(--cq-surface)] text-[var(--cq-text-2)]"}`}>{col.name}</th>
                   ))}
                 </tr>
               </thead>
@@ -446,7 +447,7 @@ backlinks, AI search visibility, and gives you a clear growth plan.
       <section id="pricing" className="border-b border-[var(--cq-line-soft)] px-5 py-24 md:px-8">
         <div className="mx-auto max-w-7xl">
           <p className="cq-eyebrow cq-eyebrow--signal">Pricing</p>
-          <h2 className="mt-3 font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Website growth intelligence for every stage.</h2>
+          <h2 className="mt-3  text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Website growth intelligence for every stage.</h2>
           <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">Choose the plan that matches how many websites you want to audit each month.</p>
 
           {checkoutError && (
@@ -464,7 +465,7 @@ backlinks, AI search visibility, and gives you a clear growth plan.
                 >
                   <div className="p-8">
                     {plan.badge && (
-                      <div className="mb-5 inline-block bg-[var(--cq-signal)] px-3 py-1 font-mono text-xs font-bold text-[#0C0F08]">
+                      <div className="mb-5 inline-block bg-[var(--cq-signal)] px-3 py-1 font-mono text-xs font-bold text-[var(--cq-on-signal)]">
                         {plan.badge}
                       </div>
                     )}
@@ -518,7 +519,7 @@ backlinks, AI search visibility, and gives you a clear growth plan.
       <section className="border-b border-[var(--cq-line-soft)] px-5 py-24 md:px-8">
         <div className="mx-auto max-w-7xl">
           <p className="cq-eyebrow cq-eyebrow--signal">Website audit value</p>
-<h2 className="mt-3 font-[var(--font-space)] text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">What can one missed website issue cost you?</h2>
+<h2 className="mt-3  text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">What can one missed website issue cost you?</h2>
 <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">Crawler Que helps you find SEO, speed, traffic, AI visibility, keyword, competitor, and backlink issues before they keep costing you traffic and leads.</p>
           <div className="mt-12 grid gap-5 lg:grid-cols-3">
             {[{plan:"SEO Issues",price:"Fix ranking blockers",charge:150,clients:5},{plan:"Speed Issues",price:"Improve user experience",charge:300,clients:15},{plan:"Competitor Gaps",price:"Find missed opportunities",charge:500,clients:40}].map(row => {
@@ -547,11 +548,37 @@ const profit  = revenue;
         </div>
       </section>
 
+{/* FAQ */}
+      <section className="border-b border-[var(--cq-line-soft)] px-5 py-24 md:px-8">
+        <div className="mx-auto max-w-3xl">
+          <p className="cq-eyebrow cq-eyebrow--signal">FAQ</p>
+          <h2 className="mt-3 text-[clamp(1.8rem,4vw,2.8rem)] font-extrabold leading-tight">Questions, answered.</h2>
+          <div className="mt-10 space-y-3">
+            {[
+              ["Do I need to create an account to run a free audit?", "No. Paste any URL on the homepage and you'll get SEO and performance scores instantly — no signup, no card."],
+              ["What is AI search visibility scoring?", "We test whether AI assistants like ChatGPT actually mention your brand when asked for recommendations in your niche, then score it 0–100 with an honest confidence label."],
+              ["Can I remove Crawler Que branding from reports?", "Yes — the Agency and Enterprise plans include full white-labelling: your logo, your accent color, your footer text on every PDF."],
+              ["How is Crawler Que different from SEMrush or Ahrefs?", "Those are research tools for analysts. Crawler Que is a deliverable tool for agencies: it turns one URL into a client-ready growth plan PDF, and it measures AI visibility, which they don't."],
+              ["Can I cancel anytime?", "Yes. Cancel from the dashboard's Subscription tab via the Stripe billing portal — you keep access until the end of the paid period."],
+            ].map(([q, a]) => (
+              <details key={q} className="cq-card group p-5">
+                <summary className="cursor-pointer list-none text-[16px] font-bold marker:hidden">
+                  <span className="mr-3 font-mono text-[var(--cq-signal)] group-open:hidden">+</span>
+                  <span className="mr-3 hidden font-mono text-[var(--cq-signal)] group-open:inline">−</span>
+                  {q}
+                </summary>
+                <p className="mt-3 pl-7 text-[15px] leading-relaxed text-[var(--cq-text-2)]">{a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="px-5 py-28 text-center md:px-8">
         <div className="mx-auto max-w-3xl">
           <p className="cq-eyebrow cq-eyebrow--signal">Get started today</p>
-          <h2 className="mt-4 font-[var(--font-space)] text-[clamp(2.2rem,5.5vw,3.6rem)] font-bold leading-[1.05]">
+          <h2 className="mt-4  text-[clamp(2.2rem,5.5vw,3.6rem)] font-bold leading-[1.05]">
 Find what is holding your website back.
 <br />
 <span className="text-[var(--cq-signal)]">Start with a free audit.</span>
@@ -574,22 +601,8 @@ Find what is holding your website back.
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="border-t border-[var(--cq-line-soft)] px-5 py-12 md:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex flex-wrap justify-center gap-x-8 gap-y-3">
-            {FOOTER_LINKS.map(([href,label]) => (
-              <a key={label} href={href} className="text-sm text-[var(--cq-text-3)] transition-colors hover:text-[var(--cq-text)]">{label}</a>
-            ))}
-          </div>
-
-          <div className="cq-scanline mt-8" />
-
-          <p className="mt-6 text-center font-mono text-xs uppercase tracking-[0.08em] text-[var(--cq-text-3)]">
-            Powered By Strat IQ Digital
-          </p>
-        </div>
-      </footer>
+{/* FOOTER */}
+      <SiteFooter />
 
     </div>
   );

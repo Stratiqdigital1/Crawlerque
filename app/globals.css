@@ -11,18 +11,20 @@
    ============================================================ */
 
 :root {
-  /* Core palette */
-  --cq-ink:         #0C0F08;   /* page background — green-cast near-black */
-  --cq-surface:     #12160C;   /* cards, panels */
-  --cq-surface-2:   #181D11;   /* raised cards, inner blocks, hovers */
-  --cq-line:        #272E1C;   /* default hairline borders */
-  --cq-line-soft:   #1C2214;   /* subtle dividers */
-  --cq-signal:      #C5FF3D;   /* brand accent */
-  --cq-signal-deep: #97CC21;   /* accent on light, hovers */
-  --cq-text:        #EEF3E3;   /* primary text — off-white, easier than #FFF */
-  --cq-text-2:      #A9B496;   /* secondary text */
-  --cq-text-3:      #707B58;   /* metadata, captions */
-  --cq-danger:      #FF7A6B;
+  /* Core palette — "Deep Harbor" (from the reference theme) */
+  --cq-ink:         #0B1929;   /* page background — deep navy */
+  --cq-surface:     #0E2440;   /* cards, panels */
+  --cq-surface-2:   #122B4E;   /* raised cards, inner blocks, hovers */
+  --cq-line:        rgba(255,255,255,0.07);  /* hairline borders */
+  --cq-line-soft:   rgba(255,255,255,0.05);  /* subtle dividers */
+  --cq-signal:      #00D4AA;   /* brand accent — teal */
+  --cq-signal-deep: #00B891;   /* accent hover */
+  --cq-text:        #E2E8F0;   /* primary text */
+  --cq-text-2:      #94A3B8;   /* secondary text */
+  --cq-text-3:      #64748B;   /* metadata, captions */
+  --cq-danger:      #F87171;
+  --cq-on-signal:   #071526;   /* text ON teal buttons/badges */
+  --cq-footer:      #071526;   /* footer background */
 
   /* shadcn compatibility — remapped to the CQ palette so any
      shadcn/ui component automatically matches the new theme */
@@ -33,7 +35,7 @@
   --popover: var(--cq-surface-2);
   --popover-foreground: var(--cq-text);
   --primary: var(--cq-signal);
-  --primary-foreground: #0C0F08;
+  --primary-foreground: var(--cq-on-signal);
   --secondary: var(--cq-surface-2);
   --secondary-foreground: var(--cq-text);
   --muted: var(--cq-surface-2);
@@ -127,15 +129,16 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-space);
-    letter-spacing: -0.02em; /* was -0.03em — too tight at small sizes */
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-inter);
+    font-weight: 800;
+    letter-spacing: -0.02em;
     color: var(--cq-text);
   }
 
   ::selection {
     background: var(--cq-signal);
-    color: #0C0F08;
+    color: var(--cq-on-signal);
   }
 }
 
@@ -243,7 +246,7 @@
 }
 .cq-btn--primary {
   background: var(--cq-signal);
-  color: #0C0F08;
+  color: var(--cq-on-signal);
   border: 1px solid var(--cq-signal);
 }
 .cq-btn--primary:hover { background: var(--cq-signal-deep); border-color: var(--cq-signal-deep); }
@@ -290,7 +293,8 @@
 .si-dashboard h2,
 .si-dashboard h3,
 .si-dashboard h4 {
-  font-family: var(--font-space);
+  font-family: var(--font-inter);
+  font-weight: 800;
 }
 
 /* Raise illegible micro sizes to a 12px floor */
