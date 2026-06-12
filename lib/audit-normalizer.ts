@@ -136,7 +136,7 @@ technicalCrawl: getTechnicalCrawl(report),
         "insufficient-data",
     },
 
-    ai: {
+ai: {
   score: aiScore,
   brandMentions:
     report?.aiVisibility?.brandMentions ||
@@ -147,6 +147,7 @@ technicalCrawl: getTechnicalCrawl(report),
     report?.aiOptimization?.validModelCount ||
     null,
   prompts: getAiPromptResults(report),
+  pageInsights: getAiPageInsights(report),
 },
 
     backlinks: {
@@ -469,6 +470,36 @@ function getAiPromptResults(report: any) {
         ? "Mentioned"
         : "Not mentioned",
   }));
+}
+
+function getAiPageInsights(report: any) {
+  const insights = report?.aiOptimization?.pageInsights;
+  if (!insights) return null;
+
+  const formatPage = (p: any) => ({
+    url: p?.url || "URL not available",
+    title: p?.title || p?.url || "Untitled page",
+    score: p?.score ?? null,
+    grade: p?.grade || "Needs Work",
+    topIssue: p?.topIssue || null,
+  });
+
+  // "Likely source (inferred)" guesses, one per AI model that mentioned the brand
+  const sourceSuggestions = asArray(report?.aiOptimization?.models)
+    .filter((m: any) => m?.mentioned && m?.likelySourcePage)
+    .map((m: any) => ({
+      model: m?.model || "AI model",
+      url: m.likelySourcePage?.url,
+      title: m.likelySourcePage?.title,
+      overlap: m.likelySourcePage?.overlap,
+    }));
+
+  return {
+    totalPagesAnalyzed: insights.totalPagesAnalyzed ?? 0,
+    topPerformingPages: asArray(insights.topPerformingPages).slice(0, 5).map(formatPage),
+    pagesNeedingOptimization: asArray(insights.pagesNeedingOptimization).slice(0, 5).map(formatPage),
+    likelySourcePages: sourceSuggestions, // label as "inferred" wherever rendered
+  };
 }
 
 function getTechnicalCrawl(report: any) {

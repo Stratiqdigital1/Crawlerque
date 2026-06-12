@@ -1368,7 +1368,15 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
         })),[40,18,CW-58]);
     }
     const opportunity=data?.aiOptimization?data.aiOptimization.totalMentions===0?"The brand is not currently mentioned in AI recommendations. Build entity signals, trusted citations, FAQ content, and topical authority.":(aiConf==="low"?"Brand appeared in a limited AI model sample. Treat as directional. Expand prompts, entity signals, expert content, and third-party mentions to improve confidence.":"Brand is surfaced in at least one AI result. Expand coverage across more models and prompts."):"Data not available from AI Optimization API.";
-    hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
+hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
+
+    if(data?.aiVisibility?.pageGeoReadiness){
+      const geo=data.aiVisibility.pageGeoReadiness;
+      secTitle("AI Citation Readiness — Audited Page");
+      kpiRow([{label:"Readiness Score",value:`${geo.score}/100`,sub:geo.grade,col:sCol(geo.score)}]);
+      tbl(["Factor","Status"],geo.factors.map((f:any)=>({col1:cl(f.label),col2:f.pass?"Pass":"Needs work"})));
+      if(geo.topIssue) hiBox("Top Fix for AI Visibility",cl(geo.topIssue),"amber");
+    }
     hiBox("Generative Engine Optimisation (GEO) Readiness",aiScore>=70?`${domain} shows detectable AI visibility. Strengthen with: entity signals, FAQ schema, third-party citations, and topical authority.`:`${domain} has weak AI visibility. Add: company entity signals, structured data, FAQ content, and external brand citations.`,aiScore>=70?"green":"amber");
   }
 
@@ -3264,14 +3272,43 @@ value={
       </div>
     </div>
 
-    <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+<div className="mb-6 rounded-2xl border border-[#222] bg-[#111] p-5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[#8A8A8A]">
         Prompt Tested
       </p>
-      <p className="mt-2 text-sm text-slate-700">
+      <p className="mt-2 text-sm text-white">
         {data?.aiOptimization?.prompt || "Data not available"}
       </p>
     </div>
+
+    {data?.aiVisibility?.pageGeoReadiness && (
+      <div className="mb-6 rounded-2xl border border-[#222] bg-[#111] p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-semibold text-white">AI Citation Readiness — Audited Page</h3>
+          <span className="rounded-full bg-[#C5FF3D]/10 px-3 py-1 text-xs font-semibold text-[#C5FF3D]">
+            {data.aiVisibility.pageGeoReadiness.score}/100 · {data.aiVisibility.pageGeoReadiness.grade}
+          </span>
+        </div>
+        <p className="mb-4 text-sm text-[#8A8A8A]">
+          How well the audited page is structured for AI assistants to read, summarize, and cite — based on
+          headings, content depth, structured data, and accessibility signals from this page.
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {data.aiVisibility.pageGeoReadiness.factors.map((f: any, i: number) => (
+            <div key={i} className="flex items-center gap-2 rounded-lg border border-[#222] px-3 py-2 text-sm">
+              <span className={f.pass ? "text-[#C5FF3D]" : "text-[#777]"}>{f.pass ? "✓" : "○"}</span>
+              <span className={f.pass ? "text-white" : "text-[#8A8A8A]"}>{f.label}</span>
+            </div>
+          ))}
+        </div>
+        {data.aiVisibility.pageGeoReadiness.topIssue && (
+          <p className="mt-4 text-sm text-[#8A8A8A]">
+            <span className="font-semibold text-[#C5FF3D]">Top fix: </span>
+            {data.aiVisibility.pageGeoReadiness.topIssue}
+          </p>
+        )}
+      </div>
+    )}
 
     <div className="mb-6 rounded-2xl border border-[#C5FF3D]/25 bg-[#0d1500] p-5">
       <h3 className="font-semibold text-slate-950">AI Opportunity Insight</h3>
@@ -3289,12 +3326,12 @@ value={
     <div className="grid gap-4">
       {data?.aiOptimization?.models?.length > 0 ? (
         data.aiOptimization.models.map((item: any, i: number) => (
-          <div
+<div
             key={i}
-            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+            className="rounded-2xl border border-[#222] bg-[#111] p-5"
           >
             <div className="mb-3 flex items-center justify-between gap-4">
-              <p className="font-semibold text-slate-950">{item.model}</p>
+              <p className="font-semibold text-white">{item.model}</p>
 
               <span
                 className={`rounded-full px-3 py-1 text-xs font-semibold ${

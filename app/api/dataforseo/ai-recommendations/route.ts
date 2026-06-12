@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { PageGeoScore } from "@/lib/geo-readiness";
 
 function getAuthHeader() {
   const login = process.env.DATAFORSEO_LOGIN;
@@ -63,7 +64,14 @@ function fallbackRecommendations(body: any) {
 const topGap = body?.keywordGaps?.[0];
 const topCompetitor = body?.competitors?.[0];
 
+// Page-specific GEO recommendations, if page scores were provided.
+const pagesNeedingWork: PageGeoScore[] = body?.pageInsights?.pagesNeedingOptimization || [];
+const pageRecs = pagesNeedingWork.slice(0, 2).map((p) =>
+  `Improve AI discoverability for ${p.url} (GEO score ${p.score}/100): ${p.topIssue || "add structured data and expand content depth"}.`
+);
+
 return [
+  ...pageRecs,
   topGap?.keyword
     ? `Create a ${topGap.recommendedPageType || "targeted landing page"} for "${topGap.keyword}" because it has an opportunity score of ${topGap.opportunityScore || "N/A"}/100 and can close a competitor keyword gap.`
     : `Create commercial content around "${keyword}" and related buyer-intent searches to improve organic rankings and AI recommendation relevance.`,
@@ -141,8 +149,18 @@ Technical Issues: ${JSON.stringify(body?.issues || [])}
 SERP Data: ${JSON.stringify(body?.serpData || [])}
 Backlinks: ${JSON.stringify(body?.backlinks || {})}
 Content Analysis: ${JSON.stringify(body?.contentAnalysis || {})}
+Pages Needing AI-Visibility Optimization: ${JSON.stringify(
+  (body?.pageInsights?.pagesNeedingOptimization || []).map((p: any) => ({
+    url: p.url, score: p.score, topIssue: p.topIssue,
+  }))
+)}
+Top AI-Visibility Performing Pages: ${JSON.stringify(
+  (body?.pageInsights?.topPerformingPages || []).map((p: any) => ({ url: p.url, score: p.score }))
+)}
 
-Return 6 to 10 concise, actionable recommendations.
+Return 6 to 10 concise, actionable recommendations. Where page URLs are
+given above, reference the SPECIFIC URL and its topIssue in at least one
+recommendation rather than speaking generically about "the website".
 
 Rules:
 - Prioritize keyword opportunities with higher opportunityScore.

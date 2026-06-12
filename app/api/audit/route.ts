@@ -593,7 +593,36 @@ await updateAuditJob(auditJob.id, {
       html,
       /<img[^>]+alt=["'][^"']+["'][^>]*>/gi
     );
-    const imagesMissingAlt = Math.max(0, imageCount - imagesWithAlt);
+const imagesMissingAlt = Math.max(0, imageCount - imagesWithAlt);
+
+    // ── AI CITATION READINESS — computed from the same HTML fetch above ──
+    const bodyWordCount = html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(" ")
+      .filter(Boolean).length;
+
+    const ldJsonBlocks =
+      html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
+    const hasSchema = ldJsonBlocks.length > 0;
+    const hasFaqSchema = ldJsonBlocks.some((b) => /FAQPage/i.test(b));
+
+    const geoFactors = [
+      { label: "Has a clear H1 heading",         weight: 15, pass: h1Count > 0 },
+      { label: "Has a meta description",         weight: 10, pass: !!description },
+      { label: "Content depth (300+ words)",     weight: 20, pass: bodyWordCount >= 300 },
+      { label: "In-depth content (800+ words)",  weight: 10, pass: bodyWordCount >= 800 },
+      { label: "Has structured data (schema)",   weight: 20, pass: hasSchema },
+      { label: "Has FAQ schema (FAQPage)",       weight: 15, pass: hasFaqSchema },
+      { label: "All images have ALT text",       weight: 10, pass: imagesMissingAlt === 0 },
+    ];
+    const pageGeoScore = geoFactors.reduce((s, f) => s + (f.pass ? f.weight : 0), 0);
+    const pageGeoGrade = pageGeoScore >= 75 ? "Strong" : pageGeoScore >= 45 ? "Moderate" : "Needs Work";
+    const pageGeoTopIssue = geoFactors.filter((f) => !f.pass).sort((a, b) => b.weight - a.weight)[0]?.label || null;
+    const pageGeoReadiness = { url, score: pageGeoScore, grade: pageGeoGrade, topIssue: pageGeoTopIssue, wordCount: bodyWordCount, factors: geoFactors };
 
 await updateAuditJob(auditJob.id, {
   progress: 25,
@@ -1264,7 +1293,7 @@ trafficSource,
     : dataforseo?.topKeywords || [],
 };
 
-    const aiVisibility = {
+const aiVisibility = {
   score: aiVisibilityScore,
   rawScore: aiVisibilityRawScore,
   confidence: aiVisibilityConfidence,
@@ -1279,6 +1308,7 @@ trafficSource,
     aiOptimization?.competitors ||
     dataforseo?.competitors?.map((c: any) => c.domain) ||
     [],
+  pageGeoReadiness,
 };
 
 moduleStatus = {

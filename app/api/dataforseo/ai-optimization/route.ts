@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { scoreAllPages, guessLikelySourcePage, topGeoPages, pagesNeedingWork, type CrawledPage } from "@/lib/geo-readiness";
 
 function normalizeDomain(url: string) {
   try {
@@ -126,15 +127,18 @@ export async function POST(req: Request) {
   return runAIOptimization({
     url: body?.url || body?.domain,
     industry: body?.industry || "business services",
+    pages: body?.pages || [],
   });
 }
 
 async function runAIOptimization({
   url,
   industry,
+  pages = [],
 }: {
   url: string;
   industry: string;
+  pages?: CrawledPage[];
 }) {
   try {
     const domain = normalizeDomain(url);
@@ -269,6 +273,19 @@ const scoreLabel =
     ? "Directional AI Visibility Signal"
     : "AI Visibility Score";
 
+    // ── PAGE-LEVEL GEO READINESS ──────────────────────────────────────
+    const pageScores = scoreAllPages(pages);
+    const topPages = topGeoPages(pageScores, 5);
+    const pagesToFix = pagesNeedingWork(pageScores, 5);
+
+    // For each model that mentioned the brand, guess which crawled page
+    // the AI response is most likely referencing. Always inferred —
+    // surface this with a "Likely source (inferred)" label in the UI.
+    const modelsWithSource = models.map((m) => {
+      const guess = m.mentioned ? guessLikelySourcePage(m.fullResponse, pages) : null;
+      return { ...m, likelySourcePage: guess };
+    });
+
     return NextResponse.json({
       success: true,
       aiOptimization: {
@@ -283,7 +300,13 @@ visibilityScore,
 rawVisibilityScore,
 confidence,
 scoreLabel,
-models,
+models: modelsWithSource,
+pageInsights: {
+  totalPagesAnalyzed: pageScores.length,
+  topPerformingPages: topPages,
+  pagesNeedingOptimization: pagesToFix,
+  allPages: pageScores,
+},
         recommendations: [
           totalMentions === 0
             ? `Improve AI visibility by creating stronger entity signals for ${brandName}, including expert content, schema, citations, comparison pages, and trusted third-party mentions in the ${industry} category.`
