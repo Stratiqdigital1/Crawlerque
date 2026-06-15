@@ -32,9 +32,9 @@ const checkoutParams: Stripe.Checkout.SessionCreateParams = {
       metadata: { packageName },
       subscription_data: {
         metadata: { packageName },
-        trial_period_days: 7,
+        // trial_period_days: 7,
       },
-      payment_method_collection: "always",
+      // payment_method_collection: "always",
       billing_address_collection: "auto",
     };
 
