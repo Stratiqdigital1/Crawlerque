@@ -104,7 +104,7 @@ export default function ForgotPasswordPage() {
                   {loading ? "Sending…" : "Send reset link"}
                 </button>
 
-                
+                <a
                   href="/login"
                   className="block text-center text-sm text-[var(--cq-text-2)] underline-offset-4 hover:text-[var(--cq-signal)] hover:underline"
                 >
