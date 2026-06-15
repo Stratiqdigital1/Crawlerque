@@ -84,14 +84,15 @@ export async function POST(req: Request) {
         allowBacklinks:   pkg.allowBacklinks,
         allowLocalSeo:    pkg.allowLocalSeo,
         allowWhiteLabel:  pkg.allowWhiteLabel,
-        stripeCustomerId:      customerId,
+stripeCustomerId:      customerId,
         stripeSubscriptionId:  subscription?.id || null,
         stripePriceId:         subscription?.items?.data[0]?.price?.id || null,
 stripeStatus:          subscription?.status || "active",
-stripeCurrentPeriodEnd: (subscription as any)?.currentPeriodEnd
-  ? new Date((subscription as any).currentPeriodEnd * 1000)
+stripeCurrentPeriodEnd: (subscription as any)?.current_period_end
+  ? new Date((subscription as any).current_period_end * 1000)
   : null,
 auditsUsed:   0,
+        trialAuditsUsed: 0,
         auditsResetAt: new Date(),
       },
     });
@@ -113,10 +114,14 @@ auditsUsed:   0,
     });
 
     return response;
-  } catch (error) {
+} catch (error: any) {
     console.error("Registration error:", error);
     return NextResponse.json(
-      { error: "Registration failed. Please try again." },
+      {
+        error: "Registration failed. Please try again.",
+        detail: error?.message || String(error),
+        code: error?.code,
+      },
       { status: 500 }
     );
   }
