@@ -1034,6 +1034,58 @@ const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligenc
         }
         cx += def[ci];
       });
+y += rh;
+    });
+    y += 5;
+  };
+
+  // ── WRAPPING TABLE — last column wraps to multiple lines instead of
+  // being ellipsized. Use for tables where the final column is the most
+  // important content (e.g. AI response snippets). ─────────────────────
+  const tblWrap = (headers: string[], rows: TR[], colW: number[], maxLines = 4) => {
+    if (!rows.length) { body_("No data available."); return; }
+    const nc = headers.length;
+    const def = colW;
+    const keys = (["col1", "col2", "col3", "col4", "col5", "col6", "col7"] as (keyof TR)[]).slice(0, nc);
+    const lastIdx = nc - 1;
+
+    // header
+    ensure(14);
+    doc.setFillColor(24, 24, 24); doc.setDrawColor(...C.border); doc.roundedRect(ML, y, CW, 9, 1.5, 1.5, "FD");
+    let cx = ML;
+    headers.forEach((h_, i) => {
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(...C.accent);
+      doc.text(ell(cl(h_).toUpperCase(), def[i] - 6), cx + 4, y + 6);
+      cx += def[i];
+    });
+    y += 9;
+
+    rows.forEach((row, ri) => {
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
+      const lastVal = fmtSmart(row[keys[lastIdx]] ?? "");
+      const lastLines = doc.splitTextToSize(lastVal, def[lastIdx] - 6).slice(0, maxLines);
+      const lineH = 4.2;
+      const rh = Math.max(9, lastLines.length * lineH + 4);
+      ensure(rh + 2);
+
+      doc.setFillColor(...(ri % 2 === 0 ? C.card : C.card2)); doc.setDrawColor(...C.faint); doc.rect(ML, y, CW, rh, "FD");
+      cx = ML;
+      keys.forEach((k, ci) => {
+        const raw = fmtSmart(row[k] ?? "");
+        const cellW = def[ci] - 6;
+        const cellY = y + 5.8; // first line baseline, regardless of row height
+        if (ci === lastIdx) {
+          doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(...C.muted);
+          doc.text(lastLines, cx + 4, cellY);
+        } else if (ci === 0) {
+          doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(...C.soft);
+          doc.text(ell(raw, cellW), cx + 4, cellY);
+        } else {
+          doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(...C.muted);
+          doc.text(ell(raw, cellW), cx + 4, cellY);
+        }
+        cx += def[ci];
+      });
       y += rh;
     });
     y += 5;
@@ -1358,14 +1410,14 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
       {col1:"Confidence",col2:aiConf,col3:"Reliability of AI visibility measurement"},
       {col1:"Prompt Used",col2:cl(data?.aiOptimization?.prompt?cl(data.aiOptimization.prompt).slice(0,60):"—"),col3:"The prompt used to test AI visibility"},
     ],[42,35,CW-77]);
-    if(data?.aiOptimization?.models?.length){
+if(data?.aiOptimization?.models?.length){
       secTitle("Model-Level Results");
-      tbl(["Model","Mentioned","Response Snippet"],
+      tblWrap(["Model","Mentioned","Response Snippet"],
         data.aiOptimization.models.slice(0,10).map((m:any)=>({
           col1:cl(m.model),
           col2:m.mentioned?"Yes":"No",
           col3:m.responseSnippet&&m.responseSnippet!=="{}"?cl(m.responseSnippet):"No response",
-        })),[40,18,CW-58]);
+        })),[38,24,CW-62],4);
     }
     const opportunity=data?.aiOptimization?data.aiOptimization.totalMentions===0?"The brand is not currently mentioned in AI recommendations. Build entity signals, trusted citations, FAQ content, and topical authority.":(aiConf==="low"?"Brand appeared in a limited AI model sample. Treat as directional. Expand prompts, entity signals, expert content, and third-party mentions to improve confidence.":"Brand is surfaced in at least one AI result. Expand coverage across more models and prompts."):"Data not available from AI Optimization API.";
 hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
