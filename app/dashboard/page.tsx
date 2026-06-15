@@ -1872,8 +1872,12 @@ const isLargeSiteWarning =
         </div>
       </div>
 
-      {/* Main */}
+{/* Main */}
       <div className="flex-1 bg-[#0A0A0A] p-8">
+
+{currentUser?.trial?.isTrialing && (
+  <TrialBanner currentUser={currentUser} />
+)}
 
 {currentUser?.package && activeTab === "overview" && (
   <div className="cq-card cq-frame mb-6 !rounded-none p-5">
@@ -4556,6 +4560,88 @@ const ALL_PLANS = [
   { name: "Agency",     priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_AGENCY!,     price: 99,  audits: 40 },
   { name: "Enterprise", priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE!, price: 299, audits: 150 },
 ];
+
+const TRIAL_CONVERT_PLANS = [
+  { name: "Starter",    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER!,    price: 30,  audits: 7 },
+  { name: "Agency",     priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_AGENCY!,     price: 99,  audits: 40 },
+  { name: "Enterprise", priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE!, price: 299, audits: 150 },
+];
+
+function TrialBanner({ currentUser }: { currentUser: any }) {
+  const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const trial = currentUser?.trial;
+
+  const choosePlan = async (priceId: string, planName: string) => {
+    if (!confirm(`Continue with the ${planName} plan? Your trial will end and billing will start now.`)) return;
+    setLoading(planName);
+    setError("");
+    try {
+      const res = await fetch("/api/stripe/change-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceId }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || "Failed to switch plan");
+      window.location.reload();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const daysLeft = trial?.daysRemaining ?? 0;
+  const auditsLeft = trial?.auditsRemaining ?? 0;
+  const urgent = daysLeft <= 2 || auditsLeft === 0;
+
+  return (
+    <div className={`cq-card cq-frame mb-6 !rounded-none p-6 ${urgent ? "border-amber-400/50" : ""}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className={`cq-eyebrow ${urgent ? "text-amber-300" : "cq-eyebrow--signal"}`}>
+            {urgent ? "Trial ending soon" : "Free trial"}
+          </p>
+          <h3 className="mt-1 text-xl font-bold text-white">
+            {daysLeft > 0 ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} left in your trial` : "Your trial has ended"}
+          </h3>
+          <p className="mt-1 text-sm text-[#8A8A8A]">
+            {auditsLeft} of {trial?.auditsLimit ?? 3} trial audits remaining.{" "}
+            {auditsLeft === 0 || daysLeft === 0
+              ? "Choose a plan below to keep using Crawler Que."
+              : "Choose a plan anytime to continue without interruption."}
+          </p>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-3">
+        {TRIAL_CONVERT_PLANS.map(plan => (
+          <div key={plan.name} className="rounded-xl border border-[#222] bg-[#0A0A0A] p-4">
+            <h4 className="text-base font-bold text-white">{plan.name}</h4>
+            <p className="mt-1 font-mono text-2xl font-bold text-white">
+              ${plan.price}<span className="text-xs text-[#8A8A8A]">/mo</span>
+            </p>
+            <p className="mt-1 text-xs text-[#8A8A8A]">{plan.audits} audits / month</p>
+            <button
+              onClick={() => choosePlan(plan.priceId, plan.name)}
+              disabled={loading === plan.name}
+              className="mt-4 w-full rounded-lg bg-[#C5FF3D] px-3 py-2 text-sm font-bold text-black hover:opacity-90 disabled:opacity-50"
+            >
+              {loading === plan.name ? "Switching…" : "Choose this plan"}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function PlanSwitcher({ currentUser }: { currentUser: any }) {
   const [loading, setLoading] = useState<string | null>(null);

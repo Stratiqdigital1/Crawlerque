@@ -33,6 +33,28 @@ async function main() {
   const adminEmail = "admin@stratiqdigital.com";
   const adminPassword = "Admin@12345";
 
+
+await upsertPackage({
+    name: "Trial",
+    priceMonthly: 0,
+    description:
+      "7-day free trial with full access to all audit modules. 3 audits included.",
+    monthlyAudits: 3,
+    allowPdf: true,
+    allowAi: true,
+    allowTraffic: true,
+    allowKeywords: true,
+    allowBacklinks: true,
+    allowLocalSeo: true,
+    allowWhiteLabel: false,
+    allowComparisonReports: false,
+    historyDays: 30,
+    seatLimit: 1,
+    prioritySupport: false,
+    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_TRIAL || null,
+    stripePriceIdAnnual: null,
+  });
+  
 await upsertPackage({
     name: "Starter",
     priceMonthly: 30,

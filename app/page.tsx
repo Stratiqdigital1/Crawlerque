@@ -25,6 +25,14 @@ const FOOTER_LINKS = [
 
 // Annual price = 10x monthly (2 months free). priceIdAnnual needs a
 // separate Stripe Price object created in your dashboard (see note below).
+// The single entry point for new users. Card required, 7-day trial,
+// 3 audits, full module access. After 7 days, the user picks a plan
+// from the dashboard's trial banner.
+const TRIAL_PLAN = {
+  name: "Trial",
+  priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_TRIAL || "",
+};
+
 const PLANS = [
   {
     name:    "Starter",
@@ -115,12 +123,11 @@ export default function HomePage() {
     finally { setLoading(false); }
   };
 
-const handleChoosePlan = async (plan: typeof PLANS[number]) => {
-    const priceId = billing === "annual" ? plan.priceIdAnnual : plan.priceId;
-    if (!priceId) { setCheckoutError("Plan not configured. Please contact support."); return; }
-    setCheckoutLoading(plan.name); setCheckoutError("");
+const handleStartTrial = async () => {
+    if (!TRIAL_PLAN.priceId) { setCheckoutError("Trial is not configured. Please contact support."); return; }
+    setCheckoutLoading("Trial"); setCheckoutError("");
     try {
-      const res  = await fetch("/api/stripe/checkout", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ priceId, packageName: plan.name, billingCycle: billing }) });
+      const res  = await fetch("/api/stripe/checkout", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ priceId: TRIAL_PLAN.priceId, packageName: TRIAL_PLAN.name }) });
       const json = await res.json();
       if (json.url) window.location.href = json.url;
       else setCheckoutError(json.error || "Failed to start checkout.");
@@ -485,6 +492,25 @@ backlinks, AI search visibility, and gives you a clear growth plan.
           <h2 className="mt-3  text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Website growth intelligence for every stage.</h2>
 <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">Choose the plan that matches how many websites you want to audit each month.</p>
 
+{/* Single entry point — trial */}
+          <div className="cq-card cq-frame mt-8 max-w-xl !rounded-none p-6">
+            <p className="cq-eyebrow cq-eyebrow--signal">Start here</p>
+            <h3 className="mt-2 text-xl font-bold">Try every plan's features free for 7 days</h3>
+            <p className="mt-2 text-[15px] leading-relaxed text-[var(--cq-text-2)]">
+              All 8 audit modules, 3 full audits included. Card required — after 7 days, pick the plan below that fits your workflow.
+            </p>
+            <button
+              onClick={handleStartTrial}
+              disabled={checkoutLoading === "Trial"}
+              className="cq-btn cq-btn--primary mt-5 w-full sm:w-auto sm:px-10"
+            >
+              {checkoutLoading === "Trial" ? "Redirecting…" : "Start 7-day free trial"}
+            </button>
+            <p className="mt-2 text-xs text-[var(--cq-text-3)]">
+              Cancel anytime during your trial — you won't be charged.
+            </p>
+          </div>
+
           {/* Monthly / Annual toggle */}
           <div className="mt-8 inline-flex items-center gap-1 rounded-full border border-[var(--cq-line)] bg-[var(--cq-surface)] p-1">
             {(["monthly","annual"] as const).map(cycle => (
@@ -555,17 +581,10 @@ backlinks, AI search visibility, and gives you a clear growth plan.
                     </div>
                   </div>
 
-                  <div className="mt-auto px-8 pb-8">
-<button
-                      onClick={() => handleChoosePlan(plan)}
-                      disabled={isLoading}
-                      className={`cq-btn w-full ${isFeatured ? "cq-btn--primary" : "cq-btn--ghost"}`}
-                    >
-                      {isLoading ? "Redirecting…" : "Start 7-day free trial"}
-                    </button>
-                    <p className="mt-2 text-center text-xs text-[var(--cq-text-3)]">
-                      Card required · 3 free audits during trial · Cancel anytime
-                    </p>
+<div className="mt-auto px-8 pb-8">
+                    <div className="rounded-lg border border-[var(--cq-line)] bg-[var(--cq-surface-2)] px-4 py-3 text-center text-sm text-[var(--cq-text-2)]">
+                      Available after your free trial
+                    </div>
                   </div>
                 </div>
               );

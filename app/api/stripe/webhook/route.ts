@@ -37,7 +37,7 @@ export async function POST(req: Request) {
         const pkg = await prisma.package.findFirst({ where: { name: packageName } });
         if (!pkg) break;
 
-        if (userId) {
+if (userId) {
           await prisma.user.update({
             where: { id: userId },
             data: {
@@ -46,8 +46,8 @@ export async function POST(req: Request) {
               stripeSubscriptionId:  subscription.id,
               stripePriceId:         subscription.items.data[0]?.price.id,
               stripeStatus:          subscription.status,
-              stripeCurrentPeriodEnd:    new Date((subscription as any).currentPeriodEnd * 1000),
-              stripeCancelAtPeriodEnd:   (subscription as any).cancelAtPeriodEnd,
+              stripeCurrentPeriodEnd:    new Date((subscription as any).current_period_end * 1000),
+              stripeCancelAtPeriodEnd:   (subscription as any).cancel_at_period_end,
               monthlyAudits:  pkg.monthlyAudits,
               allowPdf:       pkg.allowPdf,
               allowAi:        pkg.allowAi,
@@ -57,6 +57,7 @@ export async function POST(req: Request) {
               allowLocalSeo:  pkg.allowLocalSeo,
               allowWhiteLabel: pkg.allowWhiteLabel,
               auditsUsed:    0,
+              trialAuditsUsed: 0,
               auditsResetAt: new Date(),
             },
           });
@@ -67,6 +68,7 @@ export async function POST(req: Request) {
 case "customer.subscription.updated": {
         const sub = event.data.object as Stripe.Subscription;
         const newPriceId = sub.items.data[0]?.price.id;
+        const cancelAtPeriodEnd = (sub as any).cancel_at_period_end;
 
         // Map the new price back to a Package row, regardless of whether
         // it's the monthly or annual price for that plan.
@@ -81,14 +83,58 @@ case "customer.subscription.updated": {
             })
           : null;
 
+        // Find the current user to check what plan they're on right now.
+        const existingUser = await prisma.user.findFirst({
+          where: { stripeSubscriptionId: sub.id },
+          select: { packageName: true, stripeStatus: true },
+        });
+
+        const wasTrialing = existingUser?.packageName === "Trial";
+        const stillTrialing = sub.status === "trialing";
+
+        // Trial ended (status moved off "trialing") and the subscription
+        // wasn't converted to a different paid plan (still pointing at the
+        // Trial price) — OR the trial was cancelled before it ended.
+        // Either way: end access immediately, no charge.
+        const trialEndedWithoutUpgrade =
+          wasTrialing && !stillTrialing && (pkg?.name === "Trial" || cancelAtPeriodEnd);
+
+        if (trialEndedWithoutUpgrade) {
+          // Cancel the subscription outright (in case Stripe left it active
+          // on the $0/low Trial price) and lock the account down.
+          try {
+            await stripe.subscriptions.cancel(sub.id);
+          } catch (e) {
+            console.error("Failed to cancel expired trial subscription:", e);
+          }
+
+          await prisma.user.updateMany({
+            where: { stripeSubscriptionId: sub.id },
+            data: {
+              stripeStatus:    "canceled",
+              packageName:     "Trial",
+              monthlyAudits:   0,
+              trialAuditsUsed: 3,
+              allowPdf:        false,
+              allowAi:         false,
+              allowTraffic:    false,
+              allowKeywords:   false,
+              allowBacklinks:  false,
+              allowLocalSeo:   false,
+              allowWhiteLabel: false,
+            },
+          });
+          break;
+        }
+
         await prisma.user.updateMany({
           where: { stripeSubscriptionId: sub.id },
           data: {
             stripeStatus:              sub.status,
             stripePriceId:             newPriceId,
-            stripeCurrentPeriodEnd:    new Date((sub as any).currentPeriodEnd * 1000),
-            stripeCancelAtPeriodEnd:   (sub as any).cancelAtPeriodEnd,
-            ...(pkg && {
+            stripeCurrentPeriodEnd:    new Date((sub as any).current_period_end * 1000),
+            stripeCancelAtPeriodEnd:   cancelAtPeriodEnd,
+            ...(pkg && pkg.name !== "Trial" && {
               packageId:       pkg.id,
               packageName:     pkg.name,
               monthlyAudits:   pkg.monthlyAudits,
@@ -99,6 +145,9 @@ case "customer.subscription.updated": {
               allowBacklinks:  pkg.allowBacklinks,
               allowLocalSeo:   pkg.allowLocalSeo,
               allowWhiteLabel: pkg.allowWhiteLabel,
+              trialAuditsUsed: 0,
+              auditsUsed:      0,
+              auditsResetAt:   new Date(),
             }),
           },
         });

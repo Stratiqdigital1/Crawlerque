@@ -40,6 +40,10 @@ brandColor: true,
 pdfFooterText: true,
 whiteLabelEnabled: true,
 packageId: true,
+stripeStatus: true,
+stripeCurrentPeriodEnd: true,
+stripeCancelAtPeriodEnd: true,
+trialAuditsUsed: true,
 package: {
   select: {
     id: true,
@@ -93,12 +97,33 @@ const usagePercent =
       ? Math.min(100, Math.round((auditsUsed / monthlyLimit) * 100))
       : 0;
 
+const isTrialing = user.stripeStatus === "trialing";
+const isExpiredTrial = user.packageName === "Trial" && user.stripeStatus === "canceled";
+const TRIAL_AUDIT_LIMIT = 3;
+
+const trialInfo = (isTrialing || isExpiredTrial) ? {
+  isTrialing: true,
+  expired: isExpiredTrial,
+  auditsUsed: user.trialAuditsUsed || 0,
+  auditsLimit: TRIAL_AUDIT_LIMIT,
+  auditsRemaining: Math.max(0, TRIAL_AUDIT_LIMIT - (user.trialAuditsUsed || 0)),
+  trialEndsAt: user.stripeCurrentPeriodEnd,
+  daysRemaining: isExpiredTrial
+    ? 0
+    : user.stripeCurrentPeriodEnd
+      ? Math.max(0, Math.ceil((new Date(user.stripeCurrentPeriodEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+      : 0,
+} : { isTrialing: false };
+
 return NextResponse.json({
       success: true,
 user: {
   ...user,
-  auditsRemaining,
-  usagePercent,
+  auditsRemaining: isTrialing ? trialInfo.auditsRemaining : auditsRemaining,
+  usagePercent: isTrialing
+    ? Math.min(100, Math.round(((user.trialAuditsUsed || 0) / TRIAL_AUDIT_LIMIT) * 100))
+    : usagePercent,
+  trial: trialInfo,
   canUseWhiteLabel,
   whiteLabelEnabled: canUseWhiteLabel && user.whiteLabelEnabled,
   agencyName: canUseWhiteLabel ? user.agencyName : null,
