@@ -1,7 +1,7 @@
 // @ts-nocheck
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SiteFooter } from "@/components/site-shell";
 import Image from "next/image";
 
@@ -65,15 +65,32 @@ const MODULES = [
   { tag:"LINKS",   name:"Backlink Authority",   desc:"Backlink profile, referring domains, and authority gap signals with trust scoring.",                  pills:["Backlinks","Trust"] },
 ];
 
+// Add a new line here whenever you drop a new screenshot into
+// public/screenshots/ — that's the only manual step.
 const SCREENSHOTS = [
-  { key:"overview",        label:"Overview",        src:"/screenshots/dashboard-overview.png",        caption:"Every score, issue, and opportunity for a domain — on one screen." },
-  { key:"ai",              label:"AI Visibility",   src:"/screenshots/dashboard-ai-visibility.png",   caption:"See whether AI assistants like ChatGPT and Gemini actually mention the audited brand." },
-  { key:"recommendations", label:"Recommendations", src:"/screenshots/dashboard-recommendations.png", caption:"AI-generated action cards with owner, timeline, and impact, ready for execution." },
+  { src: "/screenshots/dashboard-1.png", caption: "Every score, issue, and opportunity for a domain — on one screen." },
+  { src: "/screenshots/dashboard-2.png", caption: "See whether AI assistants like ChatGPT and Perplexity actually mention your client's brand." },
+  { src: "/screenshots/dashboard-3.png", caption: "Full technical audit — Core Web Vitals, crawl results, and on-page issues for every page." },
+  { src: "/screenshots/dashboard-4.png", caption: "AI-generated action cards with owner, timeline, and impact — ready for the client PDF." },
+  // { src: "/screenshots/dashboard-5.png", caption: "..." },  ← naya screenshot yahan add karo
 ];
+
+const SLIDE_DURATION = 4500; // ms — har slide kitni der dikhega
 
 export default function HomePage() {
   const [url,             setUrl]             = useState("");
-  const [activeShot,      setActiveShot]      = useState(SCREENSHOTS[0]);
+  const [activeIndex,     setActiveIndex]     = useState(0);
+  const [paused,          setPaused]          = useState(false);
+  const activeShot = SCREENSHOTS[activeIndex];
+
+  // Auto-advance, pauses on hover/touch
+  useEffect(() => {
+    if (paused || SCREENSHOTS.length <= 1) return;
+    const t = setInterval(() => {
+      setActiveIndex(i => (i + 1) % SCREENSHOTS.length);
+    }, SLIDE_DURATION);
+    return () => clearInterval(t);
+  }, [paused]);
   const [result,          setResult]          = useState(null);
   const [loading,         setLoading]         = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(null);
@@ -350,41 +367,52 @@ backlinks, AI search visibility, and gives you a clear growth plan.
           <h2 className="mt-3  text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">See exactly what your website audit includes.</h2>
           <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">A real look at the dashboard — no mockups. Click through the views.</p>
 
-          {/* Tab switcher */}
-          <div className="mt-10 flex flex-wrap gap-2">
-            {SCREENSHOTS.map(shot => (
-              <button
-                key={shot.key}
-                onClick={() => setActiveShot(shot)}
-                className={`border px-4 py-2 font-mono text-sm transition-colors ${
-                  activeShot.key === shot.key
-                    ? "border-[var(--cq-signal)] bg-[var(--cq-signal)]/10 text-[var(--cq-signal)]"
-                    : "border-[var(--cq-line)] text-[var(--cq-text-2)] hover:border-[var(--cq-text-3)] hover:text-[var(--cq-text)]"
-                }`}
-              >
-                {shot.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Framed screenshot — same browser chrome as the hero console */}
-          <div className="cq-card cq-frame mt-6 overflow-hidden !rounded-none">
+{/* Auto-rotating screenshot slideshow */}
+          <div
+            className="cq-card cq-frame mt-10 overflow-hidden !rounded-none"
+            onMouseEnter={() => setPaused(true)}
+            onMouseLeave={() => setPaused(false)}
+          >
             <div className="flex items-center justify-between border-b border-[var(--cq-line)] bg-[var(--cq-surface-2)] px-5 py-3">
               <span className="font-mono text-xs text-[var(--cq-text-3)]">crawlerque.com/dashboard</span>
-              <span className="font-mono text-xs text-[var(--cq-signal)]">{activeShot.label}</span>
+              <span className="font-mono text-xs text-[var(--cq-signal)]">
+                {activeIndex + 1} / {SCREENSHOTS.length}
+              </span>
             </div>
+
             <div className="relative aspect-[16/9] w-full bg-[var(--cq-ink)]">
-              <Image
-                src={activeShot.src}
-                alt={`Crawler Que dashboard — ${activeShot.label}`}
-                fill
-                sizes="(max-width: 1280px) 100vw, 1216px"
-                className="object-contain object-top"
-                priority={activeShot.key === "overview"}
-              />
+              {SCREENSHOTS.map((shot, i) => (
+                <Image
+                  key={shot.src}
+                  src={shot.src}
+                  alt={`Crawler Que dashboard screenshot ${i + 1}`}
+                  fill
+                  sizes="(max-width: 1280px) 100vw, 1216px"
+                  className={`object-cover object-top transition-opacity duration-700 ${
+                    i === activeIndex ? "opacity-100" : "opacity-0"
+                  }`}
+                  priority={i === 0}
+                />
+              ))}
             </div>
+
             <div className="cq-scanline" />
-            <p className="px-5 py-4 text-[15px] text-[var(--cq-text-2)]">{activeShot.caption}</p>
+
+            <div className="flex items-center justify-between px-5 py-4">
+              <p className="text-[15px] text-[var(--cq-text-2)]">{activeShot.caption}</p>
+              <div className="flex shrink-0 gap-1.5">
+                {SCREENSHOTS.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveIndex(i)}
+                    aria-label={`Go to slide ${i + 1}`}
+                    className={`h-1.5 rounded-full transition-all ${
+                      i === activeIndex ? "w-6 bg-[var(--cq-signal)]" : "w-1.5 bg-[var(--cq-line)] hover:bg-[var(--cq-text-3)]"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
