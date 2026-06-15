@@ -28,10 +28,40 @@ export async function sendEmail({
     },
   });
 
-  await transporter.sendMail({
+await transporter.sendMail({
     from: process.env.SMTP_FROM,
     to,
     subject,
     html,
+  });
+}
+
+export async function sendPasswordResetEmail(to: string, resetLink: string) {
+  await sendEmail({
+    to,
+    subject: "Reset your Crawler Que password",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+        <h2 style="color: #0B1929;">Reset your password</h2>
+        <p style="color: #444; font-size: 15px; line-height: 1.6;">
+          We received a request to reset the password for your Crawler Que account.
+          Click the button below to choose a new password. This link expires in 1 hour.
+        </p>
+        <a href="${resetLink}"
+           style="display: inline-block; margin: 20px 0; padding: 12px 24px;
+                  background-color: #00D4AA; color: #071526; font-weight: bold;
+                  text-decoration: none; border-radius: 8px;">
+          Reset Password
+        </a>
+        <p style="color: #888; font-size: 13px; line-height: 1.6;">
+          If you didn't request this, you can safely ignore this email — your
+          password will not be changed.
+        </p>
+        <p style="color: #888; font-size: 13px;">
+          Or copy this link: <br />
+          <span style="word-break: break-all;">${resetLink}</span>
+        </p>
+      </div>
+    `,
   });
 }
