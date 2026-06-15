@@ -23,35 +23,40 @@ const FOOTER_LINKS = [
   ["/return-policy",        "Return Policy"],
 ];
 
+// Annual price = 10x monthly (2 months free). priceIdAnnual needs a
+// separate Stripe Price object created in your dashboard (see note below).
 const PLANS = [
   {
     name:    "Starter",
-    price:   "$49",
-    period:  "/mo",
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER || "",
-desc:    "For individuals and small teams auditing websites.",
-features:["10 full website audits / month","SEO, technical, traffic, AI, keyword, competitor and backlink insights","Crawler Que branded report export","30-day report history","1 user seat"],
-usage:   "Best for checking your own website or a small number of websites each month.",
+    priceMonthly: 30,
+    priceAnnual:  300, // 10 x 30
+    priceId:        process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER || "",
+    priceIdAnnual:  process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER_ANNUAL || "",
+    desc:    "For freelancers auditing client sites.",
+    features:["7 full audits / month","All 8 audit modules","Branded PDF export","30-day report history","1 user seat"],
+    usage:   "Perfect for freelancers with up to 3-4 regular clients.",
     badge:   null,
   },
   {
     name:    "Agency",
-    price:   "$99",
-    period:  "/mo",
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_AGENCY || "",
-desc:    "For growing teams that need deeper reporting and more audit volume.",
-features:["40 full website audits / month","White-label report export","Comparison reports","90-day report history","3 user seats"],
-usage:   "Best for teams managing multiple websites, recurring audits, or client reporting.",
+    priceMonthly: 99,
+    priceAnnual:  990, // 10 x 99
+    priceId:        process.env.NEXT_PUBLIC_STRIPE_PRICE_AGENCY || "",
+    priceIdAnnual:  process.env.NEXT_PUBLIC_STRIPE_PRICE_AGENCY_ANNUAL || "",
+    desc:    "For agencies producing client deliverables.",
+    features:["40 full audits / month","White-label PDF reports","Comparison reports","90-day report history","3 user seats"],
+    usage:   "40 audits covers 20+ recurring client reports monthly. Every PDF carries your brand.",
     badge:   "Most Popular",
   },
   {
     name:    "Enterprise",
-    price:   "$299",
-    period:  "/mo",
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE || "",
-desc:    "For high-volume teams managing many websites.",
-features:["150 full website audits / month","White-label report export","Priority support","Unlimited report history","10 user seats"],
-usage:   "Best for larger teams that need frequent audits, long-term history, and priority support.",
+    priceMonthly: 299,
+    priceAnnual:  2990, // 10 x 299
+    priceId:        process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE || "",
+    priceIdAnnual:  process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE_ANNUAL || "",
+    desc:    "For high-volume agencies and consultancies.",
+    features:["150 full audits / month","White-label PDF reports","Priority support","Unlimited report history","10 user seats"],
+    usage:   "Scale to 50+ clients with 150 audits per month and dedicated priority support.",
     badge:   null,
   },
 ];
@@ -81,6 +86,7 @@ export default function HomePage() {
   const [url,             setUrl]             = useState("");
   const [activeIndex,     setActiveIndex]     = useState(0);
   const [paused,          setPaused]          = useState(false);
+  const [billing,         setBilling]         = useState<"monthly"|"annual">("monthly");
   const activeShot = SCREENSHOTS[activeIndex];
 
   // Auto-advance, pauses on hover/touch
@@ -109,11 +115,12 @@ export default function HomePage() {
     finally { setLoading(false); }
   };
 
-  const handleChoosePlan = async (priceId, planName) => {
+const handleChoosePlan = async (plan: typeof PLANS[number]) => {
+    const priceId = billing === "annual" ? plan.priceIdAnnual : plan.priceId;
     if (!priceId) { setCheckoutError("Plan not configured. Please contact support."); return; }
-    setCheckoutLoading(planName); setCheckoutError("");
+    setCheckoutLoading(plan.name); setCheckoutError("");
     try {
-      const res  = await fetch("/api/stripe/checkout", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ priceId, packageName: planName }) });
+      const res  = await fetch("/api/stripe/checkout", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ priceId, packageName: plan.name, billingCycle: billing }) });
       const json = await res.json();
       if (json.url) window.location.href = json.url;
       else setCheckoutError(json.error || "Failed to start checkout.");
@@ -380,7 +387,7 @@ backlinks, AI search visibility, and gives you a clear growth plan.
               </span>
             </div>
 
-            <div className="relative aspect-[16/9] w-full bg-[var(--cq-ink)]">
+<div className="relative aspect-[16/10] w-full bg-[var(--cq-surface)]">
               {SCREENSHOTS.map((shot, i) => (
                 <Image
                   key={shot.src}
@@ -388,7 +395,7 @@ backlinks, AI search visibility, and gives you a clear growth plan.
                   alt={`Crawler Que dashboard screenshot ${i + 1}`}
                   fill
                   sizes="(max-width: 1280px) 100vw, 1216px"
-                  className={`object-cover object-top transition-opacity duration-700 ${
+                  className={`object-contain transition-opacity duration-700 ${
                     i === activeIndex ? "opacity-100" : "opacity-0"
                   }`}
                   priority={i === 0}
@@ -476,7 +483,27 @@ backlinks, AI search visibility, and gives you a clear growth plan.
         <div className="mx-auto max-w-7xl">
           <p className="cq-eyebrow cq-eyebrow--signal">Pricing</p>
           <h2 className="mt-3  text-[clamp(1.8rem,4vw,2.8rem)] font-bold leading-tight">Website growth intelligence for every stage.</h2>
-          <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">Choose the plan that matches how many websites you want to audit each month.</p>
+<p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[var(--cq-text-2)]">Choose the plan that matches how many websites you want to audit each month.</p>
+
+          {/* Monthly / Annual toggle */}
+          <div className="mt-8 inline-flex items-center gap-1 rounded-full border border-[var(--cq-line)] bg-[var(--cq-surface)] p-1">
+            {(["monthly","annual"] as const).map(cycle => (
+              <button
+                key={cycle}
+                onClick={() => setBilling(cycle)}
+                className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors ${
+                  billing === cycle
+                    ? "bg-[var(--cq-signal)] text-[var(--cq-on-signal)]"
+                    : "text-[var(--cq-text-2)] hover:text-[var(--cq-text)]"
+                }`}
+              >
+                {cycle === "monthly" ? "Monthly" : "Annual"}
+                {cycle === "annual" && (
+                  <span className="ml-2 rounded-full bg-[var(--cq-on-signal)]/15 px-2 py-0.5 text-xs">2 months free</span>
+                )}
+              </button>
+            ))}
+          </div>
 
           {checkoutError && (
             <div className="mt-6 rounded-lg border border-[var(--cq-danger)]/30 bg-[var(--cq-danger)]/10 px-5 py-4 text-[15px] text-[var(--cq-danger)]">{checkoutError}</div>
@@ -501,12 +528,17 @@ backlinks, AI search visibility, and gives you a clear growth plan.
                     <h3 className="text-xl font-bold">{plan.name}</h3>
                     <p className="mt-1.5 text-[15px] text-[var(--cq-text-2)]">{plan.desc}</p>
 
-                    <div className="mt-6 flex items-end gap-1.5">
+<div className="mt-6 flex items-end gap-1.5">
                       <span className={`font-mono text-5xl font-bold leading-none ${isFeatured ? "text-[var(--cq-signal)]" : "text-[var(--cq-text)]"}`}>
-                        {plan.price}
+                        ${billing === "annual" ? Math.round(plan.priceAnnual / 12) : plan.priceMonthly}
                       </span>
-                      <span className="mb-1 font-mono text-sm text-[var(--cq-text-3)]">{plan.period}</span>
+                      <span className="mb-1 font-mono text-sm text-[var(--cq-text-3)]">/mo</span>
                     </div>
+                    {billing === "annual" && (
+                      <p className="mt-1 font-mono text-xs text-[var(--cq-text-3)]">
+                        Billed ${plan.priceAnnual}/year — 2 months free
+                      </p>
+                    )}
 
                     <ul className="mt-7 space-y-3">
                       {plan.features.map(f => (
@@ -524,13 +556,16 @@ backlinks, AI search visibility, and gives you a clear growth plan.
                   </div>
 
                   <div className="mt-auto px-8 pb-8">
-                    <button
-                      onClick={() => handleChoosePlan(plan.priceId, plan.name)}
+<button
+                      onClick={() => handleChoosePlan(plan)}
                       disabled={isLoading}
                       className={`cq-btn w-full ${isFeatured ? "cq-btn--primary" : "cq-btn--ghost"}`}
                     >
-                      {isLoading ? "Redirecting…" : `Start with ${plan.name}`}
+                      {isLoading ? "Redirecting…" : "Start 7-day free trial"}
                     </button>
+                    <p className="mt-2 text-center text-xs text-[var(--cq-text-3)]">
+                      Card required · 3 free audits during trial · Cancel anytime
+                    </p>
                   </div>
                 </div>
               );

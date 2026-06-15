@@ -19,6 +19,8 @@ async function upsertPackage(data: {
   historyDays: number;
   seatLimit: number;
   prioritySupport: boolean;
+  stripePriceId?: string | null;
+  stripePriceIdAnnual?: string | null;
 }) {
   return prisma.package.upsert({
     where: { name: data.name },
@@ -31,12 +33,12 @@ async function main() {
   const adminEmail = "admin@stratiqdigital.com";
   const adminPassword = "Admin@12345";
 
-  await upsertPackage({
+await upsertPackage({
     name: "Starter",
-    priceMonthly: 49,
+    priceMonthly: 30,
     description:
       "Starter plan for basic SEO and technical audits with Crawler Que branding.",
-    monthlyAudits: 10,
+    monthlyAudits: 7,
     allowPdf: true,
 allowAi: true,
 allowTraffic: true,
@@ -48,6 +50,8 @@ allowComparisonReports: false,
     historyDays: 30,
     seatLimit: 1,
     prioritySupport: false,
+    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER || null,
+    stripePriceIdAnnual: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER_ANNUAL || null,
   });
 
   const agencyPackage = await upsertPackage({
@@ -67,6 +71,8 @@ allowComparisonReports: false,
     historyDays: 90,
     seatLimit: 3,
     prioritySupport: false,
+    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_AGENCY || null,
+    stripePriceIdAnnual: process.env.NEXT_PUBLIC_STRIPE_PRICE_AGENCY_ANNUAL || null,
   });
 
   await upsertPackage({
@@ -86,6 +92,8 @@ allowComparisonReports: false,
     historyDays: 3650,
     seatLimit: 10,
     prioritySupport: true,
+    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE || null,
+    stripePriceIdAnnual: process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE_ANNUAL || null,
   });
 
   const existingAdmin = await prisma.user.findUnique({

@@ -64,14 +64,42 @@ export async function POST(req: Request) {
         break;
       }
 
-      case "customer.subscription.updated": {
+case "customer.subscription.updated": {
         const sub = event.data.object as Stripe.Subscription;
+        const newPriceId = sub.items.data[0]?.price.id;
+
+        // Map the new price back to a Package row, regardless of whether
+        // it's the monthly or annual price for that plan.
+        const pkg = newPriceId
+          ? await prisma.package.findFirst({
+              where: {
+                OR: [
+                  { stripePriceId: newPriceId },
+                  { stripePriceIdAnnual: newPriceId },
+                ],
+              },
+            })
+          : null;
+
         await prisma.user.updateMany({
           where: { stripeSubscriptionId: sub.id },
           data: {
             stripeStatus:              sub.status,
+            stripePriceId:             newPriceId,
             stripeCurrentPeriodEnd:    new Date((sub as any).currentPeriodEnd * 1000),
             stripeCancelAtPeriodEnd:   (sub as any).cancelAtPeriodEnd,
+            ...(pkg && {
+              packageId:       pkg.id,
+              packageName:     pkg.name,
+              monthlyAudits:   pkg.monthlyAudits,
+              allowPdf:        pkg.allowPdf,
+              allowAi:         pkg.allowAi,
+              allowTraffic:    pkg.allowTraffic,
+              allowKeywords:   pkg.allowKeywords,
+              allowBacklinks:  pkg.allowBacklinks,
+              allowLocalSeo:   pkg.allowLocalSeo,
+              allowWhiteLabel: pkg.allowWhiteLabel,
+            }),
           },
         });
         break;

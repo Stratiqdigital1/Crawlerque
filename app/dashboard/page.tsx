@@ -2177,13 +2177,7 @@ disabled={!data}
         </button>
       </div>
 
-      <div className="rounded-2xl border border-[#222] bg-[#111] p-5 text-sm text-[#8A8A8A]">
-        Need to change plans?{" "}
-        <a href="/#pricing" className="text-[#C5FF3D] underline">
-          View all plans on the homepage
-        </a>{" "}
-        and choose a new plan. Your subscription will be updated immediately through the billing portal.
-      </div>
+      <PlanSwitcher currentUser={currentUser} />
     </div>
   </Section>
 )}
@@ -4554,6 +4548,96 @@ function AccountSettingsTab({ currentUser }: { currentUser: any }) {
         </p>
       </div>
     </Section>
+  );
+}
+
+const ALL_PLANS = [
+  { name: "Starter",    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER!,    price: 30,  audits: 7 },
+  { name: "Agency",     priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_AGENCY!,     price: 99,  audits: 40 },
+  { name: "Enterprise", priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE!, price: 299, audits: 150 },
+];
+
+function PlanSwitcher({ currentUser }: { currentUser: any }) {
+  const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState("");
+
+  const currentPrice = ALL_PLANS.find(p => p.name === currentUser?.package?.name)?.price || 0;
+
+  const changePlan = async (priceId: string, planName: string) => {
+    if (planName === currentUser?.package?.name) return;
+    const action = ALL_PLANS.find(p => p.name === planName)!.price > currentPrice ? "upgrade" : "downgrade";
+    if (!confirm(`${action === "upgrade" ? "Upgrade" : "Downgrade"} to the ${planName} plan? Billing will be adjusted automatically.`)) return;
+
+    setLoading(planName);
+    setError("");
+    try {
+      const res = await fetch("/api/stripe/change-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceId }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || "Failed to change plan");
+      window.location.reload();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-[#222] bg-[#111] p-6">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[#8A8A8A]">
+        Change Plan
+      </p>
+      <p className="mt-2 text-sm text-[#ccc]">
+        Switch plans instantly. Upgrades apply immediately with prorated billing; downgrades take effect at your next billing date.
+      </p>
+
+      {error && (
+        <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-3">
+        {ALL_PLANS.map(plan => {
+          const isCurrent = plan.name === currentUser?.package?.name;
+          const action = plan.price > currentPrice ? "Upgrade" : plan.price < currentPrice ? "Downgrade" : "Current";
+          return (
+            <div
+              key={plan.name}
+              className={`rounded-xl border p-4 ${
+                isCurrent ? "border-[#C5FF3D]/40 bg-[#C5FF3D]/5" : "border-[#222] bg-[#0A0A0A]"
+              }`}
+            >
+              {isCurrent && (
+                <span className="mb-2 inline-block rounded-full bg-[#C5FF3D] px-2.5 py-0.5 text-xs font-bold text-black">
+                  Current
+                </span>
+              )}
+              <h4 className="text-base font-bold text-white">{plan.name}</h4>
+              <p className="mt-1 font-mono text-2xl font-bold text-white">
+                ${plan.price}<span className="text-xs text-[#8A8A8A]">/mo</span>
+              </p>
+              <p className="mt-1 text-xs text-[#8A8A8A]">{plan.audits} audits / month</p>
+              <button
+                onClick={() => changePlan(plan.priceId, plan.name)}
+                disabled={isCurrent || loading === plan.name}
+                className={`mt-4 w-full rounded-lg px-3 py-2 text-sm font-bold transition ${
+                  isCurrent
+                    ? "cursor-default bg-[#222] text-[#8A8A8A]"
+                    : "bg-[#C5FF3D] text-black hover:opacity-90"
+                }`}
+              >
+                {loading === plan.name ? "Updating…" : isCurrent ? "Current Plan" : `${action} →`}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

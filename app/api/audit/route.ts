@@ -1498,15 +1498,14 @@ await updateAuditJob(auditJob.id, {
     }
     }
 
-    if (user && !isFreeAudit && user.role !== "admin") {
+if (user && !isFreeAudit && user.role !== "admin") {
   try {
     await prisma.user.update({
       where: { id: user.id },
-      data: {
-        auditsUsed: {
-          increment: 1,
-        },
-      },
+      data:
+        user.stripeStatus === "trialing"
+          ? { trialAuditsUsed: { increment: 1 } }
+          : { auditsUsed: { increment: 1 } },
     });
   } catch (error) {
     console.error("Audit usage increment failed:", error);

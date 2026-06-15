@@ -23,14 +23,18 @@ export async function POST(req: Request) {
 
     const origin = new URL(req.url).origin;
 
-    const checkoutParams: Stripe.Checkout.SessionCreateParams = {
+const checkoutParams: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${origin}/signup?session_id={CHECKOUT_SESSION_ID}&plan=${encodeURIComponent(packageName)}`,
       cancel_url: `${origin}/#pricing`,
       metadata: { packageName },
-      subscription_data: { metadata: { packageName } },
+      subscription_data: {
+        metadata: { packageName },
+        trial_period_days: 7,
+      },
+      payment_method_collection: "always",
       billing_address_collection: "auto",
     };
 

@@ -33,7 +33,8 @@ model Package {
   historyDays     Int     @default(30)
   seatLimit       Int     @default(1)
   prioritySupport Boolean @default(false)
-  stripePriceId   String?
+  stripePriceId            String?
+  stripePriceIdAnnual      String?
   stripeProductId String?
 
   createdAt DateTime @default(now())
@@ -70,11 +71,13 @@ model User {
 
   stripeCustomerId       String?   @unique
   stripeSubscriptionId   String?   @unique
-  stripePriceId          String?
+  stripePriceId            String?
+  stripePriceIdAnnual      String?
   stripeStatus           String?   @default("inactive")
   stripeCurrentPeriodEnd DateTime?
   stripeCancelAtPeriodEnd Boolean  @default(false)
-  trialEndsAt            DateTime?
+  trialEndsAt              DateTime?
+  trialAuditsUsed          Int       @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
