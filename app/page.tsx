@@ -135,6 +135,21 @@ const handleStartTrial = async () => {
     finally { setCheckoutLoading(null); }
   };
 
+  // Direct plan purchase — no trial, straight to checkout for the chosen
+  // plan. Available to anyone, anytime, regardless of trial history.
+  const handleChoosePlan = async (plan: typeof PLANS[number]) => {
+    const priceId = billing === "annual" ? plan.priceIdAnnual : plan.priceId;
+    if (!priceId) { setCheckoutError("Plan not configured. Please contact support."); return; }
+    setCheckoutLoading(plan.name); setCheckoutError("");
+    try {
+      const res  = await fetch("/api/stripe/checkout", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ priceId, packageName: plan.name }) });
+      const json = await res.json();
+      if (json.url) window.location.href = json.url;
+      else setCheckoutError(json.error || "Failed to start checkout.");
+    } catch { setCheckoutError("Something went wrong. Please try again."); }
+    finally { setCheckoutLoading(null); }
+  };
+
   return (
     <div className="min-h-screen bg-[var(--cq-ink)] text-[var(--cq-text)] antialiased">
 
@@ -582,9 +597,13 @@ backlinks, AI search visibility, and gives you a clear growth plan.
                   </div>
 
 <div className="mt-auto px-8 pb-8">
-                    <div className="rounded-lg border border-[var(--cq-line)] bg-[var(--cq-surface-2)] px-4 py-3 text-center text-sm text-[var(--cq-text-2)]">
-                      Available after your free trial
-                    </div>
+                    <button
+                      onClick={() => handleChoosePlan(plan)}
+                      disabled={isLoading}
+                      className={`cq-btn w-full ${isFeatured ? "cq-btn--primary" : "cq-btn--ghost"}`}
+                    >
+                      {isLoading ? "Redirecting…" : `Start with ${plan.name}`}
+                    </button>
                   </div>
                 </div>
               );

@@ -32,10 +32,12 @@ const checkoutParams: Stripe.Checkout.SessionCreateParams = {
   metadata: { packageName },
   subscription_data: {
     metadata: { packageName },
-    trial_period_days: 7,
-    // If the trial isn't converted to a paid plan by the time it ends,
-    // Stripe cancels the subscription automatically — no charge occurs.
+    // Only the "Trial" package gets a free trial period. Direct plan
+    // purchases (Starter/Agency/Enterprise) are charged immediately.
     ...(packageName === "Trial" && {
+      trial_period_days: 7,
+      // If the trial isn't converted to a paid plan by the time it ends,
+      // Stripe cancels the subscription automatically — no charge occurs.
       trial_settings: {
         end_behavior: { missing_payment_method: "cancel" },
       },
