@@ -25,9 +25,6 @@ export const metadata: Metadata = {
   title: "Crawler Que — AI Website Growth Intelligence",
   description:
     "Run modular SEO, AI visibility, traffic, and competitor audits. Export white-label PDF growth plans your clients actually read.",
-  verification: {
-    google: "abc123xyz...", // ← GSC se mila hua poora verification code yahan daalo
-  },
 };
 
 export default function RootLayout({

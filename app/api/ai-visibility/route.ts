@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import { queryAllModels } from "./query/route";
+import { discoverPrompts } from "./prompts/route";
+import { parseResponse, type ParsedResponse } from "@/lib/ai-visibility-parser";
+import { calculateAIVisibilityScore } from "@/lib/ai-visibility-score";
 
 function normalizeDomain(url: string) {
   try {
@@ -140,8 +144,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const url = body?.url;
+const body = await req.json();
+    const url = body?.url || body?.domain;
 
     if (!url) {
       return NextResponse.json(
@@ -151,7 +155,7 @@ export async function POST(req: Request) {
     }
 
     const domain = normalizeDomain(url);
-    const brandName = body?.brandName?.trim() || cleanBrandName(domain);
+    const brandName = cleanBrandName(body?.brandName?.trim() || domain);
     const industry = body?.industry?.trim() || detectIndustry(domain, brandName);
 
     const prompts = [
@@ -263,8 +267,58 @@ export async function POST(req: Request) {
         ? `${brandName} has moderate AI visibility for ${industry}. The brand appears sometimes, but competitors still have stronger recognition.`
         : `${brandName} has strong AI visibility for ${industry}. The next priority is improving how positively and prominently the brand is positioned.`;
 
+// 🆕 LIVE MULTI-MODEL ANALYSIS (ChatGPT + Claude + Gemini) — natural buyer questions
+    let aiSearchVisibility: any = null;
+    try {
+      const incomingCompetitors: string[] = Array.isArray(body?.competitors) ? body.competitors : [];
+      const nlPrompts = (await discoverPrompts(domain, industry, incomingCompetitors)).slice(0, 10);
+
+      const perPrompt = await Promise.all(
+        nlPrompts.map(async (prompt) => ({
+          prompt,
+          modelResults: await queryAllModels(prompt),
+        }))
+      );
+
+      const parsed: ParsedResponse[] = [];
+      const promptResults: any[] = [];
+      for (const { prompt, modelResults } of perPrompt) {
+        const row: any = { prompt, models: {}, avgPosition: null };
+        const positions: number[] = [];
+        for (const mr of modelResults) {
+          const p = parseResponse(mr.response, prompt, mr.model, brandName, incomingCompetitors);
+          parsed.push(p);
+          row.models[mr.model] = { mentioned: p.brandMentioned, position: p.brandPosition, error: mr.error };
+          if (p.brandMentioned && p.brandPosition) positions.push(p.brandPosition);
+        }
+        row.avgPosition = positions.length
+          ? Number((positions.reduce((a, b) => a + b, 0) / positions.length).toFixed(1))
+          : null;
+        promptResults.push(row);
+      }
+
+      const score = calculateAIVisibilityScore(parsed);
+      const modelsCalled = Array.from(new Set(
+        perPrompt.flatMap((pp) => pp.modelResults.filter((m) => m.response).map((m) => m.model))
+      ));
+
+      aiSearchVisibility = {
+        ...score,
+        promptResults,
+        totalPrompts: nlPrompts.length,
+        modelsCalled,
+        brand: brandName,
+        industry,
+        source: "Live AI Models (ChatGPT, Claude, Gemini)",
+      };
+    } catch (err) {
+      console.error("Multi-model AI visibility failed:", err);
+      aiSearchVisibility = null;
+    }
+
     return NextResponse.json({
       success: true,
+      aiSearchVisibility,
       aiVisibility: {
         brandName,
         domain,

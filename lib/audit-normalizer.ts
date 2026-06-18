@@ -13,7 +13,8 @@ export function normalizeAuditData(report: any) {
     toNumber(report?.performance?.desktopScore) ||
     toNumber(report?.coreWebVitals?.desktopScore);
 
-  const aiScore =
+const aiScore =
+    toNumber(report?.aiSearchVisibility?.overallScore) ||
     toNumber(report?.aiVisibility?.score) ||
     toNumber(report?.aiOptimization?.visibilityScore);
 

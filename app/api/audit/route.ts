@@ -644,6 +644,7 @@ await updateAuditJob(auditJob.id, {
 
 let dataforseo: any = null;
 let aiOptimization: any = null;
+let aiSearchVisibility: any = null;
 let serpData: any = null;
 let onPage: any = null;
 let keywordResearch: any = null;
@@ -776,8 +777,30 @@ try {
         cache: "no-store",
       });
 
-      const aiJson = await aiRes.json();
+const aiJson = await aiRes.json();
       aiOptimization = aiJson?.aiOptimization || null;
+
+      // 🆕 LIVE AI MODELS — ChatGPT, Claude, Gemini (30s timeout; audit ko block nahi karta)
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 30000);
+        const realRes = await fetch(`${origin}/api/ai-visibility`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            domain,
+            brandName: domain,
+            industry: cleanSeedKeyword || title || description || domain,
+            competitors: (dataforseo?.competitors || []).map((c: any) => c.domain),
+          }),
+          signal: ctrl.signal,
+          cache: "no-store",
+        });
+        clearTimeout(t);
+        aiSearchVisibility = (await realRes.json())?.aiSearchVisibility || null;
+      } catch {
+        aiSearchVisibility = null;
+      }
     } catch (error) {
   console.error("AI Optimization inside audit failed:", error);
 
@@ -1333,9 +1356,16 @@ moduleStatus = {
         : "partial"
       : "skipped",
 
-  aiOptimization:
+aiOptimization:
     runAI
       ? aiOptimization
+        ? "completed"
+        : "failed"
+      : "skipped",
+
+  aiSearchVisibility:
+    runAI
+      ? aiSearchVisibility
         ? "completed"
         : "failed"
       : "skipped",
@@ -1432,8 +1462,9 @@ await updateAuditJob(auditJob.id, {
       backlinks: dataforseo?.backlinks || null,
       keywordGap: dataforseo?.keywordGap || null,
 
-      aiVisibility,
+aiVisibility,
       aiOptimization,
+      aiSearchVisibility,
       businessData,
 
       issues,
