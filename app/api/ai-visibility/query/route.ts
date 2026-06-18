@@ -7,8 +7,8 @@ const SYSTEM_PROMPT =
 
 // ── Model names — if the terminal logs "model not found", change these ──
 const OPENAI_MODEL = "gpt-4o-mini";
-const ANTHROPIC_MODEL = "claude-3-5-haiku-20241022";
-const GEMINI_MODEL = "gemini-1.5-flash"; // if Gemini errors, try "gemini-2.0-flash"
+const ANTHROPIC_MODEL = "claude-haiku-4-5";
+const GEMINI_MODEL = "gemini-2.5-flash";
 
 export async function queryOpenAI(prompt: string): Promise<string> {
   const key = process.env.OPENAI_API_KEY;

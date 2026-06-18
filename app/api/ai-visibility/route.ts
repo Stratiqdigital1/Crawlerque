@@ -153,10 +153,11 @@ async function deriveCategory(domain: string, brandName: string, hint: string): 
       .trim();
 
   try {
-    const ai = await queryOpenAI(
-      `What product or service category is the website "${domain}" in? ` +
-        `Reply with ONLY a short 2 to 5 word category (e.g. "SEO audit software", "CRM for small business"). ` +
-        `Do NOT include the brand name. No punctuation, no extra words.`
+const ai = await queryOpenAI(
+      `A website's title/description is: "${hint}". ` +
+        `Based ONLY on this, what common product or service category is it? ` +
+        `Reply with ONLY a short 2 to 5 word category (e.g. "SEO audit software", "website analytics platform"). ` +
+        `Do NOT include the brand name "${brandName}". No punctuation, no extra words.`
     );
     const cleaned = stripBrand(ai.replace(/["'.]/g, "").trim());
     if (cleaned && cleaned.split(" ").length <= 6) return cleaned;
