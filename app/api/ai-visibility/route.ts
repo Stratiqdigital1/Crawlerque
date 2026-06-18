@@ -301,16 +301,15 @@ const body = await req.json();
     try {
       const incomingCompetitors: string[] = Array.isArray(body?.competitors) ? body.competitors : [];
 
-// 🆕 Real market category (kabhi brand nahi) → prompts self-referential nahi rahenge
+// 🆕 Real market category  → prompts self-referential nahi rahenge
       const category = await deriveCategory(domain, brandName, String(body?.industry || ""));
-      const nlPrompts = (await discoverPrompts(domain, category, incomingCompetitors)).slice(0, 10);
+      const nlPrompts = (await discoverPrompts(domain, category, incomingCompetitors)).slice(0, 5);
 
-      const perPrompt = await Promise.all(
-        nlPrompts.map(async (prompt) => ({
-          prompt,
-          modelResults: await queryAllModels(prompt),
-        }))
-      );
+const perPrompt: any[] = [];
+      for (const prompt of nlPrompts) {
+        perPrompt.push({ prompt, modelResults: await queryAllModels(prompt) });
+        await new Promise((r) => setTimeout(r, 1500)); // chhota gap → low limits ke andar rahe
+      }
 
       const parsed: ParsedResponse[] = [];
       const promptResults: any[] = [];
