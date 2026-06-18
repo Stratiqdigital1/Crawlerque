@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { queryAllModels } from "./query/route";
+import { queryAllModels, queryOpenAI } from "./query/route";
 import { discoverPrompts } from "./prompts/route";
 import { parseResponse, type ParsedResponse } from "@/lib/ai-visibility-parser";
 import { calculateAIVisibilityScore } from "@/lib/ai-visibility-score";
@@ -140,6 +140,34 @@ export async function GET() {
     success: true,
     message: "AI Visibility API working",
   });
+}
+
+async function deriveCategory(domain: string, brandName: string, hint: string): Promise<string> {
+  const brandTokens = brandName.toLowerCase().split(/[\s.-]+/).filter((t) => t.length >= 3);
+  const stripBrand = (s: string) =>
+    s
+      .toLowerCase()
+      .split(/[\s—\-|:,]+/)
+      .filter((w) => w && !brandTokens.includes(w))
+      .join(" ")
+      .trim();
+
+  try {
+    const ai = await queryOpenAI(
+      `What product or service category is the website "${domain}" in? ` +
+        `Reply with ONLY a short 2 to 5 word category (e.g. "SEO audit software", "CRM for small business"). ` +
+        `Do NOT include the brand name. No punctuation, no extra words.`
+    );
+    const cleaned = stripBrand(ai.replace(/["'.]/g, "").trim());
+    if (cleaned && cleaned.split(" ").length <= 6) return cleaned;
+  } catch {
+    // ignore and fall back
+  }
+
+  const fromHint = stripBrand(hint);
+  if (fromHint && fromHint.length > 2) return fromHint;
+
+  return "business services";
 }
 
 export async function POST(req: Request) {
@@ -284,6 +312,8 @@ const body = await req.json();
         category = String(body.industry);
       }
 
+// 🆕 Real market category (kabhi brand nahi) → prompts self-referential nahi rahenge
+      const category = await deriveCategory(domain, brandName, String(body?.industry || ""));
       const nlPrompts = (await discoverPrompts(domain, category, incomingCompetitors)).slice(0, 10);
 
       const perPrompt = await Promise.all(
