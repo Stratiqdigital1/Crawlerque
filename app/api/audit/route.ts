@@ -783,7 +783,7 @@ const aiJson = await aiRes.json();
       // 🆕 LIVE AI MODELS — ChatGPT, Claude, Gemini (30s timeout; audit ko block nahi karta)
       try {
         const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 30000);
+        const t = setTimeout(() => ctrl.abort(), 50000);
         const realRes = await fetch(`${origin}/api/ai-visibility`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
