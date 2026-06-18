@@ -90,8 +90,16 @@ export const AI_MODELS = [
   { name: "Gemini", fn: queryGemini },
 ];
 
+// Har model call ko max 8s do — koi slow/hung model audit ko block na kare.
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`timeout after ${ms}ms`)), ms)),
+  ]);
+}
+
 export async function queryAllModels(prompt: string) {
-  const settled = await Promise.allSettled(AI_MODELS.map((m) => m.fn(prompt)));
+  const settled = await Promise.allSettled(AI_MODELS.map((m) => withTimeout(m.fn(prompt), 8000)));
   return AI_MODELS.map((m, i) => {
     const r = settled[i];
     if (r.status === "rejected") {

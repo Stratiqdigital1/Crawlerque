@@ -306,7 +306,7 @@ const body = await req.json();
 
 // 🆕 Real market category  → prompts self-referential nahi rahenge
       const category = await deriveCategory(domain, brandName, String(body?.industry || ""));
-      const nlPrompts = (await discoverPrompts(domain, category, incomingCompetitors)).slice(0, 5);
+      const nlPrompts = (await discoverPrompts(domain, category, incomingCompetitors)).slice(0, 3);
 
 const perPrompt: any[] = [];
       for (const prompt of nlPrompts) {
@@ -345,8 +345,10 @@ perPrompt.flatMap((pp: any) =>
         modelsCalled,
         brand: brandName,
         industry: category,
-        source: "Live AI Models (ChatGPT, Claude, Gemini)",
+source: "Live AI Models (ChatGPT, Claude, Gemini)",
       };
+
+      console.log("[ai-visibility] DONE — prompts:", nlPrompts.length, "modelsCalled:", modelsCalled, "score:", score.overallScore);
     } catch (err) {
       console.error("Multi-model AI visibility failed:", err);
       aiSearchVisibility = null;
