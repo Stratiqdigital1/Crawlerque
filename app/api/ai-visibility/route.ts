@@ -4,6 +4,9 @@ import { discoverPrompts } from "./prompts/route";
 import { parseResponse, type ParsedResponse } from "@/lib/ai-visibility-parser";
 import { calculateAIVisibilityScore } from "@/lib/ai-visibility-score";
 
+// Is route ko Vercel par 60s tak chalne do (AI model calls mein waqt lagta hai).
+export const maxDuration = 60;
+
 function normalizeDomain(url: string) {
   try {
     return new URL(url).hostname.replace(/^www\./, "");
@@ -308,7 +311,7 @@ const body = await req.json();
 const perPrompt: any[] = [];
       for (const prompt of nlPrompts) {
         perPrompt.push({ prompt, modelResults: await queryAllModels(prompt) });
-        await new Promise((r) => setTimeout(r, 1500)); // chhota gap → low limits ke andar rahe
+                await new Promise((r) => setTimeout(r, 500)); // chhota gap (sequential hone se Claude burst nahi hota)
       }
 
       const parsed: ParsedResponse[] = [];
