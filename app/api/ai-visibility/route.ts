@@ -330,7 +330,9 @@ const perPrompt: any[] = [];
 
       const score = calculateAIVisibilityScore(parsed);
       const modelsCalled = Array.from(new Set(
-        perPrompt.flatMap((pp) => pp.modelResults.filter((m) => m.response).map((m) => m.model))
+perPrompt.flatMap((pp: any) =>
+            pp.modelResults.filter((m: any) => m.response).map((m: any) => m.model)
+          )
       ));
 
       aiSearchVisibility = {
