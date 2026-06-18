@@ -24,7 +24,7 @@ export async function queryOpenAI(prompt: string): Promise<string> {
         { role: "user", content: prompt },
       ],
       temperature: 0.7,
-      max_tokens: 600,
+      max_tokens: 300,
     }),
     cache: "no-store",
   });
@@ -47,7 +47,7 @@ export async function queryAnthropic(prompt: string): Promise<string> {
     },
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,
-      max_tokens: 600,
+      max_tokens: 300,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: prompt }],
     }),
@@ -71,7 +71,7 @@ export async function queryGemini(prompt: string): Promise<string> {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 600 },
+        generationConfig: { temperature: 0.7, maxOutputTokens: 300 },
       }),
       cache: "no-store",
     }
