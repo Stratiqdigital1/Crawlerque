@@ -1,10 +1,4 @@
-// app/api/ai-visibility/prompts/route.ts
-// ---------------------------------------------------------------------------
-// Discovers up to 10 natural-question prompts for the audited niche using
-// DataForSEO related_keywords. If DataForSEO is unavailable or empty, it
-// falls back to 5 solid hardcoded prompts so the feature always works.
-// ---------------------------------------------------------------------------
-
+// app/api/ai-visibility/prompts/route.ts  (UPDATED — guarantees 5+ varied prompts)
 import { NextResponse } from "next/server";
 import { getLocationCode } from "@/lib/dataforseo-config";
 
@@ -15,7 +9,6 @@ function getAuthHeader() {
   return "Basic " + Buffer.from(`${login}:${password}`).toString("base64");
 }
 
-// Turn a raw keyword into a natural question.
 function toPrompt(keyword: string, industry: string): string {
   const k = String(keyword || "").toLowerCase();
   if (!k) return `What is the best ${industry}?`;
@@ -27,15 +20,14 @@ function toPrompt(keyword: string, industry: string): string {
   return `What is the best ${keyword}?`;
 }
 
-// Always-available fallback prompts.
 function fallbackPrompts(industry: string): string[] {
   const i = industry || "this category";
   return [
-    `What is the best ${i} for small businesses?`,
-    `Which ${i} companies do startups use most?`,
-    `What are the top alternatives in ${i}?`,
-    `Which ${i} provider offers the best value?`,
-    `What is the most recommended ${i} solution?`,
+    `What is the best ${i} company for small businesses?`,
+    `Which ${i} providers do startups use most?`,
+    `What are the top alternatives for ${i}?`,
+    `Which ${i} company offers the best value?`,
+    `What is the most recommended ${i} agency?`,
   ];
 }
 
@@ -71,7 +63,6 @@ export async function discoverPrompts(
       .map((it: any) => it?.keyword_data?.keyword || it?.keyword)
       .filter(Boolean);
 
-    // Prefer keywords that match the category term or a known competitor.
     const firstWord = String(industry || "").toLowerCase().split(" ")[0];
     const filtered = keywords.filter((kw: string) => {
       const lk = kw.toLowerCase();
@@ -83,9 +74,16 @@ export async function discoverPrompts(
       );
     });
 
-    const chosen = (filtered.length ? filtered : keywords).slice(0, 10);
-    const prompts = chosen.map((kw) => toPrompt(kw, industry));
-    return prompts.length ? prompts.slice(0, 10) : fallbackPrompts(industry);
+    // Prefer filtered keywords, but only if we have a few; otherwise use all.
+    const source = filtered.length >= 5 ? filtered : keywords;
+    let prompts = Array.from(new Set(source.map((kw) => toPrompt(kw, industry))));
+
+    // Always guarantee at least 5 varied prompts by topping up with fallbacks.
+    if (prompts.length < 5) {
+      prompts = Array.from(new Set([...prompts, ...fallbackPrompts(industry)]));
+    }
+
+    return prompts.slice(0, 10);
   } catch {
     return fallbackPrompts(industry);
   }

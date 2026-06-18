@@ -271,7 +271,20 @@ const body = await req.json();
     let aiSearchVisibility: any = null;
     try {
       const incomingCompetitors: string[] = Array.isArray(body?.competitors) ? body.competitors : [];
-      const nlPrompts = (await discoverPrompts(domain, industry, incomingCompetitors)).slice(0, 10);
+      // 🆕 Build a CATEGORY for prompts — must NOT be the brand itself,
+      // warna prompt khud brand ban jata hai ("What is the best <brand>?").
+      const _brandTokens = brandName.toLowerCase().split(/\s+/).filter(Boolean);
+      let category = detectIndustry(domain, brandName);
+      const _incomingIndustry = String(body?.industry || "").toLowerCase().trim();
+      if (
+        category === "business services" &&
+        _incomingIndustry &&
+        !_brandTokens.some((t) => _incomingIndustry.includes(t))
+      ) {
+        category = String(body.industry);
+      }
+
+      const nlPrompts = (await discoverPrompts(domain, category, incomingCompetitors)).slice(0, 10);
 
       const perPrompt = await Promise.all(
         nlPrompts.map(async (prompt) => ({
@@ -308,7 +321,7 @@ const body = await req.json();
         totalPrompts: nlPrompts.length,
         modelsCalled,
         brand: brandName,
-        industry,
+        industry: category,
         source: "Live AI Models (ChatGPT, Claude, Gemini)",
       };
     } catch (err) {

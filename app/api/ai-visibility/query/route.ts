@@ -1,23 +1,14 @@
-// app/api/ai-visibility/query/route.ts
-// ---------------------------------------------------------------------------
-// Queries ChatGPT (OpenAI), Claude (Anthropic) and Gemini (Google) directly
-// via fetch — NO SDK install needed. All failures handled gracefully so one
-// dead model never breaks the audit.
-//
-// Required env vars (already in your .env):
-//   OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY
-// ---------------------------------------------------------------------------
-
+// app/api/ai-visibility/query/route.ts  (UPDATED — now logs WHY a model fails)
 import { NextResponse } from "next/server";
 
 const SYSTEM_PROMPT =
   "You are a helpful assistant. Answer the following question naturally. " +
   "Do not add disclaimers. Be specific and mention real brand names where relevant.";
 
-// ── Model names — change these if you ever need a different model ──
+// ── Model names — if the terminal logs "model not found", change these ──
 const OPENAI_MODEL = "gpt-4o-mini";
 const ANTHROPIC_MODEL = "claude-3-5-haiku-20241022";
-const GEMINI_MODEL = "gemini-1.5-flash";
+const GEMINI_MODEL = "gemini-1.5-flash"; // if Gemini errors, try "gemini-2.0-flash"
 
 export async function queryOpenAI(prompt: string): Promise<string> {
   const key = process.env.OPENAI_API_KEY;
@@ -38,6 +29,7 @@ export async function queryOpenAI(prompt: string): Promise<string> {
     cache: "no-store",
   });
 
+  if (!res.ok) throw new Error(`OpenAI ${res.status}: ${(await res.text()).slice(0, 250)}`);
   const json = await res.json();
   return json?.choices?.[0]?.message?.content?.trim() || "";
 }
@@ -62,6 +54,7 @@ export async function queryAnthropic(prompt: string): Promise<string> {
     cache: "no-store",
   });
 
+  if (!res.ok) throw new Error(`Anthropic ${res.status}: ${(await res.text()).slice(0, 250)}`);
   const json = await res.json();
   return (json?.content?.map((b: any) => b?.text || "").join(" ") || "").trim();
 }
@@ -84,6 +77,7 @@ export async function queryGemini(prompt: string): Promise<string> {
     }
   );
 
+  if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 250)}`);
   const json = await res.json();
   return (
     json?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text || "").join(" ") || ""
@@ -96,11 +90,14 @@ export const AI_MODELS = [
   { name: "Gemini", fn: queryGemini },
 ];
 
-// Query all 3 models for ONE prompt, in parallel, failures contained.
 export async function queryAllModels(prompt: string) {
   const settled = await Promise.allSettled(AI_MODELS.map((m) => m.fn(prompt)));
   return AI_MODELS.map((m, i) => {
     const r = settled[i];
+    if (r.status === "rejected") {
+      // 👇 This prints the exact reason in your terminal so you can see why a model failed.
+      console.error(`[ai-visibility] ${m.name} failed:`, r.reason?.message || r.reason);
+    }
     return {
       model: m.name,
       response: r.status === "fulfilled" ? r.value : "",
@@ -109,7 +106,6 @@ export async function queryAllModels(prompt: string) {
   });
 }
 
-// Test endpoint: POST { "prompt": "..." } to see all 3 raw responses.
 export async function POST(req: Request) {
   try {
     const { prompt } = await req.json();
