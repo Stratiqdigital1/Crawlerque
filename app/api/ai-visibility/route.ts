@@ -299,18 +299,6 @@ const body = await req.json();
     let aiSearchVisibility: any = null;
     try {
       const incomingCompetitors: string[] = Array.isArray(body?.competitors) ? body.competitors : [];
-      // 🆕 Build a CATEGORY for prompts — must NOT be the brand itself,
-      // warna prompt khud brand ban jata hai ("What is the best <brand>?").
-      const _brandTokens = brandName.toLowerCase().split(/\s+/).filter(Boolean);
-      let category = detectIndustry(domain, brandName);
-      const _incomingIndustry = String(body?.industry || "").toLowerCase().trim();
-      if (
-        category === "business services" &&
-        _incomingIndustry &&
-        !_brandTokens.some((t) => _incomingIndustry.includes(t))
-      ) {
-        category = String(body.industry);
-      }
 
 // 🆕 Real market category (kabhi brand nahi) → prompts self-referential nahi rahenge
       const category = await deriveCategory(domain, brandName, String(body?.industry || ""));
