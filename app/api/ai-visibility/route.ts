@@ -306,7 +306,7 @@ const body = await req.json();
 
 // 🆕 Real market category  → prompts self-referential nahi rahenge
       const category = await deriveCategory(domain, brandName, String(body?.industry || ""));
-      const nlPrompts = (await discoverPrompts(domain, category, incomingCompetitors)).slice(0, 3);
+      const nlPrompts = (await discoverPrompts(domain, category, incomingCompetitors, brandName)).slice(0, 3);
 
 const perPrompt: any[] = [];
       for (const prompt of nlPrompts) {
