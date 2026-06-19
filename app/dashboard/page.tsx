@@ -1440,66 +1440,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
 // Paste this RIGHT BEFORE the line:   secTitle("AI Visibility Summary");
 // (inside the exportPDF function, in the if(pdfShow("ai")...) section)
 // It uses the existing PDF helpers: secTitle, tbl, tblWrap, fmt, cl.
-// ════════════════════════════════════════════════════════════════════
-if (data?.aiSearchVisibility) {
-  const av = data.aiSearchVisibility;
-  secTitle("Live AI Model Visibility (ChatGPT, Claude, Gemini)");
-  tbl(["Metric", "Value", "Meaning"], [
-    { col1: "Overall AI Score", col2: `${av.overallScore}/100`, col3: av.overallScore >= 70 ? "Strong live-model presence" : "Room to grow in AI answers" },
-    { col1: "Visibility Rate", col2: `${av.visibilityRate}%`, col3: "Prompts where the brand appeared" },
-    { col1: "Avg Position", col2: av.avgPosition ? `${av.avgPosition}/5` : "—", col3: "Average rank when mentioned (1 = first)" },
-    { col1: "Sentiment Score", col2: `${av.sentimentScore}/100`, col3: "How positive the brand mentions are" },
-    { col1: "ChatGPT / Claude / Gemini", col2: `${av.modelBreakdown?.chatgpt ?? 0}% / ${av.modelBreakdown?.claude ?? 0}% / ${av.modelBreakdown?.gemini ?? 0}%`, col3: "Per-model visibility" },
-  ], [42, 35, CW - 77]);
-
-  // 🆕 Does AI Know Your Brand?
-  if (av.brandKnowledge) {
-    hiBox("Does AI Know Your Brand?",
-      `Score ${av.brandKnowledge.score ?? 0}/100. Recognised by: ${(av.brandKnowledge.knownBy || []).join(", ") || "none of the models yet"}. Per-model — ChatGPT ${av.modelBreakdown?.chatgpt ?? 0}%, Claude ${av.modelBreakdown?.claude ?? 0}%, Gemini ${av.modelBreakdown?.gemini ?? 0}%.`,
-      ((av.brandKnowledge.score ?? 0) >= 50 ? "green" : "amber"));
-  }
-
-  // 🆕 Pages AI Cited
-  if (av.citations?.length) {
-    secTitle("Pages AI Cited");
-    tbl(["URL", "Cited by"],
-      av.citations.slice(0, 6).map((c: any) => ({ col1: cl(c.url), col2: cl((c.models || []).join(", ")) })),
-      [CW - 50, 50]);
-  }
-
-  // 🆕 Your Pages & The Keywords They Rank For
-  if (av.rankedPages?.length) {
-    secTitle("Your Pages & The Keywords They Rank For");
-    tbl(["Page", "Top Keywords", "Vol"],
-      av.rankedPages.slice(0, 8).map((p: any) => ({ col1: cl(p.path || p.url), col2: cl((p.keywords || []).slice(0, 4).map((k: any) => k.keyword).join(", ")), col3: fmt(p.totalVolume) })),
-      [CW - 95, 70, 25]);
-  }
-
-  // 🆕 Top Competitors
-  if (av.topCompetitors?.length) {
-    hiBox("Top Competitors in AI Answers", (av.topCompetitors || []).join(", "), "blue");
-  }
-
-  if (av.promptResults?.length) {
-    secTitle("Prompt-Level Results");
-    tblWrap(["Prompt", "ChatGPT", "Claude", "Gemini"],
-      av.promptResults.slice(0, 10).map((r: any) => ({
-        col1: cl(r.prompt),
-        col2: r.models?.ChatGPT?.mentioned ? `Yes${r.models.ChatGPT.position ? ` #${r.models.ChatGPT.position}` : ""}` : "No",
-        col3: r.models?.Claude?.mentioned ? `Yes${r.models.Claude.position ? ` #${r.models.Claude.position}` : ""}` : "No",
-        col4: r.models?.Gemini?.mentioned ? `Yes${r.models.Gemini.position ? ` #${r.models.Gemini.position}` : ""}` : "No",
-      })), [CW - 66, 22, 22, 22], 3);
-  }
-
-  if (av.missedPrompts?.length) {
-    secTitle("Missed Opportunities (Content Recommendations)");
-    tbl(["#", "Prompt your brand was NOT mentioned in"],
-      av.missedPrompts.slice(0, 3).map((p: string, i: number) => ({
-        col1: String(i + 1),
-        col2: cl(p),
-      })), [12, CW - 12]);
-  }
-}
+// ═══════════════════════════════════════════════════════════════════
 
     secTitle("AI Visibility Summary");
     tbl(["Signal","Status","Implication"],[
