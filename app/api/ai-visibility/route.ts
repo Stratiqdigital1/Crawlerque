@@ -132,7 +132,7 @@ export async function POST(req: Request) {
       const country = await detectCountry(domain, brandName);
       const locationCode = COUNTRY_LOC[country.toLowerCase()] || getLocationCode(domain);
 
-      const { prompts: nlPrompts, rankedPages } = await getKeywordIntel(domain, industry, brandName, locationCode, country);
+      const { prompts: nlPrompts, rankedPages, country } = await getKeywordIntel(domain, industry, brandName);
 
       const perPrompt: any[] = [];
       for (const prompt of nlPrompts.slice(0, 3)) {

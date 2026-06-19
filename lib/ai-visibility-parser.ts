@@ -39,8 +39,11 @@ export function extractBrandLikeNames(text: string): string[] {
   const found = new Set<string>();
   const t = String(text||"");
   (t.match(/\b([a-z0-9-]+\.(com|net|org|io|co|ai|us|pk))\b/gi)||[]).forEach((d)=>found.add(d.toLowerCase()));
+const NOISE = new Set(["amoled","oled","excellent","wear os","gps","wear","display","battery","wireless","bluetooth","premium","budget","amazing","awesome","quality","known","while","series"]);
   (t.match(/\b([A-Z][a-zA-Z0-9]+(?:\s[A-Z][a-zA-Z0-9]+){0,2})\b/g)||[]).forEach((w)=>{
-    if (!STOP_WORDS.has(w.toLowerCase())) found.add(w.trim());
+    const lw = w.toLowerCase();
+    const allCaps = /^[A-Z0-9]+$/.test(w); // AMOLED, GPS, OLED
+    if (!STOP_WORDS.has(lw) && !NOISE.has(lw) && !allCaps && w.length > 2) found.add(w.trim());
   });
   return Array.from(found);
 }

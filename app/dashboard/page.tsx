@@ -3469,6 +3469,22 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
       )}
     </div>
 
+    {/* 🆕 headline: Awareness vs Competitive Visibility */}
+    {data.aiSearchVisibility.brandKnowledge && (
+      <div className="mb-5 flex flex-wrap gap-3">
+        <div className="flex-1 min-w-[200px] rounded-2xl border border-[#00D4AA]/30 bg-[#00D4AA]/5 p-4">
+          <p className="text-xs uppercase tracking-wide text-[#64748B]">AI Awareness</p>
+          <p className="text-2xl font-extrabold text-[#00D4AA]">{data.aiSearchVisibility.brandKnowledge.score}/100</p>
+          <p className="text-[11px] text-[#94A3B8]">Do AI models know your brand exists?</p>
+        </div>
+        <div className="flex-1 min-w-[200px] rounded-2xl border border-[#1e3a5f] bg-[#0E2440] p-4">
+          <p className="text-xs uppercase tracking-wide text-[#64748B]">Competitive Visibility</p>
+          <p className="text-2xl font-extrabold text-white">{data.aiSearchVisibility.overallScore}/100</p>
+          <p className="text-[11px] text-[#94A3B8]">Does AI recommend you for generic "best X" searches?</p>
+        </div>
+      </div>
+    )}
+
     {/* 4 metric cards */}
     <div className="mb-6 grid gap-4 md:grid-cols-4">
       <MetricCard label="Overall AI Score" value={`${data.aiSearchVisibility.overallScore}/100`} score={Number(data.aiSearchVisibility.overallScore || 0)} tooltip="Spontaneous visibility: does AI recommend you for category questions?" />
