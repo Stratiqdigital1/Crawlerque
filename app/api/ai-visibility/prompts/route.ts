@@ -4,7 +4,7 @@
 // - Returns ranked-page intel (which page ranks for which keyword)
 import { NextResponse } from "next/server";
 import { getLocationCode } from "@/lib/dataforseo-config";
-import { queryOpenAI } from "./query/route";
+import { queryOpenAI } from "../query/route";
 
 function getAuthHeader() {
   const login = process.env.DATAFORSEO_LOGIN;
