@@ -1391,8 +1391,41 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 07 — AI VISIBILITY
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("ai")&&(data?.aiOptimization||data?.aiVisibility)){
+    if(pdfShow("ai")&&(data?.aiSearchVisibility||data?.aiOptimization||data?.aiVisibility)){
     secHdr(nextSec(),"AI Search Visibility & GEO Readiness","Brand discoverability in AI-generated responses, generative search, and answer engines.");
+    // 🆕 LIVE AI MODEL VISIBILITY (ChatGPT, Claude, Gemini)
+    if (data?.aiSearchVisibility) {
+      const av = data.aiSearchVisibility;
+      secTitle("Live AI Model Visibility", `Market: ${cl(av.country, "US")} · Models: ${cl((av.modelsCalled||[]).join(", "), "—")}`);
+      kpiRow([
+        { label: "AI Awareness", value: `${av.brandKnowledge?.score ?? 0}/100`, sub: "Do AI models know you?", col: C.accent },
+        { label: "Competitive", value: `${av.overallScore ?? 0}/100`, sub: "Recommended for best X?" },
+        { label: "Visibility", value: `${av.visibilityRate ?? 0}%`, sub: "Prompts appeared in" },
+        { label: "Sentiment", value: `${av.sentimentScore ?? 0}/100`, sub: "Tone of mentions" },
+      ]);
+      if (av.brandKnowledge) {
+        hiBox("Does AI Know Your Brand?",
+          `Recognised by: ${(av.brandKnowledge.knownBy||[]).join(", ") || "none of the models yet"}. Per-model — ChatGPT ${av.modelBreakdown?.chatgpt ?? 0}%, Claude ${av.modelBreakdown?.claude ?? 0}%, Gemini ${av.modelBreakdown?.gemini ?? 0}%.`,
+          ((av.brandKnowledge.score ?? 0) >= 50 ? "green" : "amber"));
+      }
+      if (av.promptResults?.length) {
+        secTitle("Category Prompt Results");
+        const yn = (m: any) => !m ? "—" : (m.mentioned ? `Yes${m.position ? ` #${m.position}` : ""}` : "No");
+        tbl(["Prompt", "ChatGPT", "Claude", "Gemini"],
+          av.promptResults.slice(0, 6).map((r: any) => ({ col1: cl(r.prompt), col2: yn(r.models?.ChatGPT), col3: yn(r.models?.Claude), col4: yn(r.models?.Gemini) })),
+          [CW - 75, 25, 25, 25]);
+      }
+      if (av.citations?.length) {
+        secTitle("Pages AI Cited");
+        tbl(["URL", "Cited by"], av.citations.slice(0, 6).map((c: any) => ({ col1: cl(c.url), col2: cl((c.models||[]).join(", ")) })), [CW - 50, 50]);
+      }
+      if (av.rankedPages?.length) {
+        secTitle("Your Pages & The Keywords They Rank For");
+        tbl(["Page", "Top Keywords", "Vol"], av.rankedPages.slice(0, 8).map((p: any) => ({ col1: cl(p.path || p.url), col2: cl((p.keywords||[]).slice(0,4).map((k:any)=>k.keyword).join(", ")), col3: fmt(p.totalVolume) })), [CW - 95, 70, 25]);
+      }
+      if (av.topCompetitors?.length) hiBox("Top Competitors in AI Answers", (av.topCompetitors||[]).join(", "), "blue");
+      if (av.missedPrompts?.length) hiBox("Missed Opportunities (Content Ideas)", (av.missedPrompts||[]).slice(0,3).join("  -  "), "amber");
+    }
     const aiScore=n(normalized.scores.ai)??0, aiConf=cl(data?.aiVisibility?.confidence??data?.aiOptimization?.confidence,"Low"), aiMent=n(data?.aiOptimization?.totalMentions)??0, aiMods=n(data?.aiOptimization?.totalModels)??0;
     const sov=Math.round((Number(data?.aiVisibility?.totalMentions??0))/(Math.max(1,Number(data?.aiOptimization?.totalMentions??1)))*100);
     kpiRow([
