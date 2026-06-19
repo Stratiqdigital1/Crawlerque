@@ -1452,6 +1452,34 @@ if (data?.aiSearchVisibility) {
     { col1: "ChatGPT / Claude / Gemini", col2: `${av.modelBreakdown?.chatgpt ?? 0}% / ${av.modelBreakdown?.claude ?? 0}% / ${av.modelBreakdown?.gemini ?? 0}%`, col3: "Per-model visibility" },
   ], [42, 35, CW - 77]);
 
+  // 🆕 Does AI Know Your Brand?
+  if (av.brandKnowledge) {
+    hiBox("Does AI Know Your Brand?",
+      `Score ${av.brandKnowledge.score ?? 0}/100. Recognised by: ${(av.brandKnowledge.knownBy || []).join(", ") || "none of the models yet"}. Per-model — ChatGPT ${av.modelBreakdown?.chatgpt ?? 0}%, Claude ${av.modelBreakdown?.claude ?? 0}%, Gemini ${av.modelBreakdown?.gemini ?? 0}%.`,
+      ((av.brandKnowledge.score ?? 0) >= 50 ? "green" : "amber"));
+  }
+
+  // 🆕 Pages AI Cited
+  if (av.citations?.length) {
+    secTitle("Pages AI Cited");
+    tbl(["URL", "Cited by"],
+      av.citations.slice(0, 6).map((c: any) => ({ col1: cl(c.url), col2: cl((c.models || []).join(", ")) })),
+      [CW - 50, 50]);
+  }
+
+  // 🆕 Your Pages & The Keywords They Rank For
+  if (av.rankedPages?.length) {
+    secTitle("Your Pages & The Keywords They Rank For");
+    tbl(["Page", "Top Keywords", "Vol"],
+      av.rankedPages.slice(0, 8).map((p: any) => ({ col1: cl(p.path || p.url), col2: cl((p.keywords || []).slice(0, 4).map((k: any) => k.keyword).join(", ")), col3: fmt(p.totalVolume) })),
+      [CW - 95, 70, 25]);
+  }
+
+  // 🆕 Top Competitors
+  if (av.topCompetitors?.length) {
+    hiBox("Top Competitors in AI Answers", (av.topCompetitors || []).join(", "), "blue");
+  }
+
   if (av.promptResults?.length) {
     secTitle("Prompt-Level Results");
     tblWrap(["Prompt", "ChatGPT", "Claude", "Gemini"],
