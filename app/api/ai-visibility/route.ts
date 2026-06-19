@@ -129,9 +129,6 @@ export async function POST(req: Request) {
     try {
       const incomingCompetitors: string[] = Array.isArray(body?.competitors) ? body.competitors : [];
 
-      const country = await detectCountry(domain, brandName);
-      const locationCode = COUNTRY_LOC[country.toLowerCase()] || getLocationCode(domain);
-
       const { prompts: nlPrompts, rankedPages, country } = await getKeywordIntel(domain, industry, brandName);
 
       const perPrompt: any[] = [];
