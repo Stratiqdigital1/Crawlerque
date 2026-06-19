@@ -83,10 +83,11 @@ async function buildCleanPrompts(keywords: string[], country: string): Promise<s
   const top = keywords.slice(0, 15).join(", ");
   const where = country && country.toLowerCase() !== "us" ? ` Focus on the ${country} market.` : "";
   try {
-    const ai = await queryOpenAI(
+const ai = await queryOpenAI(
       `A website ranks for these search terms: ${top}. ` +
-      `Based ONLY on these, write exactly 3 natural questions a shopper would ask an AI assistant to find the best products in this category.${where} ` +
-      `Each question on its own line. No numbering, no brand names, no extra text, each must end with a question mark.`
+      `Identify the GENERIC product or service categories these represent, and IGNORE any specific brand, store, retailer, marketplace, or company names (e.g. Trader Joe's, Whole Foods, NBA, Starbucks, Amazon). ` +
+      `Then write exactly 3 natural questions a shopper would ask an AI assistant to find the best products or services in those GENERIC categories.${where} ` +
+      `Rules: do NOT mention any specific brand, store, or company name in the questions. Each question on its own line, no numbering, each ends with a question mark.`
     );
     const lines = (ai || "").split("\n").map((l) => l.replace(/^[\d.)\-\s]+/, "").trim()).filter((l) => l.length > 8 && l.includes("?"));
     if (lines.length >= 2) return lines.slice(0, 3);
