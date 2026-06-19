@@ -3451,6 +3451,183 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 ) : null}
 {/* ════════════════════ END NEW BLOCK ════════════════════ */}
 
+{/* ════════════════════════════════════════════════════════════════════ */}
+{/* 🆕 LIVE AI MODEL VISIBILITY (V2) — paste RIGHT AFTER:                  */}
+{/*    <Section title="AI Search Visibility™">                            */}
+{/* ════════════════════════════════════════════════════════════════════ */}
+{data?.aiSearchVisibility ? (
+  <div className="mb-8">
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      <span className="inline-flex h-2 w-2 rounded-full bg-[#00D4AA]" />
+      <span className="text-xs font-semibold uppercase tracking-wide text-[#00D4AA]">
+        Live AI Models · {(data.aiSearchVisibility.modelsCalled || []).join(" · ") || "ChatGPT · Claude · Gemini"}
+      </span>
+      {data.aiSearchVisibility.country && (
+        <span className="rounded-full border border-[#1e3a5f] bg-[#122B4E] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[#94A3B8]">
+          Market: {data.aiSearchVisibility.country}
+        </span>
+      )}
+    </div>
+
+    {/* 4 metric cards */}
+    <div className="mb-6 grid gap-4 md:grid-cols-4">
+      <MetricCard label="Overall AI Score" value={`${data.aiSearchVisibility.overallScore}/100`} score={Number(data.aiSearchVisibility.overallScore || 0)} tooltip="Spontaneous visibility: does AI recommend you for category questions?" />
+      <MetricCard label="Visibility Rate" value={`${data.aiSearchVisibility.visibilityRate}%`} score={Number(data.aiSearchVisibility.visibilityRate || 0)} tooltip="Share of category prompts where your brand appeared." />
+      <MetricCard label="Avg Position" value={data.aiSearchVisibility.avgPosition ? `${data.aiSearchVisibility.avgPosition} / 5` : "—"} tooltip="Average rank when mentioned (1 = first)." />
+      <MetricCard label="Sentiment Score" value={`${data.aiSearchVisibility.sentimentScore}/100`} score={Number(data.aiSearchVisibility.sentimentScore || 0)} tooltip="How positive the mentions of your brand are." />
+    </div>
+
+    {/* per-model visibility */}
+    <div className="mb-6 grid gap-4 sm:grid-cols-3">
+      {[["ChatGPT", data.aiSearchVisibility.modelBreakdown?.chatgpt], ["Claude", data.aiSearchVisibility.modelBreakdown?.claude], ["Gemini", data.aiSearchVisibility.modelBreakdown?.gemini]].map(([name, pct]: any) => (
+        <div key={name} className="rounded-2xl border border-[#1e3a5f] bg-[#0E2440] p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">{name}</p>
+          <p className="mt-1 text-2xl font-extrabold text-white">{pct ?? 0}%</p>
+          <div className="mt-2 h-1.5 w-full rounded-full bg-[#0B1929]"><div className="h-1.5 rounded-full bg-[#00D4AA]" style={{ width: `${pct ?? 0}%` }} /></div>
+        </div>
+      ))}
+    </div>
+
+    {/* 🆕 BRAND KNOWLEDGE — does AI actually know you? (Feature A) */}
+    {data.aiSearchVisibility.brandKnowledge && (
+      <div className="mb-6 rounded-2xl border border-[#00D4AA]/30 bg-[#00D4AA]/5 p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-semibold text-white">Does AI Know Your Brand?</h3>
+          <span className="text-2xl font-extrabold text-[#00D4AA]">{data.aiSearchVisibility.brandKnowledge.score}/100</span>
+        </div>
+        <p className="mb-3 text-xs text-[#94A3B8]">
+          Recognised by:{" "}
+          {(data.aiSearchVisibility.brandKnowledge.knownBy || []).length > 0
+            ? (data.aiSearchVisibility.brandKnowledge.knownBy || []).join(", ")
+            : "none of the models recognise this brand yet"}
+        </p>
+        <div className="grid gap-3 md:grid-cols-3">
+          {["ChatGPT", "Claude", "Gemini"].map((m) => {
+            const k = data.aiSearchVisibility.brandKnowledge.models?.[m];
+            if (!k) return null;
+            return (
+              <div key={m} className="rounded-xl border border-[#1e3a5f] bg-[#0E2440] p-3">
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase text-[#64748B]">{m}</span>
+                  <span className={k.knows ? "text-[#00D4AA] text-xs font-semibold" : "text-[#64748B] text-xs"}>{k.knows ? "Knows ✓" : "Unknown"}</span>
+                </div>
+                {k.snippet && <p className="text-[11px] leading-snug text-[#94A3B8]">{k.snippet}…</p>}
+                {k.citedPage && <p className="mt-1 truncate text-[11px] text-[#00D4AA]">cited: {k.citedPage}</p>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    )}
+
+    {/* prompt results table (with cited page) */}
+    {data.aiSearchVisibility.promptResults?.length > 0 && (
+      <div className="mb-6 overflow-hidden rounded-2xl border border-[#1e3a5f] bg-[#0E2440]">
+        <div className="border-b border-[#1e3a5f] px-5 py-3">
+          <h3 className="font-semibold text-white">Category Prompt Results</h3>
+          <p className="text-xs text-[#64748B]">Does AI recommend you for what you rank for? ✅ mentioned, ❌ missing.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="text-left text-xs uppercase tracking-wide text-[#64748B]">
+              <th className="px-5 py-3">Prompt</th><th className="px-3 py-3 text-center">ChatGPT</th><th className="px-3 py-3 text-center">Claude</th><th className="px-3 py-3 text-center">Gemini</th><th className="px-3 py-3 text-center">Avg Pos</th>
+            </tr></thead>
+            <tbody>
+              {data.aiSearchVisibility.promptResults.map((row: any, i: number) => {
+                const cell = (m: any) => !m ? <span className="text-[#475569]">—</span> : m.mentioned
+                  ? <span className="text-[#00D4AA]">✅{m.position ? ` #${m.position}` : ""}{m.citedPage ? " 🔗" : ""}</span>
+                  : <span className="text-[#64748B]">❌</span>;
+                return (
+                  <tr key={i} className="border-t border-[#13294a]">
+                    <td className="px-5 py-3 text-white">{row.prompt}</td>
+                    <td className="px-3 py-3 text-center">{cell(row.models?.ChatGPT)}</td>
+                    <td className="px-3 py-3 text-center">{cell(row.models?.Claude)}</td>
+                    <td className="px-3 py-3 text-center">{cell(row.models?.Gemini)}</td>
+                    <td className="px-3 py-3 text-center text-[#94A3B8]">{row.avgPosition ?? "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )}
+
+    {/* 🆕 AI CITATIONS — which of your pages AI referenced */}
+    {data.aiSearchVisibility.citations?.length > 0 && (
+      <div className="mb-6 rounded-2xl border border-[#1e3a5f] bg-[#0E2440] p-5">
+        <h3 className="mb-1 font-semibold text-white">Pages AI Cited</h3>
+        <p className="mb-3 text-xs text-[#64748B]">Your URLs that AI models referenced in their answers.</p>
+        <div className="space-y-2">
+          {data.aiSearchVisibility.citations.map((c: any, i: number) => (
+            <div key={i} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#13294a] bg-[#0B1929] px-3 py-2">
+              <span className="truncate text-sm text-[#E2E8F0]">{c.url}</span>
+              <span className="text-[11px] text-[#00D4AA]">{(c.models || []).join(", ")}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* 🆕 PAGES & KEYWORDS — which keyword makes which page rank (DataForSEO) */}
+    {data.aiSearchVisibility.rankedPages?.length > 0 && (
+      <div className="mb-6 overflow-hidden rounded-2xl border border-[#1e3a5f] bg-[#0E2440]">
+        <div className="border-b border-[#1e3a5f] px-5 py-3">
+          <h3 className="font-semibold text-white">Your Pages & The Keywords They Rank For</h3>
+          <p className="text-xs text-[#64748B]">Real ranking data — the keywords driving each page (basis for AI prompts).</p>
+        </div>
+        <div className="divide-y divide-[#13294a]">
+          {data.aiSearchVisibility.rankedPages.map((p: any, i: number) => (
+            <div key={i} className="px-5 py-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="truncate text-sm font-medium text-white">{p.path || p.url}</span>
+                <span className="shrink-0 text-[11px] text-[#64748B]">{p.totalVolume?.toLocaleString?.() || p.totalVolume} vol</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {(p.keywords || []).slice(0, 6).map((k: any, j: number) => (
+                  <span key={j} className="rounded-full border border-[#1e3a5f] bg-[#122B4E] px-2.5 py-0.5 text-[11px] text-[#E2E8F0]">
+                    {k.keyword}{k.position ? <span className="text-[#64748B]"> · #{k.position}</span> : null}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* top competitors + missed opportunities */}
+    <div className="mb-8 grid gap-4 lg:grid-cols-2">
+      <div className="rounded-2xl border border-[#1e3a5f] bg-[#0E2440] p-5">
+        <h3 className="mb-3 font-semibold text-white">Top Competitors in AI Answers</h3>
+        {data.aiSearchVisibility.topCompetitors?.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {data.aiSearchVisibility.topCompetitors.map((c: string, i: number) => (
+              <span key={i} className="rounded-full border border-[#1e3a5f] bg-[#122B4E] px-3 py-1 text-xs text-[#E2E8F0]">{c}</span>
+            ))}
+          </div>
+        ) : <p className="text-sm text-[#64748B]">No competitors detected.</p>}
+      </div>
+      <div className="rounded-2xl border border-[#00D4AA]/30 bg-[#00D4AA]/5 p-5">
+        <h3 className="mb-2 font-semibold text-white">Missed Opportunities</h3>
+        <p className="mb-3 text-xs text-[#94A3B8]">Prompts where your brand was not mentioned — turn these into content.</p>
+        {data.aiSearchVisibility.missedPrompts?.length > 0 ? (
+          <ul className="space-y-2">
+            {data.aiSearchVisibility.missedPrompts.slice(0, 5).map((p: string, i: number) => (
+              <li key={i} className="flex gap-2 text-sm text-[#E2E8F0]"><span className="text-[#00D4AA]">→</span><span>{p}</span></li>
+            ))}
+          </ul>
+        ) : <p className="text-sm text-[#00D4AA]">Your brand appeared in every tested prompt. 🎉</p>}
+      </div>
+    </div>
+
+    <div className="mb-2 border-t border-[#1e3a5f] pt-6">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">Supplementary signal · DataForSEO AI Optimization</p>
+    </div>
+  </div>
+) : null}
+{/* ════════════════════ END V2 BLOCK ════════════════════ */}
+
     <p className="mb-5 text-sm text-slate-500">
       Supplementary signal from the DataForSEO AI Optimization API, shown below the live multi-model results above.
     </p>

@@ -1,195 +1,85 @@
 import { NextResponse } from "next/server";
 import { queryAllModels, queryOpenAI } from "./query/route";
-import { discoverPrompts } from "./prompts/route";
-import { parseResponse, type ParsedResponse } from "@/lib/ai-visibility-parser";
+import { getKeywordIntel } from "./prompts/route";
+import { parseResponse, knowsBrand, extractBrandCitations, type ParsedResponse } from "@/lib/ai-visibility-parser";
 import { calculateAIVisibilityScore } from "@/lib/ai-visibility-score";
+import { getLocationCode } from "@/lib/dataforseo-config";
 
-// Is route ko Vercel par 60s tak chalne do (AI model calls mein waqt lagta hai).
 export const maxDuration = 60;
 
 function normalizeDomain(url: string) {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
-  }
+  try { return new URL(url).hostname.replace(/^www\./, ""); }
+  catch { return url.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, ""); }
 }
-
 function cleanBrandName(name: string) {
-  return name
-    .replace(/^https?:\/\//, "")
-    .replace(/^www\./, "")
-    .replace(/\.(com|net|org|io|co|us|net|org)$/i, "")
-    .replace(/[-_]/g, " ")
-    .trim();
+  return name.replace(/^https?:\/\//, "").replace(/^www\./, "")
+    .replace(/\.(com|net|org|io|co|us|pk)$/i, "").replace(/[-_]/g, " ").trim();
 }
-
 async function askOpenAI(prompt: string) {
   if (!process.env.OPENAI_API_KEY) return "";
-
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 300,
-        temperature: 0.2,
-      }),
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+      body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], max_tokens: 300, temperature: 0.2 }),
     });
-
     const data = await res.json();
     return data?.choices?.[0]?.message?.content || "";
-  } catch (error) {
-    console.error("OpenAI visibility failed:", error);
-    return "";
-  }
+  } catch (e) { console.error("OpenAI visibility failed:", e); return ""; }
 }
-
 function detectIndustry(domain: string, brandName: string) {
   const text = `${domain} ${brandName}`.toLowerCase();
-
-  if (
-    text.includes("multifamily") ||
-    text.includes("realtor") ||
-    text.includes("real estate") ||
-    text.includes("property")
-  ) {
-    return "multifamily real estate brokerage";
-  }
-
-  if (
-    text.includes("amazon") ||
-    text.includes("shopify") ||
-    text.includes("ecommerce") ||
-    text.includes("e-commerce")
-  ) {
-    return "ecommerce marketing services";
-  }
-
-  if (
-    text.includes("digital") ||
-    text.includes("seo") ||
-    text.includes("marketing") ||
-    text.includes("agency")
-  ) {
-    return "digital marketing services";
-  }
-
+  if (text.includes("multifamily")||text.includes("realtor")||text.includes("real estate")||text.includes("property")) return "multifamily real estate brokerage";
+  if (text.includes("amazon")||text.includes("shopify")||text.includes("ecommerce")||text.includes("e-commerce")) return "ecommerce marketing services";
+  if (text.includes("digital")||text.includes("seo")||text.includes("marketing")||text.includes("agency")) return "digital marketing services";
   return "business services";
 }
-
 function isSelfMention(name: string, brandName: string, domain: string) {
-  const cleanedName = name.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const cleanedBrand = brandName.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const cleanedDomain = domain.split(".")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
-
-  return (
-    cleanedName.includes(cleanedBrand) ||
-    cleanedName.includes(cleanedDomain) ||
-    cleanedBrand.includes(cleanedName)
-  );
+  const n = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const b = brandName.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const d = domain.split(".")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
+  return n.includes(b) || n.includes(d) || b.includes(n);
+}
+function extractCompetitorsFromText(text: string, brandName: string, domain: string) {
+  const banned = ["here are","companies","competitors","alternatives","services","industry","business","include","sources","whether","appears","customers","leading","providers","similar"];
+  const lines = text.replace(/\*\*/g,"").replace(/\d+\.\s*/g,"\n").replace(/,\s*/g,"\n").split("\n")
+    .map((l)=>l.replace(/^[-•]\s*/,"").replace(/[.:;]+$/g,"").trim()).filter(Boolean);
+  return Array.from(new Set(lines.filter((l)=>l.length>2&&l.length<60).filter((l)=>l.split(" ").length<=6)
+    .filter((l)=>!banned.some((b)=>l.toLowerCase().includes(b))).filter((l)=>!isSelfMention(l,brandName,domain)))).slice(0,10);
 }
 
-function extractCompetitorsFromText(text: string, brandName: string, domain: string) {
-  const banned = [
-    "here are",
-    "companies",
-    "competitors",
-    "alternatives",
-    "services",
-    "industry",
-    "business",
-    "include",
-    "sources",
-    "whether",
-    "appears",
-    "customers",
-    "leading",
-    "providers",
-    "similar",
-  ];
-
-  const lines = text
-    .replace(/\*\*/g, "")
-    .replace(/\d+\.\s*/g, "\n")
-    .replace(/,\s*/g, "\n")
-    .split("\n")
-    .map((line) =>
-      line
-        .replace(/^[-•]\s*/, "")
-        .replace(/[.:;]+$/g, "")
-        .trim()
-    )
-    .filter(Boolean);
-
-  return Array.from(
-    new Set(
-      lines
-        .filter((line) => line.length > 2 && line.length < 60)
-        .filter((line) => line.split(" ").length <= 6)
-        .filter((line) => !banned.some((bad) => line.toLowerCase().includes(bad)))
-        .filter((line) => !isSelfMention(line, brandName, domain))
-    )
-  ).slice(0, 10);
+// ── Country detection for location-aware prompts (Feature B) ──
+const COUNTRY_LOC: Record<string, number> = {
+  pakistan:2586, india:2356, bangladesh:2050, "united kingdom":2826, uk:2826, england:2826,
+  australia:2036, canada:2124, uae:2784, "united arab emirates":2784, dubai:2784,
+  "united states":2840, us:2840, usa:2840, america:2840,
+};
+async function detectCountry(domain: string, brandName: string): Promise<string> {
+  try {
+    const ai = await queryOpenAI(
+      `Which single country is the website ${domain} (brand "${brandName}") primarily based in or selling to? ` +
+      `Reply with ONLY the country name. If unsure, reply "US".`
+    );
+    const c = (ai || "US").trim().split(/[\n.,(]/)[0].trim();
+    return c || "US";
+  } catch { return "US"; }
 }
 
 export async function GET() {
-  return NextResponse.json({
-    success: true,
-    message: "AI Visibility API working",
-  });
-}
-
-async function deriveCategory(domain: string, brandName: string, hint: string): Promise<string> {
-  const brandTokens = brandName.toLowerCase().split(/[\s.-]+/).filter((t) => t.length >= 3);
-  const stripBrand = (s: string) =>
-    s
-      .toLowerCase()
-      .split(/[\s—\-|:,]+/)
-      .filter((w) => w && !brandTokens.includes(w))
-      .join(" ")
-      .trim();
-
-  try {
-const ai = await queryOpenAI(
-      `A website's title/description is: "${hint}". ` +
-        `Based ONLY on this, what common product or service category is it? ` +
-        `Reply with ONLY a short 2 to 5 word category (e.g. "SEO audit software", "website analytics platform"). ` +
-        `Do NOT include the brand name "${brandName}". No punctuation, no extra words.`
-    );
-    const cleaned = stripBrand(ai.replace(/["'.]/g, "").trim());
-    if (cleaned && cleaned.split(" ").length <= 6) return cleaned;
-  } catch {
-    // ignore and fall back
-  }
-
-  const fromHint = stripBrand(hint);
-  if (fromHint && fromHint.length > 2) return fromHint;
-
-  return "business services";
+  return NextResponse.json({ success: true, message: "AI Visibility API working" });
 }
 
 export async function POST(req: Request) {
   try {
-const body = await req.json();
+    const body = await req.json();
     const url = body?.url || body?.domain;
-
-    if (!url) {
-      return NextResponse.json(
-        { success: false, error: "URL is required" },
-        { status: 400 }
-      );
-    }
+    if (!url) return NextResponse.json({ success: false, error: "URL is required" }, { status: 400 });
 
     const domain = normalizeDomain(url);
     const brandName = cleanBrandName(body?.brandName?.trim() || domain);
     const industry = body?.industry?.trim() || detectIndustry(domain, brandName);
 
+    // ───────── OLD competitor-discovery + Perplexity (kept) ─────────
     const prompts = [
       `Return ONLY company names. List 10 companies similar to ${brandName} in ${industry}.`,
       `Return ONLY company names. List 10 best alternatives to ${brandName} for ${industry}.`,
@@ -197,158 +87,107 @@ const body = await req.json();
       `Return ONLY company names. List 10 leading brands or service providers in ${industry}.`,
       `Return ONLY company names. List 10 companies customers may compare with ${brandName} in ${industry}.`,
     ];
-
     const results: any[] = [];
-
-    const brandTerms = [
-      brandName.toLowerCase(),
-      cleanBrandName(brandName).toLowerCase(),
-      domain.toLowerCase(),
-      cleanBrandName(domain).toLowerCase(),
-      domain.split(".")[0].toLowerCase(),
-      brandName.toLowerCase().replace(/\s+/g, ""),
-    ].filter(Boolean);
-
+    const brandTerms = [brandName.toLowerCase(), cleanBrandName(brandName).toLowerCase(), domain.toLowerCase(),
+      cleanBrandName(domain).toLowerCase(), domain.split(".")[0].toLowerCase(), brandName.toLowerCase().replace(/\s+/g,"")].filter(Boolean);
     for (const prompt of prompts) {
       const response = await askOpenAI(prompt);
-      const responseText = response.toLowerCase();
-
-      const mentioned = brandTerms.some((term) =>
-        responseText.includes(term.toLowerCase())
-      );
-
-      results.push({
-        prompt,
-        mentioned,
-        responseSnippet: response.slice(0, 700),
-        competitors: extractCompetitorsFromText(response, brandName, domain),
-      });
+      const rt = response.toLowerCase();
+      results.push({ prompt, mentioned: brandTerms.some((t)=>rt.includes(t.toLowerCase())), responseSnippet: response.slice(0,700), competitors: extractCompetitorsFromText(response, brandName, domain) });
     }
-
-    let perplexityContent = "";
-    let perplexityMentioned = false;
-    let perplexityCitations: string[] = [];
-    let perplexityCompetitors: string[] = [];
-
+    let perplexityContent="", perplexityMentioned=false, perplexityCitations: string[]=[], perplexityCompetitors: string[]=[];
     try {
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
-      const perplexityRes = await fetch(`${baseUrl}/api/perplexity`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt: `Return top companies similar to ${brandName} in ${industry}. Mention whether ${domain} appears. Include competitors and sources.`,
-        }),
-      });
-
-      const rawText = await perplexityRes.text();
-
-      if (!rawText.startsWith("<!DOCTYPE")) {
-        const perplexityData = JSON.parse(rawText);
-
-        perplexityContent = perplexityData?.content || "";
-        perplexityCitations = perplexityData?.citations || [];
-        perplexityCompetitors = perplexityData?.competitors || [];
-
-        const perplexityText = perplexityContent.toLowerCase();
-
-        perplexityMentioned = brandTerms.some((term) =>
-          perplexityText.includes(term.toLowerCase())
-        );
+      const pr = await fetch(`${baseUrl}/api/perplexity`, { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ prompt: `Return top companies similar to ${brandName} in ${industry}. Mention whether ${domain} appears. Include competitors and sources.` }) });
+      const raw = await pr.text();
+      if (!raw.startsWith("<!DOCTYPE")) {
+        const pd = JSON.parse(raw);
+        perplexityContent = pd?.content || ""; perplexityCitations = pd?.citations || []; perplexityCompetitors = pd?.competitors || [];
+        perplexityMentioned = brandTerms.some((t)=>perplexityContent.toLowerCase().includes(t.toLowerCase()));
       }
-    } catch (error) {
-      console.error("Perplexity failed:", error);
-    }
+    } catch (e) { console.error("Perplexity failed:", e); }
 
     const totalPrompts = results.length;
-    const brandMentions = results.filter((item) => item.mentioned).length;
-
-    const openAIScore =
-      totalPrompts > 0 ? Math.round((brandMentions / totalPrompts) * 100) : 0;
-
-    const finalScore = Math.max(
-      0,
-      Math.min(100, Math.round(openAIScore * 0.75 + (perplexityMentioned ? 25 : 0)))
-    );
-
-    const allCompetitors = Array.from(
-      new Set([
-        ...results.flatMap((item) => item.competitors || []),
-        ...perplexityCompetitors,
-      ])
-    )
-      .map((item) => String(item).trim())
-      .filter(Boolean)
-      .filter((item) => !isSelfMention(item, brandName, domain))
-      .slice(0, 10);
-
+    const brandMentions = results.filter((i)=>i.mentioned).length;
+    const openAIScore = totalPrompts>0 ? Math.round((brandMentions/totalPrompts)*100) : 0;
+    const finalScore = Math.max(0, Math.min(100, Math.round(openAIScore*0.75 + (perplexityMentioned?25:0))));
+    const allCompetitors = Array.from(new Set([...results.flatMap((i)=>i.competitors||[]), ...perplexityCompetitors]))
+      .map((i)=>String(i).trim()).filter(Boolean).filter((i)=>!isSelfMention(i,brandName,domain)).slice(0,10);
     const recommendations = [
-      `Create stronger topical content around ${industry}.`,
-      `Publish comparison pages against key competitors.`,
-      `Improve brand mentions across trusted industry websites.`,
-      `Add schema, FAQs, and expert author signals to strengthen AI understanding.`,
+      `Create stronger topical content around ${industry}.`, `Publish comparison pages against key competitors.`,
+      `Improve brand mentions across trusted industry websites.`, `Add schema, FAQs, and expert author signals to strengthen AI understanding.`,
       `Build citations and backlinks from relevant ${industry} sources.`,
     ];
+    const positioningInsight = finalScore<40
+      ? `${brandName} has low AI visibility for ${industry}. Competitors are more likely to be recommended.`
+      : finalScore<70 ? `${brandName} has moderate AI visibility for ${industry}.`
+      : `${brandName} has strong AI visibility for ${industry}.`;
 
-    const positioningInsight =
-      finalScore < 40
-        ? `${brandName} has low AI visibility for ${industry}. Competitors are more likely to be recommended because the brand has weaker public signals, fewer citations, or less topical authority.`
-        : finalScore < 70
-        ? `${brandName} has moderate AI visibility for ${industry}. The brand appears sometimes, but competitors still have stronger recognition.`
-        : `${brandName} has strong AI visibility for ${industry}. The next priority is improving how positively and prominently the brand is positioned.`;
-
-// 🆕 LIVE MULTI-MODEL ANALYSIS (ChatGPT + Claude + Gemini) — natural buyer questions
+    // ───────── NEW: live multi-model + citations + ranked pages (A + B) ─────────
     let aiSearchVisibility: any = null;
     try {
       const incomingCompetitors: string[] = Array.isArray(body?.competitors) ? body.competitors : [];
 
-// 🆕 Real market category  → prompts self-referential nahi rahenge
-      const category = await deriveCategory(domain, brandName, String(body?.industry || ""));
-      const nlPrompts = (await discoverPrompts(domain, category, incomingCompetitors, brandName)).slice(0, 3);
+      const country = await detectCountry(domain, brandName);
+      const locationCode = COUNTRY_LOC[country.toLowerCase()] || getLocationCode(domain);
 
-const perPrompt: any[] = [];
-      for (const prompt of nlPrompts) {
+      const { prompts: nlPrompts, rankedPages } = await getKeywordIntel(domain, industry, brandName, locationCode, country);
+
+      const perPrompt: any[] = [];
+      for (const prompt of nlPrompts.slice(0, 3)) {
         perPrompt.push({ prompt, modelResults: await queryAllModels(prompt) });
-                await new Promise((r) => setTimeout(r, 500)); // chhota gap (sequential hone se Claude burst nahi hota)
+        await new Promise((r) => setTimeout(r, 500));
       }
 
       const parsed: ParsedResponse[] = [];
       const promptResults: any[] = [];
+      const citationsMap = new Map<string, Set<string>>();
+
       for (const { prompt, modelResults } of perPrompt) {
         const row: any = { prompt, models: {}, avgPosition: null };
         const positions: number[] = [];
         for (const mr of modelResults) {
-          const p = parseResponse(mr.response, prompt, mr.model, brandName, incomingCompetitors);
+          const p = parseResponse(mr.response, prompt, mr.model, brandName, domain, incomingCompetitors);
           parsed.push(p);
-          row.models[mr.model] = { mentioned: p.brandMentioned, position: p.brandPosition, error: mr.error };
+          row.models[mr.model] = { mentioned: p.brandMentioned, position: p.brandPosition, citedPage: p.brandCitations[0] || null, error: mr.error };
           if (p.brandMentioned && p.brandPosition) positions.push(p.brandPosition);
+          p.brandCitations.forEach((u) => { if (!citationsMap.has(u)) citationsMap.set(u, new Set()); citationsMap.get(u)!.add(mr.model); });
         }
-        row.avgPosition = positions.length
-          ? Number((positions.reduce((a, b) => a + b, 0) / positions.length).toFixed(1))
-          : null;
+        row.avgPosition = positions.length ? Number((positions.reduce((a, b) => a + b, 0) / positions.length).toFixed(1)) : null;
         promptResults.push(row);
       }
 
       const score = calculateAIVisibilityScore(parsed);
-      const modelsCalled = Array.from(new Set(
-perPrompt.flatMap((pp: any) =>
-            pp.modelResults.filter((m: any) => m.response).map((m: any) => m.model)
-          )
-      ));
 
-      aiSearchVisibility = {
-        ...score,
-        promptResults,
-        totalPrompts: nlPrompts.length,
-        modelsCalled,
-        brand: brandName,
-        industry: category,
-source: "Live AI Models (ChatGPT, Claude, Gemini)",
+      // A: brand-knowledge probe — does AI KNOW this brand?
+      const knowledgePrompt = `What do you know about "${brandName}" (the company at ${domain})? Briefly describe what products or services they offer.`;
+      const kRes = await queryAllModels(knowledgePrompt);
+      const kModels: any = {};
+      let knownCount = 0;
+      kRes.forEach((mr) => {
+        const knows = knowsBrand(mr.response, brandName, domain);
+        if (knows) knownCount++;
+        const cites = extractBrandCitations(mr.response, domain);
+        cites.forEach((u) => { if (!citationsMap.has(u)) citationsMap.set(u, new Set()); citationsMap.get(u)!.add(mr.model); });
+        kModels[mr.model] = { knows, snippet: (mr.response || "").slice(0, 240), citedPage: cites[0] || null };
+      });
+      const validK = kRes.filter((m) => m.response).length || 1;
+      const brandKnowledge = {
+        score: Math.round((knownCount / validK) * 100),
+        knownBy: kRes.filter((m) => kModels[m.model]?.knows).map((m) => m.model),
+        models: kModels,
       };
 
-      console.log("[ai-visibility] DONE — prompts:", nlPrompts.length, "modelsCalled:", modelsCalled, "score:", score.overallScore);
+      const citations = Array.from(citationsMap.entries()).map(([url, models]) => ({ url, models: Array.from(models) }));
+      const modelsCalled = Array.from(new Set(perPrompt.flatMap((pp: any) => pp.modelResults.filter((m: any) => m.response).map((m: any) => m.model))));
+
+      aiSearchVisibility = {
+        ...score, promptResults, brandKnowledge, citations, rankedPages, country,
+        totalPrompts: nlPrompts.length, modelsCalled, brand: brandName, industry,
+        source: "Live AI Models (ChatGPT, Claude, Gemini)",
+      };
+      console.log("[ai-visibility] DONE — prompts:", promptResults.length, "knowledge:", brandKnowledge.score, "citations:", citations.length, "pages:", rankedPages.length, "country:", country);
     } catch (err) {
       console.error("Multi-model AI visibility failed:", err);
       aiSearchVisibility = null;
@@ -358,31 +197,13 @@ source: "Live AI Models (ChatGPT, Claude, Gemini)",
       success: true,
       aiSearchVisibility,
       aiVisibility: {
-        brandName,
-        domain,
-        industry,
-        score: finalScore,
-        totalPrompts,
-        brandMentions,
-        perplexityMentioned,
-        results,
-        competitors: allCompetitors,
-        positioningInsight,
-        aiRecommendations: recommendations,
-        perplexity: {
-          mentioned: perplexityMentioned,
-          content: perplexityContent,
-          citations: perplexityCitations,
-          competitors: perplexityCompetitors,
-        },
+        brandName, domain, industry, score: finalScore, totalPrompts, brandMentions, perplexityMentioned,
+        results, competitors: allCompetitors, positioningInsight, aiRecommendations: recommendations,
+        perplexity: { mentioned: perplexityMentioned, content: perplexityContent, citations: perplexityCitations, competitors: perplexityCompetitors },
       },
     });
   } catch (error) {
     console.error("AI visibility error:", error);
-
-    return NextResponse.json(
-      { success: false, error: "AI visibility failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: "AI visibility failed" }, { status: 500 });
   }
 }
