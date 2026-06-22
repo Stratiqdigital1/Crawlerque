@@ -79,15 +79,16 @@ function buildRankedPages(items: RankedItem[]): RankedPage[] {
 }
 
 // Turn real keywords into 3 CLEAN buyer questions via OpenAI (no junk like "best glacier arcade").
-async function buildCleanPrompts(keywords: string[], country: string): Promise<string[]> {
-  const top = keywords.slice(0, 15).join(", ");
+async function buildCleanPrompts(keywords: string[], country: string, brandName = "", industry = ""): Promise<string[]> {
+const top = keywords.slice(0, 20).join(", ");
   const where = country && country.toLowerCase() !== "us" ? ` Focus on the ${country} market.` : "";
   try {
 const ai = await queryOpenAI(
-      `A website ranks for these search terms: ${top}. ` +
-      `Identify the GENERIC product or service categories these represent, and IGNORE any specific brand, store, retailer, marketplace, or company names (e.g. Trader Joe's, Whole Foods, NBA, Starbucks, Amazon). ` +
-      `Then write exactly 5 natural questions a shopper would ask an AI assistant to find the best products or services in those GENERIC categories.${where} ` +
-      `Rules: do NOT mention any specific brand, store, or company name in the questions. Each question on its own line, no numbering, each ends with a question mark.`
+      `A company called "${brandName}"${industry ? ` (industry: ${industry})` : ""} ranks in Google for these search terms: ${top}. ` +
+      `IMPORTANT: some of these terms are UNRELATED topics the site only ranks for by accident (e.g. news, prayer times, or prices of products the company does NOT sell). ` +
+      `Step 1: from the company name and the terms, work out the company's ACTUAL core products or services. ` +
+      `Step 2: write exactly 5 natural questions a shopper would ask an AI assistant when looking to BUY or CHOOSE those core products/services.${where} ` +
+      `Rules: ONLY cover the company's real core categories — discard every unrelated term. Do NOT mention "${brandName}" or any specific brand, store, or company name in the questions. Each question on its own line, no numbering, each ends with a question mark.`
     );
     const lines = (ai || "").split("\n").map((l) => l.replace(/^[\d.)\-\s]+/, "").trim()).filter((l) => l.length > 8 && l.includes("?"));
     if (lines.length >= 2) return lines.slice(0, 5);
@@ -114,7 +115,7 @@ export async function getKeywordIntel(
   ));
 
   const seedKw = cleanKw.length ? cleanKw : items.map((i) => i.keyword);
-  const prompts = (await buildCleanPrompts(seedKw, country)).slice(0, 5);
+  const prompts = (await buildCleanPrompts(seedKw, country, brandName, industry)).slice(0, 5);
 
   console.log("[ai-visibility] market:", country, "| prompts:", prompts, "| pages:", rankedPages.length);
   return { prompts, rankedPages, country, locationCode };

@@ -154,9 +154,9 @@ export async function queryGemini(prompt: string): Promise<string> {
 }
 
 export const AI_MODELS = [
-  { name: "ChatGPT", fn: dfsChatGPT },
-  { name: "Claude", fn: dfsClaude },
-  { name: "Gemini", fn: dfsGemini },
+  { name: "ChatGPT", fn: queryOpenAI },
+  { name: "Claude", fn: queryAnthropic },
+  { name: "Gemini", fn: queryGemini },
 ];
 
 // Har model call ko max 8s do — koi slow/hung model audit ko block na kare.

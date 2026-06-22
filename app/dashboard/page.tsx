@@ -1556,7 +1556,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
     kpiRow([
       {label:"Seed Keyword",value:cl(data?.keywordResearch?.seedKeyword),col:C.accent},
       {label:"Suggestions Found",value:fmt(data?.keywordResearch?.suggestions?.length),col:C.blue},
-      {label:"Source",value:cl(data?.keywordResearch?.source,"DataForSEO"),col:C.muted},
+      {label:"Source",value:cl(data?.keywordResearch?.source,"Crawler Que"),col:C.muted},
       {label:"Location",value:cl(data?.traffic?.country,"—"),col:C.muted},
     ]);
     tbl(["Keyword","Volume","CPC","Competition","Intent","KD"],
@@ -2654,7 +2654,7 @@ value={
       <>
         <div className="mb-6 grid gap-4 md:grid-cols-4">
           {[
-            ["DataForSEO", data?.moduleStatus?.dataforseo],
+            ["Crawler Que", data?.moduleStatus?.dataforseo],
             ["AI Optimization", data?.moduleStatus?.aiOptimization],
             ["SERP API", data?.moduleStatus?.serp],
             ["OnPage API", data?.moduleStatus?.onPage],
@@ -2665,7 +2665,7 @@ value={
           ]
           .filter(([name]: any) => {
             const keyMap: any = {
-              "DataForSEO": "traffic",
+              "Crawler Que": "traffic",
               "AI Optimization": "ai",
               "SERP API": "serp",
               "OnPage API": "technical",
@@ -3461,10 +3461,10 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
       </div>
     </div>
 
-    {/* divider into the supplementary DataForSEO signal below */}
+    {/* divider into the supplementary signal below */}
     <div className="mb-2 border-t border-[#1e3a5f] pt-6">
       <p className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">
-        Supplementary signal · DataForSEO AI Optimization
+        Supplementary signal · AI Optimization Engine
       </p>
     </div>
   </div>
@@ -3658,14 +3658,14 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
     </div>
 
     <div className="mb-2 border-t border-[#1e3a5f] pt-6">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">Supplementary signal · DataForSEO AI Optimization</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">Supplementary signal · AI Optimization Engine</p>
     </div>
   </div>
 ) : null}
 {/* ════════════════════ END V2 BLOCK ════════════════════ */}
 
     <p className="mb-5 text-sm text-slate-500">
-      Supplementary signal from the DataForSEO AI Optimization API, shown below the live multi-model results above.
+      Supplementary AI optimization signal, shown below the live multi-model results above.
     </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-4">
