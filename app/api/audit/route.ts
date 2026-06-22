@@ -284,6 +284,9 @@ const incomingAuditJobId = body?.auditJobId
 
 const auditMode = body?.auditMode || "paid";
 const isFreeAudit = auditMode === "free";
+const customPrompts: string[] = Array.isArray(body?.customPrompts)
+  ? body.customPrompts.map((p: any) => String(p || "").trim()).filter(Boolean).slice(0, 5)
+  : [];
 const clientIp = getClientIp(req);
 
    if (isFreeAudit) {
@@ -770,9 +773,10 @@ try {
   const aiRes = await fetch(`${origin}/api/dataforseo/ai-optimization`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+          body: JSON.stringify({
           url,
           industry: cleanSeedKeyword || title || description || domain,
+          customPrompts,
         }),
         cache: "no-store",
       });
@@ -783,7 +787,7 @@ const aiJson = await aiRes.json();
       // 🆕 LIVE AI MODELS — ChatGPT, Claude, Gemini (30s timeout; audit ko block nahi karta)
       try {
         const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 50000);
+        const t = setTimeout(() => ctrl.abort(), 110000);
         const realRes = await fetch(`${origin}/api/ai-visibility`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -792,6 +796,7 @@ const aiJson = await aiRes.json();
             brandName: domain,
             industry: cleanSeedKeyword || title || description || domain,
             competitors: (dataforseo?.competitors || []).map((c: any) => c.domain),
+            customPrompts,
           }),
           signal: ctrl.signal,
           cache: "no-store",

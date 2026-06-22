@@ -32,7 +32,8 @@ const [auditProgress, setAuditProgress] = useState(0);
 const [auditCurrentModule, setAuditCurrentModule] = useState("");
 const [auditModuleStatus, setAuditModuleStatus] = useState<any>({});
 const [abortController, setAbortController] = useState<AbortController | null>(null);
-  const [error, setError] = useState("");
+const [error, setError] = useState("");
+  const [customPrompts, setCustomPrompts] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedReportTypes, setSelectedReportTypes] = useState<string[]>([
   "seo",
@@ -262,6 +263,7 @@ body: JSON.stringify({
   url: normalizedUrl,
   reportTypes: selectedReportTypes,
   auditJobId: startedJobId,
+  customPrompts: customPrompts.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 5),
 }),
       });
 
@@ -2037,8 +2039,24 @@ const isLargeSiteWarning =
         </button>
       );
     })}
-  </div>
 </div>
+</div>
+
+{selectedReportTypes.includes("ai") && (
+  <div className="rounded-2xl border border-[#222] bg-[#111] p-4">
+    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#8A8A8A]">
+      Custom AI Prompts (optional) — ek line par ek, max 5
+    </p>
+    <textarea
+      value={customPrompts}
+      onChange={(e) => setCustomPrompts(e.target.value)}
+      disabled={loading}
+      rows={3}
+      placeholder={"best digital marketing agency in Pakistan?\nwho offers white-label SEO services?"}
+      className="w-full rounded-xl border border-[#2a2a2a] bg-[#0A0A0A] px-4 py-3 font-mono text-sm text-white outline-none placeholder:text-[#444] focus:border-[#C5FF3D]/60"
+    />
+  </div>
+)}
 
   <button
     onClick={runAudit}

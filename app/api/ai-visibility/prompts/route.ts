@@ -86,15 +86,15 @@ async function buildCleanPrompts(keywords: string[], country: string): Promise<s
 const ai = await queryOpenAI(
       `A website ranks for these search terms: ${top}. ` +
       `Identify the GENERIC product or service categories these represent, and IGNORE any specific brand, store, retailer, marketplace, or company names (e.g. Trader Joe's, Whole Foods, NBA, Starbucks, Amazon). ` +
-      `Then write exactly 3 natural questions a shopper would ask an AI assistant to find the best products or services in those GENERIC categories.${where} ` +
+      `Then write exactly 5 natural questions a shopper would ask an AI assistant to find the best products or services in those GENERIC categories.${where} ` +
       `Rules: do NOT mention any specific brand, store, or company name in the questions. Each question on its own line, no numbering, each ends with a question mark.`
     );
     const lines = (ai || "").split("\n").map((l) => l.replace(/^[\d.)\-\s]+/, "").trim()).filter((l) => l.length > 8 && l.includes("?"));
-    if (lines.length >= 2) return lines.slice(0, 3);
+    if (lines.length >= 2) return lines.slice(0, 5);
   } catch { /* fall through */ }
   // Fallback: simple "best X" from top keywords.
   const w = country && country.toLowerCase() !== "us" ? ` in ${country}` : "";
-  return keywords.slice(0, 3).map((k) => `What is the best ${k}${w}?`);
+  return keywords.slice(0, 5).map((k) => `What is the best ${k}${w}?`);
 }
 
 // Main: market + ranked pages + clean prompts (one place).
@@ -114,7 +114,7 @@ export async function getKeywordIntel(
   ));
 
   const seedKw = cleanKw.length ? cleanKw : items.map((i) => i.keyword);
-  const prompts = (await buildCleanPrompts(seedKw, country)).slice(0, 3);
+  const prompts = (await buildCleanPrompts(seedKw, country)).slice(0, 5);
 
   console.log("[ai-visibility] market:", country, "| prompts:", prompts, "| pages:", rankedPages.length);
   return { prompts, rankedPages, country, locationCode };

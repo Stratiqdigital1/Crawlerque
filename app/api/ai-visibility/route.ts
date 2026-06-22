@@ -5,7 +5,7 @@ import { parseResponse, knowsBrand, extractBrandCitations, type ParsedResponse }
 import { calculateAIVisibilityScore } from "@/lib/ai-visibility-score";
 import { getLocationCode } from "@/lib/dataforseo-config";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 function normalizeDomain(url: string) {
   try { return new URL(url).hostname.replace(/^www\./, ""); }
@@ -52,7 +52,14 @@ function extractCompetitorsFromText(text: string, brandName: string, domain: str
 const COUNTRY_LOC: Record<string, number> = {
   pakistan:2586, india:2356, bangladesh:2050, "united kingdom":2826, uk:2826, england:2826,
   australia:2036, canada:2124, uae:2784, "united arab emirates":2784, dubai:2784,
-  "united states":2840, us:2840, usa:2840, america:2840,
+"united states":2840, us:2840, usa:2840, america:2840,
+};
+const COUNTRY_ISO: Record<string, string> = {
+  pakistan: "PK", india: "IN", bangladesh: "BD",
+  "united kingdom": "GB", uk: "GB", england: "GB",
+  australia: "AU", canada: "CA",
+  uae: "AE", "united arab emirates": "AE", dubai: "AE",
+  "united states": "US", us: "US", usa: "US", america: "US",
 };
 async function detectCountry(domain: string, brandName: string): Promise<string> {
   try {
@@ -129,13 +136,21 @@ export async function POST(req: Request) {
     try {
       const incomingCompetitors: string[] = Array.isArray(body?.competitors) ? body.competitors : [];
 
-      const { prompts: nlPrompts, rankedPages, country } = await getKeywordIntel(domain, industry, brandName);
+const { prompts: nlPrompts, rankedPages, country } = await getKeywordIntel(domain, industry, brandName);
 
-      const perPrompt: any[] = [];
-      for (const prompt of nlPrompts.slice(0, 3)) {
-        perPrompt.push({ prompt, modelResults: await queryAllModels(prompt) });
-        await new Promise((r) => setTimeout(r, 500));
-      }
+      const manualPrompts: string[] = (Array.isArray(body?.customPrompts) ? body.customPrompts : [])
+        .map((p: any) => String(p || "").trim())
+        .filter(Boolean);
+      const finalPrompts = Array.from(new Set([...manualPrompts, ...nlPrompts])).slice(0, 5);
+
+      const countryIso = COUNTRY_ISO[String(country || "").toLowerCase()] || "US";
+
+      const perPrompt: any[] = await Promise.all(
+        finalPrompts.map(async (prompt) => ({
+          prompt,
+          modelResults: await queryAllModels(prompt, countryIso),
+        }))
+      );
 
       const parsed: ParsedResponse[] = [];
       const promptResults: any[] = [];
@@ -159,7 +174,7 @@ export async function POST(req: Request) {
 
       // A: brand-knowledge probe — does AI KNOW this brand?
       const knowledgePrompt = `What do you know about "${brandName}" (the company at ${domain})? Briefly describe what products or services they offer.`;
-      const kRes = await queryAllModels(knowledgePrompt);
+      const kRes = await queryAllModels(knowledgePrompt, countryIso);
       const kModels: any = {};
       let knownCount = 0;
       kRes.forEach((mr) => {
@@ -181,7 +196,7 @@ export async function POST(req: Request) {
 
       aiSearchVisibility = {
         ...score, promptResults, brandKnowledge, citations, rankedPages, country,
-        totalPrompts: nlPrompts.length, modelsCalled, brand: brandName, industry,
+        totalPrompts: finalPrompts.length, modelsCalled, brand: brandName, industry,
         source: "Live AI Models (ChatGPT, Claude, Gemini)",
       };
       console.log("[ai-visibility] DONE — prompts:", promptResults.length, "knowledge:", brandKnowledge.score, "citations:", citations.length, "pages:", rankedPages.length, "country:", country);
