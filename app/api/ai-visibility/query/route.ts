@@ -79,7 +79,7 @@ export async function dfsGemini(prompt: string, countryIso = "US") {
   return dfsLlmResponse("ai_optimization/gemini/llm_responses/live", "gemini-2.5-flash", prompt, false, countryIso);
 }
 
-export async function queryOpenAI(prompt: string): Promise<string> {
+export async function queryOpenAI(prompt: string, _countryIso = "US"): Promise<string> {
   const key = process.env.OPENAI_API_KEY;
   if (!key) throw new Error("Missing OPENAI_API_KEY");
 
@@ -103,7 +103,7 @@ export async function queryOpenAI(prompt: string): Promise<string> {
   return json?.choices?.[0]?.message?.content?.trim() || "";
 }
 
-export async function queryAnthropic(prompt: string): Promise<string> {
+export async function queryAnthropic(prompt: string, _countryIso = "US"): Promise<string> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error("Missing ANTHROPIC_API_KEY");
 
@@ -128,7 +128,7 @@ export async function queryAnthropic(prompt: string): Promise<string> {
   return (json?.content?.map((b: any) => b?.text || "").join(" ") || "").trim();
 }
 
-export async function queryGemini(prompt: string): Promise<string> {
+export async function queryGemini(prompt: string, _countryIso = "US"): Promise<string> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("Missing GEMINI_API_KEY");
 
