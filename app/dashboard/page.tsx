@@ -3464,7 +3464,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
     {/* divider into the supplementary signal below */}
     <div className="mb-2 border-t border-[#1e3a5f] pt-6">
       <p className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">
-        Supplementary signal · AI Optimization Engine
+        Detailed Model Analysis
       </p>
     </div>
   </div>
@@ -3658,37 +3658,17 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
     </div>
 
     <div className="mb-2 border-t border-[#1e3a5f] pt-6">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">Supplementary signal · AI Optimization Engine</p>
+<p className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">Detailed Model Analysis</p>
     </div>
   </div>
 ) : null}
 {/* ════════════════════ END V2 BLOCK ════════════════════ */}
 
     <p className="mb-5 text-sm text-slate-500">
-      Supplementary AI optimization signal, shown below the live multi-model results above.
+      Deeper per-model breakdown and competitor share, expanding on the live results above.
     </p>
 
-    <div className="mb-6 grid gap-4 md:grid-cols-4">
-      <MetricCard
-  label={data?.aiVisibility?.label || data?.aiOptimization?.scoreLabel || "AI Visibility Signal"}
-  value={
-    data?.aiVisibility?.score != null
-      ? `${data.aiVisibility.score}%`
-      : data?.aiOptimization?.visibilityScore != null
-      ? `${data.aiOptimization.visibilityScore}%`
-      : "Data not available"
-  }
-  score={Number(
-    data?.aiVisibility?.score ??
-      data?.aiOptimization?.visibilityScore ??
-      0
-  )}
-  tooltip={
-    data?.aiVisibility?.confidence === "low" || data?.aiOptimization?.confidence === "low"
-      ? "Directional signal based on limited usable AI model responses."
-      : "AI visibility based on tested model responses."
-  }
-/>
+<div className="mb-6 grid gap-4 md:grid-cols-3">
       <MetricCard
         label="Brand Mentions"
         value={data?.aiOptimization?.totalMentions ?? "Data not available"}
