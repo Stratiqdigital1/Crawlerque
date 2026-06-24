@@ -487,6 +487,7 @@ return {
   volume,
   traffic: Math.round(Number(adjustedTraffic || 0)),
 trafficType: rawTraffic > 0 ? "dataforseo_keyword_etv" : "ctr_estimate",
+  clickstream_etv: rawTraffic,
   cpc,
   competition,
   position,
@@ -498,22 +499,11 @@ trafficType: rawTraffic > 0 ? "dataforseo_keyword_etv" : "ctr_estimate",
 });
 
 const getKeywordCTRVisits = (k: any) => {
-  // PURE CTR MODEL — traffic = search volume × CTR(position).
-  // We intentionally do NOT use clickstream_etv / etv here, so the number is
-  // fully auditable and predictable (no DataForSEO ETV blending).
-  // The CTR curve already encodes the position cap: positions 11–20 get a
-  // tiny CTR and 21+ get 0, so out-of-reach rankings add no traffic.
+  const clickstream = Number(k.clickstream_etv || 0);
+  if (clickstream > 0) return Math.round(clickstream);
   const position = Number(k.position || k.rank_group || 0);
   const searchVolume = Number(k.volume || k.search_volume || 0);
-
-  // Commercial / comparison keywords attract ads above organic results,
-  // so real organic CTR is lower. getCTRCommercial() reflects that.
-  const intent = getKeywordIntent(String(k.keyword || ""));
-  const isCommercial = intent === "commercial" || intent === "comparison";
-
-  return Math.round(
-    searchVolume * (isCommercial ? getCTRCommercial(position) : getCTR(position))
-  );
+  return Math.round(searchVolume * getCTR(position));
 };
 
 // SINGLE SOURCE OF TRUTH — CTR curve traffic model.
@@ -527,11 +517,11 @@ const filteredKeywordCount =
   topKeywords.length - trafficEligibleKeywords.length;
 
 let trafficConfidence =
-  topKeywords.length < 20
+  topKeywords.length < 50
     ? "insufficient-data"
-    : topKeywords.length <= 100
-    ? "low"
     : topKeywords.length <= 500
+    ? "low"
+    : topKeywords.length <= 2000
     ? "moderate"
     : "high";
 
@@ -568,6 +558,14 @@ const trafficDebug = trafficEligibleKeywords
   })
   .sort((a: any, b: any) => b.estimatedVisits - a.estimatedVisits)
   .slice(0, 15);
+
+  console.log("TRAFFIC DEBUG", {
+  domain,
+  totalKeywordsFetched: topKeywords.length,
+  trafficEligibleCount: trafficEligibleKeywords.length,
+  organicTraffic,
+  topKeyword: trafficDebug[0],
+});
 
 const visibleTopKeywords = topKeywords.slice(0, 20);
 const nonBrandedTraffic = topKeywords

@@ -1026,17 +1026,18 @@ const organicKeywordCount = Number(
     0
 );
 
-// Semrush-style floor check: an estimate can't exceed ~50 visits per ranked
-// keyword. Prevents absurd numbers on domains with inflated volume data.
+// Sanity cap: only fire on reliable keyword data (>1000 keywords) and use a
+// high multiplier (×200) so legitimate large-site estimates aren't cut.
+// (overview keyword counts can be wrong/low, so ×50 was clipping real traffic.)
 if (
   organicTraffic != null &&
-  organicKeywordCount > 0 &&
-  organicTraffic > organicKeywordCount * 50
+  organicKeywordCount > 1000 &&
+  organicTraffic > organicKeywordCount * 200
 ) {
-  organicTraffic = organicKeywordCount * 50;
+  organicTraffic = organicKeywordCount * 200;
   trafficCapped = true;
   console.warn(
-    `[traffic] capped ${rawOrganicTraffic} -> ${organicTraffic} (keywords ${organicKeywordCount} x 50)`
+    `[traffic] capped ${rawOrganicTraffic} -> ${organicTraffic} (keywords ${organicKeywordCount} x 200)`
   );
 }
 
