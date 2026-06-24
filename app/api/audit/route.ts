@@ -1026,10 +1026,19 @@ const organicKeywordCount = Number(
     0
 );
 
-// Only apply cap if keyword data is reliable
-// Higher multiplier prevents legitimate large sites from being capped
-// Traffic cap removed — show original DataForSEO hybrid traffic estimate.
-trafficCapped = false;
+// Semrush-style floor check: an estimate can't exceed ~50 visits per ranked
+// keyword. Prevents absurd numbers on domains with inflated volume data.
+if (
+  organicTraffic != null &&
+  organicKeywordCount > 0 &&
+  organicTraffic > organicKeywordCount * 50
+) {
+  organicTraffic = organicKeywordCount * 50;
+  trafficCapped = true;
+  console.warn(
+    `[traffic] capped ${rawOrganicTraffic} -> ${organicTraffic} (keywords ${organicKeywordCount} x 50)`
+  );
+}
 
 const trafficSource = dataforseo?.trafficMethod || "ctr-curve";
 
@@ -1515,10 +1524,9 @@ aiVisibility,
               0
           ),
 
-          estimatedTraffic: Number(
+estimatedTraffic: Number(
             report?.traffic?.rawMonthly ||
               report?.traffic?.monthly ||
-              report?.domainAnalytics?.organicTraffic ||
               0
           ),
 

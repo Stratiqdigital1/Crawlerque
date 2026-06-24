@@ -498,15 +498,15 @@ trafficType: rawTraffic > 0 ? "dataforseo_keyword_etv" : "ctr_estimate",
 });
 
 const getKeywordCTRVisits = (k: any) => {
-  const clickstream = Number(k.clickstream_etv || 0);
-
-  if (clickstream > 0) return Math.round(clickstream);
-
+  // PURE CTR MODEL — traffic = search volume × CTR(position).
+  // We intentionally do NOT use clickstream_etv / etv here, so the number is
+  // fully auditable and predictable (no DataForSEO ETV blending).
+  // The CTR curve already encodes the position cap: positions 11–20 get a
+  // tiny CTR and 21+ get 0, so out-of-reach rankings add no traffic.
   const position = Number(k.position || k.rank_group || 0);
   const searchVolume = Number(k.volume || k.search_volume || 0);
 
-  // You already have getKeywordIntent() in this file — reuse it here.
-  // Commercial and comparison keywords attract ads above organic results,
+  // Commercial / comparison keywords attract ads above organic results,
   // so real organic CTR is lower. getCTRCommercial() reflects that.
   const intent = getKeywordIntent(String(k.keyword || ""));
   const isCommercial = intent === "commercial" || intent === "comparison";
@@ -527,11 +527,11 @@ const filteredKeywordCount =
   topKeywords.length - trafficEligibleKeywords.length;
 
 let trafficConfidence =
-  topKeywords.length < 50
+  topKeywords.length < 20
     ? "insufficient-data"
-    : topKeywords.length <= 500
+    : topKeywords.length <= 100
     ? "low"
-    : topKeywords.length <= 2000
+    : topKeywords.length <= 500
     ? "moderate"
     : "high";
 

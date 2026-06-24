@@ -307,8 +307,7 @@ try {
         report?.aiVisibility?.score,
 monthlyTraffic:
   report?.traffic?.rawMonthly ||
-  report?.traffic?.monthly ||
-  report?.domainAnalytics?.organicTraffic,
+  report?.traffic?.monthly,
       organicKeywords:
         report?.dataforseo?.organicKeywords ||
         report?.domainAnalytics?.organicKeywords,
