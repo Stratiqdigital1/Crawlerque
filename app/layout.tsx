@@ -25,6 +25,15 @@ export const metadata: Metadata = {
   title: "Crawler Que — AI Website Growth Intelligence",
   description:
     "Run modular SEO, AI visibility, traffic, and competitor audits. Export white-label PDF growth plans your clients actually read.",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    title: "Crawler Que — AI Website Growth Intelligence",
+    description: "Run modular SEO, AI visibility, traffic, and competitor audits.",
+    images: ["/logo-full.png"],
+  },
 };
 
 export default function RootLayout({

@@ -674,7 +674,7 @@ const exportPDF = async () => {
   const canWL     = pdfUser?.canUseWhiteLabel === true && pdfUser?.whiteLabelEnabled === true;
 const brandName = canWL ? (pdfUser?.agencyName || pdfUser?.companyName || "Your Agency") : "Crawler Que";
 const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligence Report") : "Powered By Strat IQ Digital";
-  const accentHex = canWL && pdfUser?.brandColor ? pdfUser.brandColor : "#C5FF3D";
+    const accentHex = canWL && pdfUser?.brandColor ? pdfUser.brandColor : "#00D4AA";
 
   // ── DATA ──────────────────────────────────────────────────────────────
   const normalized         = normalizeAuditData(data);
@@ -692,20 +692,20 @@ const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligenc
   // ── PALETTE ───────────────────────────────────────────────────────────
   type RGB = [number,number,number];
   const C = {
-    bg:      [8,  8,  8 ] as RGB,
-    card:    [16, 16, 16] as RGB,
-    card2:   [22, 22, 22] as RGB,
-    border:  [36, 36, 36] as RGB,
+bg:      [11, 25, 41] as RGB,
+    card:    [14, 36, 64] as RGB,
+    card2:   [18, 43, 78] as RGB,
+    border:  [30, 58, 95] as RGB,
     accent:  hexToRgb(accentHex),
-    dimAcc:  [80, 110, 10] as RGB,
+    dimAcc:  [0,  90, 74] as RGB,
     white:   [255,255,255] as RGB,
-    soft:    [210,210,210] as RGB,
-    muted:   [130,130,130] as RGB,
-    faint:   [50, 50, 50 ] as RGB,
+    soft:    [226,232,240] as RGB,
+    muted:   [148,163,184] as RGB,
+    faint:   [51, 65, 85 ] as RGB,
     red:     [239, 68, 68] as RGB,
     amber:   [245,158, 11] as RGB,
     blue:    [99, 179,237] as RGB,
-    green:   [34, 197, 94] as RGB,
+    green:   [0, 212, 170] as RGB,
   };
 
   const ML  = 14;
@@ -964,7 +964,7 @@ const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligenc
     doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(...C.soft); doc.text(ell(cl(lbl_), CW - 50), ML, y);
     doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(...col); doc.text(`${s}/100  ${sLbl(score)}`, PW - MR, y, { align: "right" });
     y += 4;
-    doc.setFillColor(22, 22, 22); doc.roundedRect(ML, y, CW, 6.5, 2, 2, "F");
+    doc.setFillColor(18, 43, 78); doc.roundedRect(ML, y, CW, 6.5, 2, 2, "F");
     if (fw > 0) { doc.setFillColor(...col); doc.roundedRect(ML, y, fw, 6.5, 2, 2, "F"); }
     if (note) { doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(...C.muted); doc.text(ell(cl(note), CW), PW - MR, y + 10.5, { align: "right" }); }
     y += 15;
@@ -1315,7 +1315,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   //  SECTION 04 — DOMAIN ANALYTICS
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("domainAnalytics")){
-    secHdr(nextSec(),"Domain Analytics","Organic and paid visibility signals from DataForSEO Domain Analytics API.");
+    secHdr(nextSec(),"Domain Analytics","Organic and paid visibility signals from Crawler Que Domain Analytics API.");
     kpiRow([
       {label:"Organic Keywords",value:fmt(data?.domainAnalytics?.organicKeywords),col:C.accent},
       {label:"Est. Organic Traffic",value:fmt(data?.domainAnalytics?.organicTraffic),col:C.green},
@@ -1500,7 +1500,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   //  SECTION 09 — KEYWORD GAP & LABS
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("keywords")||pdfShow("labs")){
-    secHdr(nextSec(),"Keyword Gap & SEO Labs Intelligence","Missing keywords competitors rank for, plus ranked keyword intelligence from DataForSEO Labs.");
+    secHdr(nextSec(),"Keyword Gap & SEO Labs Intelligence","Missing keywords competitors rank for, plus ranked keyword intelligence from Crawler Que Labs.");
     if(data?.dataforseo?.keywordGap){
       kpiRow([
         {label:"Own Keywords",value:fmt(data?.dataforseo?.keywordGap?.ownKeywords),col:C.accent},
@@ -1531,7 +1531,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
         })),[35,70,CW-105]);
     }
     if(data?.dataforseo?.topKeywords?.length){
-      secTitle("DataForSEO Labs — Ranked Keywords");
+      secTitle("Crawler Que Labs — Ranked Keywords");
       kpiRow([
         {label:"Organic Keywords",value:fmt(data?.dataforseo?.organicKeywords),col:C.accent},
         {label:"Top Keywords Fetched",value:fmt(data?.dataforseo?.topKeywords?.length),col:C.blue},
@@ -1551,7 +1551,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   //  SECTION 10 — KEYWORD RESEARCH
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("keywords")&&data?.keywordResearch?.suggestions?.length){
-    secHdr(nextSec(),"Keyword Research","Seed keyword suggestions from DataForSEO Keyword Suggestions API with intent and CPC signals.");
+    secHdr(nextSec(),"Keyword Research","Seed keyword suggestions from Crawler Que Keyword Suggestions API with intent and CPC signals.");
     kpiRow([
       {label:"Seed Keyword",value:cl(data?.keywordResearch?.seedKeyword),col:C.accent},
       {label:"Suggestions Found",value:fmt(data?.keywordResearch?.suggestions?.length),col:C.blue},
@@ -1569,7 +1569,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   //  SECTION 11 — SERP RANKINGS
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("serp")&&data?.serpData){
-    secHdr(nextSec(),"Live SERP Rankings","Google rank positions checked by DataForSEO SERP API for tracked keywords.");
+    secHdr(nextSec(),"Live SERP Rankings","Google rank positions checked by Crawler Que SERP API for tracked keywords.");
     kpiRow([
       {label:"Keywords Checked",value:cl(String(data?.serpData?.checkedKeywords??"—")),col:C.accent},
       {label:"Keywords Found",value:cl(String(data?.serpData?.foundCount??"—")),col:C.green},
@@ -1590,7 +1590,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   //  SECTION 12 — BACKLINK AUTHORITY
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("backlinks")&&data?.backlinks){
-    secHdr(nextSec(),"Backlink Authority & Trust Signals","Domain trust, referring domains, and top backlink sources from DataForSEO Backlinks API.");
+    secHdr(nextSec(),"Backlink Authority & Trust Signals","Domain trust, referring domains, and top backlink sources from Crawler Que Backlinks API.");
     kpiRow([
       {label:"Backlink Rank",value:cl(String(data?.dataforseo?.backlinkRank??normalized.backlinks.rank??"—")),sub:"Authority signal",col:sCol(n(normalized.backlinks.rank))},
       {label:"Total Backlinks",value:fmt(data?.backlinks?.backlinks??normalized.backlinks.total),col:C.accent},
@@ -1618,14 +1618,14 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
         normalized.backlinks.samples.slice(0,10).map((l:any)=>({col1:cl(l.anchor,"No anchor"),col2:cl(l.source,"—"),col3:cl(l.target,"—")})),
         [42,68,CW-110]);
     }
-    hiBox("Authority Insight",data?.backlinks?.referringDomains?`${domain} has ${cl(String(data.backlinks.referringDomains))} referring domains and ${cl(String(data.backlinks.backlinks??"unknown"))} total backlinks. Focus on earning quality industry mentions and relevant authority links.`:"Data not available from DataForSEO Backlinks API.","blue");
+    hiBox("Authority Insight",data?.backlinks?.referringDomains?`${domain} has ${cl(String(data.backlinks.referringDomains))} referring domains and ${cl(String(data.backlinks.backlinks??"unknown"))} total backlinks. Focus on earning quality industry mentions and relevant authority links.`:"Data not available from Crawler Que Backlinks API.","blue");
   }
 
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 13 — TECHNICAL SEO AUDIT
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("technical")&&data?.onPage){
-    secHdr(nextSec(),"Technical SEO Audit","OnPage crawl status, page-level issues, broken links, and crawl signals from DataForSEO OnPage API.");
+    secHdr(nextSec(),"Technical SEO Audit","OnPage crawl status, page-level issues, broken links, and crawl signals from Crawler Que OnPage API.");
     kpiRow([
       {label:"Pages Crawled",value:fmt(data?.onPage?.crawledPages),col:C.accent},
       {label:"Broken Links",value:fmt(data?.onPage?.brokenLinks),col:n(data?.onPage?.brokenLinks)&&n(data.onPage.brokenLinks)!==null&&(n(data.onPage.brokenLinks)??0)>0?C.red:C.green},
@@ -1654,7 +1654,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   //  SECTION 14 — CONTENT QUALITY
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("content")){
-    secHdr(nextSec(),"Content Quality & Relevance","On-page content signals and DataForSEO Content Analysis results.");
+    secHdr(nextSec(),"Content Quality & Relevance","On-page content signals and Crawler Que Content Analysis results.");
     kpiRow([
       {label:"Title Found",value:data?.title?"Yes":"Missing",col:data?.title?C.accent:C.red},
       {label:"Meta Description",value:data?.description?"Yes":"Missing",col:data?.description?C.accent:C.red},
@@ -1682,7 +1682,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   //  SECTION 15 — LOCAL SEO
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("local")&&data?.businessData?.listings?.length){
-    secHdr(nextSec(),"Local SEO & Business Listings","Business listing visibility, ratings, and review signals from DataForSEO Business Data API.");
+    secHdr(nextSec(),"Local SEO & Business Listings","Business listing visibility, ratings, and review signals from Crawler Que Business Data API.");
     kpiRow([
       {label:"Listings Found",value:fmt(data?.businessData?.listings?.length),col:C.accent},
       {label:"Search Query",value:cl(data?.businessData?.keyword),col:C.blue},
@@ -1836,9 +1836,7 @@ const isLargeSiteWarning =
       {/* Sidebar */}
       <div className="sticky top-0 h-screen w-72 overflow-y-auto border-r border-[#222] bg-[#0A0A0A] p-5">
 <div className="mb-6 flex items-center gap-3">
-    <span className="cq-frame flex h-9 w-9 shrink-0 items-center justify-center bg-[var(--cq-surface)]">
-      <span className="font-mono text-xs font-bold text-[var(--cq-signal)]">CQ</span>
-    </span>
+<img src="/logo-icon.png" alt="Crawler Que" className="h-9 w-9 shrink-0 object-contain" />
     <div>
       <h1 className="text-lg font-bold tracking-tight text-[var(--cq-text)]">
         Crawler Que
@@ -2181,8 +2179,8 @@ disabled={!data}
           activeTab !== "account" &&
           activeTab !== "history" && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#C5FF3D]/20 bg-[#C5FF3D]/8">
-              <span className="font-mono text-lg font-black text-[#C5FF3D]">CQ</span>
+<div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#00D4AA]/20 bg-[#00D4AA]/8">
+              <img src="/logo-icon.png" alt="Crawler Que" className="h-9 w-9 object-contain" />
             </div>
             <h3 className="text-lg font-bold text-white">Run your first audit</h3>
             <p className="mt-2 max-w-sm text-sm text-[#8A8A8A]">
@@ -2261,7 +2259,7 @@ disabled={!data}
           </h3>
 
           <p className="mt-1 text-sm text-slate-500">
-            All connected DataForSEO modules processed successfully.
+            All connected Crawler Que modules processed successfully.
           </p>
         </div>
 
@@ -2832,7 +2830,7 @@ value={
 {activeTab === "content" && (
   <Section title="Content Quality & Relevance">
     <p className="mb-5 text-sm text-slate-500">
-      Powered by on-page crawl signals, DataForSEO keyword data, and Content Analysis API.
+      Powered by on-page crawl signals, Crawler Que keyword data, and Content Analysis API.
     </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-3">
@@ -2918,7 +2916,7 @@ value={
         </div>
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available from DataForSEO Content Analysis API.
+          Data not available from Crawler Que Content Analysis API.
         </p>
       )}
     </div>
@@ -2928,7 +2926,7 @@ value={
 {activeTab === "localSeo" && (
   <Section title="Local SEO & Business Listings">
     <p className="mb-5 text-sm text-slate-500">
-      Powered by DataForSEO Business Data API. Shows Google Business listing visibility, ratings, reviews, and local presence.
+      Powered by Crawler Que Business Data API. Shows Google Business listing visibility, ratings, reviews, and local presence.
     </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-3">
@@ -2987,7 +2985,7 @@ value={
         ))
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available from DataForSEO Business Data API.
+          Data not available from Crawler Que Business Data API.
         </p>
       )}
     </div>
@@ -2995,9 +2993,9 @@ value={
 )}
 {/* SEO LABS */}
 {activeTab === "labs" && (
-  <Section title="DataForSEO Labs Intelligence">
+  <Section title="Crawler Que Labs Intelligence">
     <p className="mb-5 text-sm text-slate-500">
-      Shows ranked keywords, keyword gaps, organic competitors, and visibility signals from DataForSEO Labs.
+      Shows ranked keywords, keyword gaps, organic competitors, and visibility signals from Crawler Que Labs.
     </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-4">
@@ -3023,7 +3021,7 @@ value={
             ))}
           </div>
         ) : (
-          <p className="text-sm text-slate-500">Data not available from DataForSEO Labs.</p>
+          <p className="text-sm text-slate-500">Data not available from Crawler Que Labs.</p>
         )}
       </div>
 
@@ -3079,7 +3077,7 @@ value={
 {activeTab === "domainAnalytics" && (
   <Section title="Domain Analytics">
     <p className="mb-5 text-sm text-slate-500">
-      Powered by DataForSEO Domain Analytics. Shows organic and paid visibility signals for the domain.
+      Powered by Crawler Que Domain Analytics. Shows organic and paid visibility signals for the domain.
     </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-3">
@@ -3205,8 +3203,8 @@ value={
       <h3 className="mb-3 font-semibold text-slate-950">Domain Insight</h3>
       <p className="text-sm leading-6 text-slate-600">
         {data?.domainAnalytics
-          ? "This section shows the domain’s organic and paid visibility signals from DataForSEO. Use this to compare whether the website is relying more on organic discovery or paid acquisition."
-          : "Data not available from DataForSEO Domain Analytics."}
+          ? "This section shows the domain’s organic and paid visibility signals from Crawler Que. Use this to compare whether the website is relying more on organic discovery or paid acquisition."
+          : "Data not available from Crawler Que Domain Analytics."}
       </p>
     </div>
   </Section>
@@ -3434,7 +3432,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
       </div>
     )}
 
-    {/* 🆕 PAGES & KEYWORDS — which keyword makes which page rank (DataForSEO) */}
+    {/* 🆕 PAGES & KEYWORDS — which keyword makes which page rank (Crawler Que) */}
     {data.aiSearchVisibility.rankedPages?.length > 0 && (
       <div className="mb-6 overflow-hidden rounded-2xl border border-[#1e3a5f] bg-[#0E2440]">
         <div className="border-b border-[#1e3a5f] px-5 py-3">
@@ -3637,7 +3635,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
       .slice(0, 700)
   : item.error && item.error !== "{}"
   ? item.error
-  : "Data not available from DataForSEO AI Optimization API."}
+  : "Data not available from Crawler Que AI Optimization API."}
             </p>
           </div>
         ))
@@ -3660,7 +3658,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
   data?.dataforseo?.keywordGap ? (
   <Section title="Keyword Opportunities & Gap Analysis">
     <p className="mb-5 text-sm text-slate-500">
-      Powered by DataForSEO Labs competitor keyword overlap. Shows keywords competitors rank for where this domain has weak or no visibility.
+      Powered by Crawler Que Labs competitor keyword overlap. Shows keywords competitors rank for where this domain has weak or no visibility.
     </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-3">
@@ -3762,7 +3760,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
         </div>
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available from DataForSEO keyword gap analysis.
+          Data not available from Crawler Que keyword gap analysis.
         </p>
       )}
 
@@ -3814,7 +3812,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 {/* RECOMMENDATIONS */}{activeTab === "recommendations" && (
   <Section title="AI Recommendations Engine">
     <p className="mb-5 text-sm text-slate-500">
-      Recommendations generated from real audit data: SEO issues, DataForSEO keywords, SERP rankings, backlinks, content analysis, and AI visibility.
+      Recommendations generated from real audit data: SEO issues, Crawler Que keywords, SERP rankings, backlinks, content analysis, and AI visibility.
     </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-3">
@@ -3915,7 +3913,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 {activeTab === "keywordResearch" && (
   <Section title="Keyword Research">
     <p className="mb-5 text-sm text-slate-500">
-      Powered by DataForSEO Keyword Suggestions API. Shows real keyword ideas from the selected seed keyword.
+      Powered by Crawler Que Keyword Suggestions API. Shows real keyword ideas from the selected seed keyword.
     </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-3">
@@ -3996,7 +3994,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
         </div>
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available from DataForSEO Keyword Suggestions API.
+          Data not available from Crawler Que Keyword Suggestions API.
         </p>
       )}
     </div>
@@ -4007,7 +4005,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
   data?.backlinks ? (
   <Section title="Backlink Authority">
     <p className="mb-5 text-sm text-slate-500">
-      Powered by DataForSEO Backlinks API. Shows authority signals, referring domains, and top backlink sources.
+      Powered by Crawler Que Backlinks API. Shows authority signals, referring domains, and top backlink sources.
     </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-4">
@@ -4022,7 +4020,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
       <p className="text-sm leading-6 text-slate-600">
         {data?.backlinks?.referringDomains
           ? `This domain has ${data.backlinks.referringDomains} referring domains and ${data.backlinks.backlinks} backlinks. Growth should focus on quality industry mentions and relevant authority links.`
-          : "Data not available from DataForSEO Backlinks API."}
+          : "Data not available from Crawler Que Backlinks API."}
       </p>
     </div>
 
@@ -4059,7 +4057,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
         </div>
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available from DataForSEO Backlinks API.
+          Data not available from Crawler Que Backlinks API.
         </p>
       )}
     </div>
@@ -4075,7 +4073,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 {activeTab === "serp" && (
   <Section title="Live SERP Rankings">
     <p className="mb-5 text-sm text-slate-500">
-      Powered by DataForSEO SERP API. Shows if the audited domain appears in Google’s top results for tracked keywords.
+      Powered by Crawler Que SERP API. Shows if the audited domain appears in Google’s top results for tracked keywords.
     </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-3">
@@ -4160,7 +4158,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
         </div>
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available from DataForSEO SERP API.
+          Data not available from Crawler Que SERP API.
         </p>
       )}
     </div>
@@ -4170,7 +4168,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 {activeTab === "technical" && (
   <Section title="Technical SEO Audit">
     <p className="mb-5 text-sm text-slate-500">
-      Powered by DataForSEO OnPage API. Shows crawl status, page-level issues, broken links, and technical SEO signals.
+      Powered by Crawler Que OnPage API. Shows crawl status, page-level issues, broken links, and technical SEO signals.
     </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-4">
@@ -4195,7 +4193,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
     <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <h3 className="mb-3 font-semibold text-slate-950">Crawl Status</h3>
       <p className="text-sm leading-6 text-slate-600">
-        {data?.onPage?.crawlStatus || "Data not available from DataForSEO OnPage API."}
+        {data?.onPage?.crawlStatus || "Data not available from Crawler Que OnPage API."}
       </p>
     </div>
 
@@ -4234,7 +4232,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
         </div>
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available yet. DataForSEO OnPage crawls can take longer to complete.
+          Data not available yet. Crawler Que OnPage crawls can take longer to complete.
         </p>
       )}
     </div>
@@ -4357,7 +4355,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
         </div>
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available from DataForSEO organic keyword source.
+          Data not available from Crawler Que organic keyword source.
         </p>
       )}
     </div>
@@ -4375,7 +4373,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
   data?.competitors?.length > 0 ? (
   <Section title="Competitor Intelligence">
     <p className="mb-5 text-sm text-slate-500">
-      Organic competitors are identified using DataForSEO keyword overlap and ranking visibility.
+      Organic competitors are identified using Crawler Que keyword overlap and ranking visibility.
     </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-3">
@@ -4479,7 +4477,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
         })
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available from DataForSEO competitor source.
+          Data not available from Crawler Que competitor source.
         </p>
       )}
     </div>

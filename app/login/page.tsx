@@ -41,13 +41,8 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-[var(--cq-ink)] px-6 py-16">
       <div className="w-full max-w-md">
         {/* Wordmark */}
-        <a href="/" className="mb-10 flex items-center justify-center gap-3">
-          <span className="cq-frame flex h-9 w-9 items-center justify-center bg-[var(--cq-surface)]">
-            <span className="font-mono text-xs font-bold text-[var(--cq-signal)]">CQ</span>
-          </span>
-          <span className="font-[var(--font-space)] text-xl font-bold tracking-tight text-[var(--cq-text)]">
-            Crawler Que
-          </span>
+<a href="/" className="mb-10 flex items-center justify-center">
+          <img src="/logo-full.png" alt="Crawler Que" className="h-9 w-auto" />
         </a>
 
         {/* Console card */}

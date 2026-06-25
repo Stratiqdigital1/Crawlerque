@@ -93,13 +93,8 @@ function SignupForm() {
     <div className="flex min-h-screen items-center justify-center bg-[var(--cq-ink)] px-6 py-16">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <a href="/" className="inline-flex items-center gap-3">
-            <span className="cq-frame flex h-9 w-9 items-center justify-center bg-[var(--cq-surface)]">
-              <span className="font-mono text-xs font-bold text-[var(--cq-signal)]">CQ</span>
-            </span>
-            <span className="font-[var(--font-space)] text-xl font-bold tracking-tight">
-              Crawler Que
-            </span>
+<a href="/" className="inline-flex items-center justify-center">
+            <img src="/logo-full.png" alt="Crawler Que" className="h-9 w-auto" />
           </a>
           <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-[var(--cq-signal)]/30 bg-[var(--cq-signal)]/8 px-4 py-1.5 font-mono text-xs text-[var(--cq-signal)]">
             ✓ Payment confirmed · {plan} plan

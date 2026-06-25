@@ -17,11 +17,8 @@ export function SiteNav() {
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--cq-line-soft)] bg-[var(--cq-ink)]/95 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8">
-        <a href="/" className="flex items-center gap-3">
-          <span className="cq-frame flex h-8 w-8 items-center justify-center bg-[var(--cq-surface)]">
-            <span className="font-mono text-[11px] font-bold text-[var(--cq-signal)]">CQ</span>
-          </span>
-          <span className="text-[17px] font-extrabold tracking-tight">Crawler Que</span>
+<a href="/" className="flex items-center gap-3">
+          <img src="/logo-full.png" alt="Crawler Que" className="h-7 w-auto" />
         </a>
         <nav className="hidden items-center gap-2 md:flex">
           {links.map(([href, label]) => (
@@ -78,11 +75,8 @@ export function SiteFooter() {
       <div className="mx-auto max-w-7xl">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
           <div>
-            <a href="/" className="flex items-center gap-3">
-              <span className="cq-frame flex h-8 w-8 items-center justify-center bg-[var(--cq-surface)]">
-                <span className="font-mono text-[11px] font-bold text-[var(--cq-signal)]">CQ</span>
-              </span>
-              <span className="text-[16px] font-extrabold tracking-tight">Crawler Que</span>
+<a href="/" className="flex items-center gap-3">
+              <img src="/logo-full.png" alt="Crawler Que" className="h-7 w-auto" />
             </a>
             <p className="mt-4 text-sm leading-relaxed text-[var(--cq-text-3)]">
               AI website growth intelligence for agencies, consultants, and SEO teams.

@@ -76,9 +76,7 @@ export default function AdminPage() {
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex items-center justify-between">
 <div className="flex items-center gap-4">
-            <span className="cq-frame flex h-11 w-11 items-center justify-center bg-[var(--cq-surface)]">
-              <span className="font-mono text-sm font-bold text-[var(--cq-signal)]">CQ</span>
-            </span>
+<img src="/logo-icon.png" alt="Crawler Que" className="h-11 w-11 object-contain" />
             <div>
               <p className="cq-eyebrow cq-eyebrow--signal">Admin Panel</p>
               <h1 className="mt-1 text-3xl font-extrabold tracking-tight">
