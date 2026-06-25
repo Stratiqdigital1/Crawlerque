@@ -1,7 +1,10 @@
 // app/for-seo-teams/page.tsx
 import { PersonaPage } from "@/components/site-shell";
 
-export const metadata = { title: "Crawler Que for SEO Teams" };
+export const metadata = {
+  title: "SEO Audit & AI Visibility Tool for SEO Teams — Crawler Que",
+  description: "Run modular SEO, technical, traffic, and AI visibility audits in one tool. Turn audit data into clear priorities your SEO team can act on.",
+};
 
 export default function ForSeoTeamsPage() {
   return (

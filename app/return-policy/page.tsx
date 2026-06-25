@@ -4,7 +4,10 @@
 // refund/return policy. If you already have this page, merge.
 import { SiteNav, SiteFooter, PageHero, Section } from "@/components/site-shell";
 
-export const metadata = { title: "Return & Refund Policy — Crawler Que" };
+export const metadata = {
+  title: "Return & Refund Policy — Crawler Que",
+  description: "Crawler Que's refund and cancellation policy for subscription plans.",
+};
 
 const BLOCKS: [string, string][] = [
   ["Try before you buy", "Crawler Que offers a free audit with no signup, so you can evaluate the product before paying. We encourage every customer to run a free audit and review the sample report before subscribing."],

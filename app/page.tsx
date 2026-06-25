@@ -194,8 +194,27 @@ const handleStartTrial = async () => {
         <div className="cq-scanline" />
       </header>
 
+
       {/* HERO */}
 <section className="relative overflow-hidden px-5 pb-24 pt-16 md:px-8 md:pt-24">
+<script
+  type="application/ld+json"
+  dangerouslySetInnerHTML={{
+    __html: JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: "Crawler Que",
+      description: "AI website growth intelligence and SEO audit platform.",
+      brand: { "@type": "Brand", name: "Crawler Que" },
+      offers: [
+        { "@type": "Offer", name: "Starter", price: "30", priceCurrency: "USD" },
+        { "@type": "Offer", name: "Agency", price: "99", priceCurrency: "USD" },
+        { "@type": "Offer", name: "Enterprise", price: "299", priceCurrency: "USD" },
+      ],
+    }),
+  }}
+/>
+
         {/* ── Background image + overlay (sits behind the hero content) ── */}
 <div className="pointer-events-none absolute inset-0 -z-10">
           <img

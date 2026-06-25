@@ -5,7 +5,11 @@
 // rather than overwrite.
 import { SiteNav, SiteFooter, PageHero, Section } from "@/components/site-shell";
 
-export const metadata = { title: "Privacy Policy — Crawler Que" };
+export const metadata = {
+  title: "Privacy Policy — Crawler Que",
+  description: "How Crawler Que collects, uses, and protects your data.",
+  robots: { index: true, follow: true },
+};
 
 const BLOCKS: [string, string][] = [
   ["Who we are", "Crawler Que is operated by [LEGAL COMPANY NAME] (\"we\", \"us\"), registered at [REGISTERED ADDRESS]. This policy explains what data we collect when you use crawlerque.com and why."],

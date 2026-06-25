@@ -8,7 +8,10 @@
 // Until you have 3+ real quotes, keep this page out of the nav/footer.
 import { SiteNav, SiteFooter, PageHero, Section, CtaBand } from "@/components/site-shell";
 
-export const metadata = { title: "Testimonials — Crawler Que" };
+export const metadata = {
+  title: "Customer Testimonials — Crawler Que",
+  description: "See how agencies, consultants, and SEO teams use Crawler Que to audit websites and deliver client-ready growth plans faster.",
+};
 
 const QUOTES = [
   { q: "[Replace with a real client quote about time saved on reporting.]", name: "[Client name]", role: "[Role, Company]" },

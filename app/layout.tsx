@@ -22,16 +22,17 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Crawler Que — AI Website Growth Intelligence",
+  title: "Crawler Que — AI Website Growth Intelligence & SEO Audit Tool",
   description:
-    "Run modular SEO, AI visibility, traffic, and competitor audits. Export white-label PDF growth plans your clients actually read.",
+    "Run modular SEO, AI visibility, traffic & competitor audits in minutes. White-label PDF reports. Plans from $30/mo with a 7-day free trial. Free audit, no signup.",
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
-    title: "Crawler Que — AI Website Growth Intelligence",
-    description: "Run modular SEO, AI visibility, traffic, and competitor audits.",
+    title: "Crawler Que — AI Website Growth Intelligence & SEO Audit Tool",
+    description:
+      "Modular SEO, AI visibility, traffic & competitor audits with white-label PDF reports. Free audit, no signup.",
     images: ["/logo-full.png"],
   },
 };

@@ -1,7 +1,10 @@
 // app/for-agencies/page.tsx
 import { PersonaPage } from "@/components/site-shell";
 
-export const metadata = { title: "Crawler Que for Agencies" };
+export const metadata = {
+  title: "White-Label SEO Audit Tool for Agencies — Crawler Que",
+  description: "Deliver branded SEO and AI visibility audit reports in minutes. White-label PDFs, your logo and colors. Agency plan from $99/month, 3 seats.",
+};
 
 export default function ForAgenciesPage() {
   return (

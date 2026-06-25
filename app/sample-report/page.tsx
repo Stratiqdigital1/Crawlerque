@@ -1,7 +1,10 @@
 // app/sample-report/page.tsx
 import { SiteNav, SiteFooter, PageHero, Section, CtaBand } from "@/components/site-shell";
 
-export const metadata = { title: "Sample Report — Crawler Que" };
+export const metadata = {
+  title: "Sample SEO Audit Report — Crawler Que",
+  description: "See a real Crawler Que audit report: SEO scores, AI visibility, traffic estimates, competitor gaps, and a clear growth plan. Run your own free.",
+};
 
 const SECTIONS = [
   ["Executive Snapshot", "Overall, SEO, performance, and AI visibility scores with benchmarks and the single biggest risk and opportunity."],

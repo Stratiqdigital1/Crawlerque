@@ -2,7 +2,10 @@
 // Replace the two PLACEHOLDER addresses below with your real contact details.
 import { SiteNav, SiteFooter, PageHero, Section } from "@/components/site-shell";
 
-export const metadata = { title: "Contact — Crawler Que" };
+export const metadata = {
+  title: "Contact — Crawler Que",
+  description: "Get in touch with the Crawler Que team for support, agency plans, or partnership enquiries.",
+};
 
 const SUPPORT_EMAIL = "support@crawlerque.com";   // ← replace if different
 const SALES_EMAIL   = "info@crawlerque.com"; // ← replace if different

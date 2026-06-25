@@ -3,7 +3,10 @@
 // publish them (each post can be its own page under app/blog/[slug]).
 import { SiteNav, SiteFooter, PageHero, Section, CtaBand } from "@/components/site-shell";
 
-export const metadata = { title: "Blog — Crawler Que" };
+export const metadata = {
+  title: "Blog — SEO, AI Visibility & GEO Insights | Crawler Que",
+  description: "Guides on AI search visibility, GEO, technical SEO, Core Web Vitals, and traffic estimation. Practical tactics for agencies and SEO teams.",
+};
 
 const COMING_SOON = [
   { tag: "AI Search", title: "GEO explained: how to get your clients recommended by ChatGPT", desc: "Entity signals, FAQ schema, third-party citations — the practical checklist for generative engine optimisation." },

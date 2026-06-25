@@ -1,7 +1,10 @@
 // app/changelog/page.tsx
 import { SiteNav, SiteFooter, PageHero, Section, CtaBand } from "@/components/site-shell";
 
-export const metadata = { title: "Changelog — Crawler Que" };
+export const metadata = {
+  title: "Changelog — Crawler Que",
+  description: "Latest Crawler Que product updates: new audit modules, AI visibility improvements, and reporting features.",
+};
 
 // Keep this list updated — an active changelog is one of the strongest
 // trust signals a SaaS can show. Newest entries first.

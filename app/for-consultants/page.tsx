@@ -1,7 +1,10 @@
 // app/for-consultants/page.tsx
 import { PersonaPage } from "@/components/site-shell";
 
-export const metadata = { title: "Crawler Que for Consultants" };
+export const metadata = {
+  title: "Affordable SEO Audit Tool for Consultants — Crawler Que",
+  description: "Deliver enterprise-quality SEO audit reports on a solo budget. Crawler Que's Starter plan is $30/month with branded PDF exports.",
+};
 
 export default function ForConsultantsPage() {
   return (

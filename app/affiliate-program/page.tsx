@@ -3,7 +3,10 @@
 // CTA to your affiliate platform (or keep the mailto until one is set up).
 import { SiteNav, SiteFooter, PageHero, Section, CtaBand } from "@/components/site-shell";
 
-export const metadata = { title: "Affiliate Program — Crawler Que" };
+export const metadata = {
+  title: "Affiliate Program — Crawler Que",
+  description: "Earn recurring commission by referring agencies and consultants to Crawler Que's AI-powered SEO audit platform.",
+};
 
 export default function AffiliatePage() {
   return (
