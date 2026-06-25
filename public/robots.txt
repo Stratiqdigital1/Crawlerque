@@ -1,204 +1,115 @@
 # ============================================================
-# robots.txt for crawlerque.com
-# Generated: June 2026
-# Purpose: Allow all search engine and AI crawlers full access
+# robots.txt — crawlerque.com
+# Crawler Que by Strat IQ Digital
+# Updated: June 2026
+#
+# Goal: welcome all search + AI crawlers, keep private app
+#       paths out of the index.
+#
+# IMPORTANT: a named "User-agent" block does NOT inherit rules
+# from "User-agent: *". That is why every block below repeats the
+# same Disallow paths — otherwise named bots (Googlebot, GPTBot,
+# etc.) would be free to crawl /admin and /dashboard.
 # ============================================================
 
+
 # ─────────────────────────────────────────
-# GLOBAL RULE — All crawlers (catch-all)
+# CATCH-ALL — every crawler not named below
 # ─────────────────────────────────────────
 User-agent: *
 Allow: /
-
-# Block only internal/auth paths that should NOT be indexed
 Disallow: /login
+Disallow: /signup
 Disallow: /dashboard
 Disallow: /account
-Disallow: /api/
-Disallow: /_next/
 Disallow: /admin/
+Disallow: /api/
+
 
 # ─────────────────────────────────────────
-# GOOGLE
+# SEARCH ENGINES
+# Google · Bing · Yahoo · Yandex · DuckDuckGo · Baidu · Apple
 # ─────────────────────────────────────────
 User-agent: Googlebot
-Allow: /
-
 User-agent: Googlebot-Image
-Allow: /
-
 User-agent: Googlebot-Video
-Allow: /
-
-User-agent: Google-Extended
-Allow: /
-
 User-agent: AdsBot-Google
-Allow: /
-
 User-agent: AdsBot-Google-Mobile
-Allow: /
-
-# ─────────────────────────────────────────
-# BING / MICROSOFT
-# ─────────────────────────────────────────
+User-agent: GoogleOther
+User-agent: GoogleOther-Image
+User-agent: GoogleOther-Video
 User-agent: Bingbot
-Allow: /
-
 User-agent: MSNBot
-Allow: /
-
 User-agent: MSNBot-Media
-Allow: /
-
-User-agent: msnbot-media
-Allow: /
-
 User-agent: BingPreview
-Allow: /
-
-# ─────────────────────────────────────────
-# APPLE
-# ─────────────────────────────────────────
+User-agent: Slurp
+User-agent: YandexBot
+User-agent: DuckDuckBot
+User-agent: Baiduspider
 User-agent: Applebot
 Allow: /
+Disallow: /login
+Disallow: /signup
+Disallow: /dashboard
+Disallow: /account
+Disallow: /admin/
+Disallow: /api/
 
-User-agent: Applebot-Extended
-Allow: /
-
-# ─────────────────────────────────────────
-# YAHOO / YANDEX / DUCKDUCKGO / BAIDU
-# ─────────────────────────────────────────
-User-agent: Slurp
-Allow: /
-
-User-agent: YandexBot
-Allow: /
-
-User-agent: DuckDuckBot
-Allow: /
-
-User-agent: Baiduspider
-Allow: /
 
 # ─────────────────────────────────────────
-# AI CRAWLERS — OpenAI / ChatGPT
+# AI CRAWLERS
+# OpenAI · Anthropic · Google AI · Meta · Perplexity ·
+# Amazon · xAI · Cohere · Common Crawl
+# Explicitly welcomed — Crawler Que WANTS to appear in AI answers.
 # ─────────────────────────────────────────
 User-agent: GPTBot
-Allow: /
-
 User-agent: ChatGPT-User
-Allow: /
-
 User-agent: OAI-SearchBot
-Allow: /
-
-# ─────────────────────────────────────────
-# AI CRAWLERS — Anthropic / Claude
-# ─────────────────────────────────────────
 User-agent: ClaudeBot
-Allow: /
-
 User-agent: Claude-Web
-Allow: /
-
 User-agent: anthropic-ai
-Allow: /
-
-# ─────────────────────────────────────────
-# AI CRAWLERS — Google AI (Gemini / Bard)
-# ─────────────────────────────────────────
 User-agent: Google-Extended
-Allow: /
-
-User-agent: GoogleOther
-Allow: /
-
-User-agent: GoogleOther-Image
-Allow: /
-
-User-agent: GoogleOther-Video
-Allow: /
-
-# ─────────────────────────────────────────
-# AI CRAWLERS — Meta AI
-# ─────────────────────────────────────────
+User-agent: Applebot-Extended
 User-agent: FacebookBot
-Allow: /
-
 User-agent: meta-externalagent
-Allow: /
-
-# ─────────────────────────────────────────
-# AI CRAWLERS — Perplexity AI
-# ─────────────────────────────────────────
 User-agent: PerplexityBot
-Allow: /
-
-# ─────────────────────────────────────────
-# AI CRAWLERS — Amazon / Alexa
-# ─────────────────────────────────────────
 User-agent: Amazonbot
-Allow: /
-
-User-agent: ia_archiver
-Allow: /
-
-# ─────────────────────────────────────────
-# AI CRAWLERS — Cohere, Mistral, xAI / Grok
-# ─────────────────────────────────────────
 User-agent: cohere-ai
-Allow: /
-
 User-agent: xAI-bot
-Allow: /
-
-# ─────────────────────────────────────────
-# AI CRAWLERS — Common Crawl (used by many AI labs)
-# ─────────────────────────────────────────
 User-agent: CCBot
 Allow: /
+Disallow: /login
+Disallow: /signup
+Disallow: /dashboard
+Disallow: /account
+Disallow: /admin/
+Disallow: /api/
+
 
 # ─────────────────────────────────────────
 # SEO TOOL CRAWLERS
 # ─────────────────────────────────────────
 User-agent: AhrefsBot
-Allow: /
-
 User-agent: SemrushBot
-Allow: /
-
 User-agent: SemrushBot-BA
-Allow: /
-
 User-agent: MJ12bot
-Allow: /
-
 User-agent: DotBot
-Allow: /
-
-User-agent: DataForSeoBot
-Allow: /
-
 User-agent: rogerbot
-Allow: /
-
 User-agent: linkdexbot
-Allow: /
-
 User-agent: SEOkicks-Robot
-Allow: /
-
 User-agent: BLEXBot
+User-agent: ia_archiver
 Allow: /
+Disallow: /login
+Disallow: /signup
+Disallow: /dashboard
+Disallow: /account
+Disallow: /admin/
+Disallow: /api/
+
 
 # ─────────────────────────────────────────
 # SITEMAPS
 # ─────────────────────────────────────────
 Sitemap: https://crawlerque.com/sitemap.xml
 Sitemap: https://crawlerque.com/sitemap-0.xml
-
-# ─────────────────────────────────────────
-# HOST DIRECTIVE
-# ─────────────────────────────────────────
-Host: https://crawlerque.com
