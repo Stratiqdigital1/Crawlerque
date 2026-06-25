@@ -197,16 +197,17 @@ const handleStartTrial = async () => {
       {/* HERO */}
 <section className="relative overflow-hidden px-5 pb-24 pt-16 md:px-8 md:pt-24">
         {/* ── Background image + overlay (sits behind the hero content) ── */}
-        <div className="pointer-events-none absolute inset-0 -z-10">
+<div className="pointer-events-none absolute inset-0 -z-10">
           <img
             src="/hero-bg.jpg"
             alt=""
             aria-hidden="true"
-            className="h-full w-full object-cover opacity-25"
+            className="h-full w-full object-cover opacity-60"
           />
-          {/* navy overlay/gradient so text stays readable */}
-          <div className="absolute inset-0 bg-[var(--cq-ink)]/70" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[var(--cq-ink)] via-[var(--cq-ink)]/60 to-transparent" />
+          {/* light overlay — keeps the navy theme but lets the image show */}
+          <div className="absolute inset-0 bg-[var(--cq-ink)]/35" />
+          {/* gradient only on the text (left) side so the headline stays readable */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[var(--cq-ink)] via-[var(--cq-ink)]/45 to-transparent" />
         </div>
 
         <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[1fr_480px]">
