@@ -209,13 +209,13 @@ const handleStartTrial = async () => {
 
           {/* Big URL audit box */}
 <div className="mx-auto mt-10 flex max-w-3xl flex-col gap-3 sm:flex-row">
-            <input
+<input
               type="text"
               placeholder="https://yourwebsite.com"
               value={url}
               onChange={e => setUrl(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleAudit()}
-              className="cq-input h-16 flex-1 font-mono !text-[16px]"
+              className="h-16 flex-1 rounded-xl border border-white/20 bg-white px-5 font-mono !text-[16px] text-[#0B1929] placeholder:text-slate-400 shadow-lg outline-none focus:border-[var(--cq-signal)] focus:ring-2 focus:ring-[var(--cq-signal)]/40"
             />
             <button
               onClick={handleAudit}
@@ -225,7 +225,7 @@ const handleStartTrial = async () => {
               {loading ? "Crawling…" : "Run free audit →"}
             </button>
           </div>
-          <p className="mt-3 text-sm text-[var(--cq-text-3)]">
+          <p className="mt-3 text-sm font-medium text-white/90">
             Free audit · no signup · results in under 2 minutes
           </p>
           {loading && <div className="cq-scanline mx-auto mt-4 max-w-2xl" />}
