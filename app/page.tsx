@@ -192,13 +192,14 @@ const handleStartTrial = async () => {
         </div>
 
         {/* Centered hero content */}
-        <div className="relative z-10 mx-auto max-w-3xl pt-6 text-center md:pt-10">
+        <div className="relative z-10 mx-auto max-w-5xl pt-6 text-center md:pt-10">
           <p className="cq-eyebrow cq-eyebrow--signal">AI website growth intelligence</p>
 
-          <h1 className="mt-5 text-[clamp(2.6rem,6.5vw,4.7rem)] font-bold leading-[1.03]">
+          <h1 className="mx-auto mt-5 max-w-4xl text-[clamp(2.8rem,7vw,5rem)] font-bold leading-[1.05]">
             Audit your website.
             <br />
-            Find the path to <span className="text-[var(--cq-signal)]">better growth.</span>
+            Find the path to{" "}
+            <span className="whitespace-nowrap text-[var(--cq-signal)]">better growth.</span>
           </h1>
 
           <p className="mx-auto mt-6 max-w-xl text-[17px] leading-[1.7] text-[var(--cq-text-2)]">
@@ -207,19 +208,19 @@ const handleStartTrial = async () => {
           </p>
 
           {/* Big URL audit box */}
-          <div className="mx-auto mt-9 flex max-w-2xl flex-col gap-3 sm:flex-row">
+<div className="mx-auto mt-10 flex max-w-3xl flex-col gap-3 sm:flex-row">
             <input
               type="text"
               placeholder="https://yourwebsite.com"
               value={url}
               onChange={e => setUrl(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleAudit()}
-              className="cq-input h-14 flex-1 font-mono !text-[15px]"
+              className="cq-input h-16 flex-1 font-mono !text-[16px]"
             />
             <button
               onClick={handleAudit}
               disabled={loading}
-              className="cq-btn cq-btn--primary h-14 shrink-0 items-center justify-center !px-8 !text-[16px]"
+              className="cq-btn cq-btn--primary h-16 shrink-0 items-center justify-center !px-10 !text-[17px]"
             >
               {loading ? "Crawling…" : "Run free audit →"}
             </button>
