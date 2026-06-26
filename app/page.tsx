@@ -177,8 +177,8 @@ const handleStartTrial = async () => {
   }}
 />
 
-        {/* ── Background image + overlay (sits behind the hero content) ── */}
-<div className="pointer-events-none absolute inset-0 -z-10">
+{/* ── Background image + overlay (sits behind the hero content) ── */}
+        <div className="pointer-events-none absolute inset-0 -z-10">
           <img
             src="/hero-bg.jpg"
             alt=""
@@ -186,117 +186,103 @@ const handleStartTrial = async () => {
             className="h-full w-full object-cover opacity-60"
           />
           {/* light overlay — keeps the navy theme but lets the image show */}
-          <div className="absolute inset-0 bg-[var(--cq-ink)]/35" />
-          {/* gradient only on the text (left) side so the headline stays readable */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[var(--cq-ink)] via-[var(--cq-ink)]/45 to-transparent" />
+          <div className="absolute inset-0 bg-[var(--cq-ink)]/40" />
+          {/* top-to-bottom gradient so centered text stays readable */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[var(--cq-ink)]/30 via-transparent to-[var(--cq-ink)]/65" />
         </div>
 
-        <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[1fr_480px]">
-          <div>
-            <p className="cq-eyebrow cq-eyebrow--signal">AI website growth intelligence</p>
-            <h1 className="mt-5  text-[clamp(2.5rem,6vw,4.5rem)] font-bold leading-[1.02]">
-              Audit your website.
-<br />
-Find the path to <span className="text-[var(--cq-signal)]">better growth.</span>
-            </h1>
-            <p className="mt-7 max-w-xl text-[17px] leading-[1.75] text-[var(--cq-text-2)]">
-Run a complete website audit in minutes. Crawler Que checks SEO,
-technical performance, traffic signals, keywords, competitors,
-backlinks, AI search visibility, and gives you a clear growth plan.
-            </p>
+        {/* Centered hero content */}
+        <div className="relative z-10 mx-auto max-w-3xl pt-6 text-center md:pt-10">
+          <p className="cq-eyebrow cq-eyebrow--signal">AI website growth intelligence</p>
 
-            <div className="mt-9 flex flex-wrap gap-4">
-              <a href="#pricing" className="cq-btn cq-btn--primary">Run free audit</a>
-              <a href="/sample-report" className="cq-btn cq-btn--ghost">View sample audit</a>
-            </div>
+          <h1 className="mt-5 text-[clamp(2.6rem,6.5vw,4.7rem)] font-bold leading-[1.03]">
+            Audit your website.
+            <br />
+            Find the path to <span className="text-[var(--cq-signal)]">better growth.</span>
+          </h1>
 
-            {/* Proof strip — data set in real mono */}
-            <div className="mt-12 grid max-w-lg grid-cols-3 gap-6 border-t border-[var(--cq-line-soft)] pt-8">
-              {[
-                { v:"14K+", l:"Keywords tracked" },
-                { v:"8",    l:"Audit modules" },
-                { v:"3×",   l:"Faster reports" },
-              ].map(({ v, l }) => (
-                <div key={l}>
-                  <div className="font-mono text-3xl font-bold text-[var(--cq-signal)]">{v}</div>
-                  <div className="mt-1 text-sm text-[var(--cq-text-3)]">{l}</div>
-                </div>
-              ))}
+          <p className="mx-auto mt-6 max-w-xl text-[17px] leading-[1.7] text-[var(--cq-text-2)]">
+            Run a complete website audit in minutes. Crawler Que checks SEO, technical
+            performance, traffic, keywords, competitors, backlinks, and AI search visibility.
+          </p>
+
+          {/* Big URL audit box */}
+          <div className="mx-auto mt-9 flex max-w-2xl flex-col gap-3 sm:flex-row">
+            <input
+              type="text"
+              placeholder="https://yourwebsite.com"
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleAudit()}
+              className="cq-input h-14 flex-1 font-mono !text-[15px]"
+            />
+            <button
+              onClick={handleAudit}
+              disabled={loading}
+              className="cq-btn cq-btn--primary h-14 shrink-0 items-center justify-center !px-8 !text-[16px]"
+            >
+              {loading ? "Crawling…" : "Run free audit →"}
+            </button>
+          </div>
+          <p className="mt-3 text-sm text-[var(--cq-text-3)]">
+            Free audit · no signup · results in under 2 minutes
+          </p>
+          {loading && <div className="cq-scanline mx-auto mt-4 max-w-2xl" />}
+
+          {/* Result (same logic as before) */}
+          {result && (
+            <div className="mx-auto mt-6 max-w-2xl text-left">
+              {result.success ? (
+                <>
+                  <div className="overflow-hidden border border-[var(--cq-line)]">
+                    <div className="border-b border-[var(--cq-line)] bg-[var(--cq-surface-2)] px-4 py-2">
+                      <span className="font-mono text-xs text-[var(--cq-text-3)]">audit.result</span>
+                    </div>
+                    <div className="px-4 py-1">
+                      {[["Overall score",result.report?.overallScore??"—"],["SEO score",result.report?.seoScore??"—"],["Mobile perf",result.report?.mobilePerformance??"—"],["Desktop perf",result.report?.desktopPerformance??"—"],["Traffic est.",result.report?.traffic?.monthly?`${Number(result.report.traffic.monthly).toLocaleString()}/mo`:"—"]].map(([l,v]) => (
+                        <div key={l} className="flex items-center justify-between border-b border-[var(--cq-line-soft)] py-2.5 last:border-0">
+                          <span className="text-sm text-[var(--cq-text-2)]">{l}</span>
+                          <span className="font-mono text-[15px] font-bold text-[var(--cq-text)]">{String(v)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-3 border border-[var(--cq-signal)]/25 bg-[var(--cq-signal)]/8 p-4">
+                    <p className="text-[15px] font-semibold">Want the complete website growth audit?</p>
+                    <p className="mt-1 text-sm leading-relaxed text-[var(--cq-text-2)]">Unlock AI visibility, competitor intelligence, keyword gaps, backlinks, traffic insights, recommendations, and export-ready reporting.</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <a href="/sample-report" className="cq-btn cq-btn--ghost !px-4 !py-2 !text-sm">Sample report</a>
+                      <a href="#pricing" className="cq-btn cq-btn--primary !px-4 !py-2 !text-sm">View plans →</a>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-lg border border-[var(--cq-danger)]/30 bg-[var(--cq-danger)]/10 px-4 py-3 text-sm text-[var(--cq-danger)]">{result.error}</div>
+              )}
             </div>
+          )}
+
+          {/* Free audit includes — pills under the box */}
+          <div className="mx-auto mt-6 flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-2">
+            {["Technical SEO scan","Core Web Vitals check","On-page SEO signals"].map(item => (
+              <div key={item} className="flex items-center gap-2 text-[14px] text-[var(--cq-text-2)]">
+                <span className="h-1 w-3 shrink-0 bg-[var(--cq-signal)]" />{item}
+              </div>
+            ))}
           </div>
 
-          {/* THE AUDIT CONSOLE — hero centerpiece */}
-          <div className="cq-card cq-frame overflow-hidden !rounded-none">
-            <div className="flex items-center justify-between border-b border-[var(--cq-line)] bg-[var(--cq-surface-2)] px-5 py-3">
-              <span className="font-mono text-xs text-[var(--cq-text-3)]">crawlerque.com/free-audit</span>
-              <span className="flex items-center gap-2 font-mono text-xs text-[var(--cq-signal)]">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--cq-signal)] opacity-60" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--cq-signal)]" />
-                </span>
-                LIVE
-              </span>
-            </div>
-            <div className="p-6">
-              <p className="cq-eyebrow cq-eyebrow--signal">Free audit · no signup</p>
-              <h2 className="mt-2 text-xl font-bold">Check your website growth signals</h2>
-              <p className="mt-1.5 text-[15px] text-[var(--cq-text-2)]">
-                Enter your website URL to check SEO, technical performance, and on-page signals.
-              </p>
-
-              <div className="mt-5 space-y-3">
-                <input
-                  type="text" placeholder="https://yourwebsite.com" value={url}
-                  onChange={e => setUrl(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAudit()}
-                  className="cq-input font-mono !text-sm"
-                />
-                <button onClick={handleAudit} disabled={loading} className="cq-btn cq-btn--primary w-full">
-                  {loading ? "Crawling…" : "Run free audit"}
-                </button>
-                {loading && <div className="cq-scanline" />}
+          {/* Proof strip */}
+          <div className="mx-auto mt-12 flex max-w-xl flex-wrap items-center justify-center gap-x-12 gap-y-4 border-t border-[var(--cq-line-soft)] pt-8">
+            {[
+              { v:"14K+", l:"Keywords tracked" },
+              { v:"8",    l:"Audit modules" },
+              { v:"3×",   l:"Faster reports" },
+            ].map(({ v, l }) => (
+              <div key={l} className="text-center">
+                <div className="font-mono text-3xl font-bold text-[var(--cq-signal)]">{v}</div>
+                <div className="mt-1 text-sm text-[var(--cq-text-3)]">{l}</div>
               </div>
-
-              {result && (
-                <div className="mt-5">
-                  {result.success ? (
-                    <>
-                      <div className="overflow-hidden border border-[var(--cq-line)]">
-                        <div className="border-b border-[var(--cq-line)] bg-[var(--cq-surface-2)] px-4 py-2">
-                          <span className="font-mono text-xs text-[var(--cq-text-3)]">audit.result</span>
-                        </div>
-                        <div className="px-4 py-1">
-                          {[["Overall score",result.report?.overallScore??"—"],["SEO score",result.report?.seoScore??"—"],["Mobile perf",result.report?.mobilePerformance??"—"],["Desktop perf",result.report?.desktopPerformance??"—"],["Traffic est.",result.report?.traffic?.monthly?`${Number(result.report.traffic.monthly).toLocaleString()}/mo`:"—"]].map(([l,v]) => (
-                            <div key={l} className="flex items-center justify-between border-b border-[var(--cq-line-soft)] py-2.5 last:border-0">
-                              <span className="text-sm text-[var(--cq-text-2)]">{l}</span>
-                              <span className="font-mono text-[15px] font-bold text-[var(--cq-text)]">{String(v)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="mt-3 border border-[var(--cq-signal)]/25 bg-[var(--cq-signal)]/8 p-4">
-                        <p className="text-[15px] font-semibold">Want the complete website growth audit?</p>
-                        <p className="mt-1 text-sm leading-relaxed text-[var(--cq-text-2)]">Unlock AI visibility, competitor intelligence, keyword gaps, backlinks, traffic insights, recommendations, and export-ready reporting.</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <a href="/sample-report" className="cq-btn cq-btn--ghost !px-4 !py-2 !text-sm">Sample report</a>
-                          <a href="#pricing" className="cq-btn cq-btn--primary !px-4 !py-2 !text-sm">View plans →</a>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="rounded-lg border border-[var(--cq-danger)]/30 bg-[var(--cq-danger)]/10 px-4 py-3 text-sm text-[var(--cq-danger)]">{result.error}</div>
-                  )}
-                </div>
-              )}
-
-              <div className="mt-6 border-t border-[var(--cq-line-soft)] pt-4">
-                <p className="cq-eyebrow mb-2.5">Free audit includes</p>
-                {["Technical SEO scan","Core Web Vitals check","On-page SEO signals"].map(item => (
-                  <div key={item} className="flex items-center gap-2.5 py-1 text-[15px] text-[var(--cq-text-2)]">
-                    <span className="h-1 w-3 shrink-0 bg-[var(--cq-signal)]" />{item}
-                  </div>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
