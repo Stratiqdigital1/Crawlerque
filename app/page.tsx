@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { SiteFooter } from "@/components/site-shell";
+import { SiteNav, SiteFooter } from "@/components/site-shell";
 import Image from "next/image";
 
 const NAV_LINKS = [
@@ -154,45 +154,7 @@ const handleStartTrial = async () => {
     <div className="min-h-screen bg-[var(--cq-ink)] text-[var(--cq-text)] antialiased">
 
       {/* NAV */}
-      <header className="sticky top-0 z-50 border-b border-[var(--cq-line-soft)] bg-[var(--cq-ink)]/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8">
-<a href="/" className="flex items-center gap-3">
-            <img src="/logo-full.png" alt="Crawler Que" className="h-7 w-auto" />
-          </a>
-
-          <nav className="hidden items-center gap-2 md:flex">
-            {NAV_LINKS.map(([href, label]) => (
-              <a key={label} href={href} className="rounded-lg px-4 py-2 text-[15px] font-medium text-[var(--cq-text-2)] transition-colors hover:bg-[var(--cq-surface)] hover:text-[var(--cq-text)]">
-                {label}
-              </a>
-            ))}
-          </nav>
-
-          <div className="flex items-center gap-3">
-            <a href="#pricing" className="cq-btn cq-btn--primary hidden !py-2.5 md:inline-flex">
-              Get started
-            </a>
-            <button onClick={() => setMobileOpen(!mobileOpen)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--cq-line)] text-[var(--cq-text-2)] hover:text-[var(--cq-text)] md:hidden">
-              {mobileOpen ? "✕" : "☰"}
-            </button>
-          </div>
-        </div>
-
-        {mobileOpen && (
-          <div className="border-t border-[var(--cq-line-soft)] bg-[var(--cq-surface)] px-5 py-5 md:hidden">
-            <div className="flex flex-col gap-1">
-              {NAV_LINKS.map(([href, label]) => (
-                <a key={label} href={href} onClick={() => setMobileOpen(false)} className="rounded-lg px-4 py-3 text-[15px] font-medium text-[var(--cq-text-2)] hover:bg-[var(--cq-surface-2)] hover:text-[var(--cq-text)]">
-                  {label}
-                </a>
-              ))}
-              <a href="#pricing" className="cq-btn cq-btn--primary mt-3 w-full">Get started</a>
-            </div>
-          </div>
-        )}
-        {/* Signature: the crawl line, always alive under the nav */}
-        <div className="cq-scanline" />
-      </header>
+      <SiteNav />
 
 
       {/* HERO */}
