@@ -1,38 +1,71 @@
-// app/blog/page.tsx
-// Starter blog index. Replace the COMING_SOON entries with real posts as you
-// publish them (each post can be its own page under app/blog/[slug]).
-import { SiteNav, SiteFooter, PageHero, Section, CtaBand } from "@/components/site-shell";
+import Image from "next/image";
+import Link from "next/link";
+import type { Metadata } from "next";
+import { blogPosts } from "@/lib/blogs";
 
-export const metadata = {
-  title: "Blog — SEO, AI Visibility & GEO Insights | Crawler Que",
-  description: "Guides on AI search visibility, GEO, technical SEO, Core Web Vitals, and traffic estimation. Practical tactics for agencies and SEO teams.",
+export const metadata: Metadata = {
+  title: "Crawler Que Blog | SEO, AI Visibility & Website Growth Guides",
+  description:
+    "Read Crawler Que guides on SEO audits, AI search visibility, competitor analysis, traffic growth, backlinks, Core Web Vitals, and GEO.",
 };
 
-const COMING_SOON = [
-  { tag: "AI Search", title: "GEO explained: how to get your clients recommended by ChatGPT", desc: "Entity signals, FAQ schema, third-party citations — the practical checklist for generative engine optimisation." },
-  { tag: "Agency Growth", title: "The $300 audit: pricing intelligence reports clients happily pay for", desc: "How agencies package audit reports as a paid product and a retainer opener." },
-  { tag: "Product", title: "How Crawler Que models traffic without analytics access", desc: "Ranked keywords, CTR curves, and confidence tiers — our estimation method, explained honestly." },
-];
-
 export default function BlogPage() {
+  const sortedPosts = [...blogPosts].sort(
+    (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+  );
+
   return (
     <main className="min-h-screen bg-[var(--cq-ink)] text-[var(--cq-text)]">
-      <SiteNav />
-      <PageHero eyebrow="Blog" title="Growth intelligence, written down" sub="Practical guides on SEO auditing, AI search visibility, and selling reports as an agency." />
-      <Section>
-        <div className="grid gap-4 md:grid-cols-3">
-          {COMING_SOON.map(p => (
-            <article key={p.title} className="cq-card flex flex-col p-6">
-              <span className="self-start rounded-full border border-[var(--cq-signal)]/30 px-3 py-0.5 font-mono text-xs text-[var(--cq-signal)]">{p.tag}</span>
-              <h2 className="mt-4 text-[17px] font-extrabold leading-snug">{p.title}</h2>
-              <p className="mt-2 flex-1 text-[15px] leading-relaxed text-[var(--cq-text-2)]">{p.desc}</p>
-              <p className="mt-5 font-mono text-xs uppercase tracking-[0.08em] text-[var(--cq-text-3)]">Coming soon</p>
-            </article>
+      <section className="mx-auto max-w-7xl px-6 py-20">
+        <div className="mb-12 max-w-3xl">
+          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-[var(--cq-signal)]">
+            Crawler Que Blog
+          </p>
+          <h1 className="text-4xl font-extrabold tracking-tight md:text-6xl">
+            Website growth guides for SEO, AI search, and smarter audits.
+          </h1>
+          <p className="mt-5 text-lg leading-8 text-[var(--cq-text-2)]">
+            Learn how to find technical SEO issues, traffic gaps, competitor opportunities,
+            backlink signals, Core Web Vitals problems, and AI search visibility gaps before
+            they cost you growth.
+          </p>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {sortedPosts.map((post) => (
+            <Link
+              key={post.slug}
+              href={`/blog/${post.slug}`}
+              className="group overflow-hidden rounded-3xl border border-white/10 bg-[var(--cq-surface)] shadow-xl transition hover:-translate-y-1 hover:border-[var(--cq-signal)]"
+            >
+              <div className="relative h-56 w-full overflow-hidden bg-black/20">
+                <Image
+                  src={post.heroImage}
+                  alt={post.heroAlt}
+                  fill
+                  className="object-cover transition duration-500 group-hover:scale-105"
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                />
+              </div>
+              <div className="p-6">
+                <div className="mb-3 flex items-center justify-between gap-3 text-xs text-[var(--cq-text-3)]">
+                  <span>{post.category}</span>
+                  <span>{post.readingTime}</span>
+                </div>
+                <h2 className="text-xl font-bold leading-snug text-white group-hover:text-[var(--cq-signal)]">
+                  {post.title}
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-[var(--cq-text-2)]">
+                  {post.excerpt}
+                </p>
+                <span className="mt-5 inline-flex text-sm font-semibold text-[var(--cq-signal)]">
+                  Read guide →
+                </span>
+              </div>
+            </Link>
           ))}
         </div>
-      </Section>
-      <CtaBand />
-      <SiteFooter />
+      </section>
     </main>
   );
 }
