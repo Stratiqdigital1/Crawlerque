@@ -34,11 +34,12 @@ const ALSO_GREAT: { t: string; href: string; Icon: any }[] = [
 export function SiteNav() {
   const [open, setOpen] = useState(false);
   const [feat, setFeat] = useState(false);
-  const links: [string, string][] = [
-    ["/#pricing", "Pricing"],
-    ["/sample-report", "Sample report"],
-    ["/login", "Login"],
-  ];
+const links: [string, string][] = [
+  ["/#pricing", "Pricing"],
+  ["/sample-report", "Sample report"],
+  ["/blog", "Blog"],
+  ["/login", "Login"],
+];
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--cq-line-soft)] bg-[var(--cq-ink)]/95 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8">

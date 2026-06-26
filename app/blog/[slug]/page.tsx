@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { blogPosts, getBlogPost, type BlogBlock } from "@/lib/blogs";
+import { SiteNav, SiteFooter } from "@/components/site-shell";
 
 type PageProps = {
   params: Promise<{
@@ -109,8 +110,11 @@ export default async function BlogPostPage({ params }: PageProps) {
     },
   };
 
-  return (
-    <main className="min-h-screen bg-[var(--cq-ink)] text-[var(--cq-text)]">
+return (
+  <div className="min-h-screen bg-[var(--cq-ink)] text-[var(--cq-text)] antialiased">
+    <SiteNav />
+
+    <main>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
 
       <article className="mx-auto max-w-4xl px-6 py-16">
@@ -158,5 +162,8 @@ export default async function BlogPostPage({ params }: PageProps) {
         </div>
       </article>
     </main>
-  );
+
+    <SiteFooter />
+  </div>
+);
 }

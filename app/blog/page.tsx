@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { blogPosts } from "@/lib/blogs";
+import { SiteNav, SiteFooter } from "@/components/site-shell";
 
 export const metadata: Metadata = {
   title: "Crawler Que Blog | SEO, AI Visibility & Website Growth Guides",
@@ -14,8 +15,11 @@ export default function BlogPage() {
     (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
   );
 
-  return (
-    <main className="min-h-screen bg-[var(--cq-ink)] text-[var(--cq-text)]">
+return (
+  <div className="min-h-screen bg-[var(--cq-ink)] text-[var(--cq-text)] antialiased">
+    <SiteNav />
+
+    <main>
       <section className="mx-auto max-w-7xl px-6 py-20">
         <div className="mb-12 max-w-3xl">
           <p className="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-[var(--cq-signal)]">
@@ -67,5 +71,8 @@ export default function BlogPage() {
         </div>
       </section>
     </main>
-  );
+
+    <SiteFooter />
+  </div>
+);
 }
