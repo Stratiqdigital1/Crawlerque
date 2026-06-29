@@ -130,12 +130,14 @@ return (
           {post.title}
         </h1>
 
-        <div className="mt-5 flex flex-wrap gap-3 text-sm text-[var(--cq-text-3)]">
-          <span>{post.publishedAt}</span>
+<div className="mt-5 flex flex-wrap gap-3 text-sm text-[var(--cq-text-3)]">
+          <time dateTime={post.publishedAt}>
+            {new Date(post.publishedAt + "T00:00:00").toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+          </time>
           <span>•</span>
           <span>{post.readingTime}</span>
           <span>•</span>
-          <span>{post.primaryKeyword}</span>
+          <span>By Crawler Que</span>
         </div>
 
         <p className="mt-6 text-xl leading-8 text-[var(--cq-text-2)]">{post.excerpt}</p>

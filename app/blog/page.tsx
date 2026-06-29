@@ -52,9 +52,14 @@ return (
                 />
               </div>
               <div className="p-6">
-                <div className="mb-3 flex items-center justify-between gap-3 text-xs text-[var(--cq-text-3)]">
+<div className="mb-3 flex items-center justify-between gap-3 text-xs text-[var(--cq-text-3)]">
                   <span>{post.category}</span>
-                  <span>{post.readingTime}</span>
+                  <span>
+                    <time dateTime={post.publishedAt}>
+                      {new Date(post.publishedAt + "T00:00:00").toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+                    </time>
+                    {" · "}{post.readingTime}
+                  </span>
                 </div>
                 <h2 className="text-xl font-bold leading-snug text-white group-hover:text-[var(--cq-signal)]">
                   {post.title}

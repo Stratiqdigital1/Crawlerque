@@ -61,6 +61,31 @@ return (
             `,
           }}
         />
+        <script
+  type="application/ld+json"
+  dangerouslySetInnerHTML={{
+    __html: JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Crawler Que",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      description: "AI-powered SEO and website audit tool with AI search visibility, traffic, competitor, and backlink analysis plus white-label PDF reports.",
+      offers: {
+        "@type": "AggregateOffer",
+        lowPrice: "30",
+        highPrice: "299",
+        priceCurrency: "USD",
+        offerCount: "3",
+      },
+      publisher: {
+        "@type": "Organization",
+        name: "Strat IQ Digital",
+        url: "https://stratiqdigital.com",
+      },
+    }),
+  }}
+/>
       </head>
       <body className="min-h-full bg-[var(--cq-ink)] font-[var(--font-inter)] text-[var(--cq-text)]">
         <noscript>
