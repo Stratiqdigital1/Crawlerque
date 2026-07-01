@@ -7,7 +7,7 @@ export const metadata = {
   description: "Get in touch with the Crawler Que team for support, agency plans, or partnership enquiries.",
 };
 
-const SUPPORT_EMAIL = "support@crawlerque.com";   // ← replace if different
+const SUPPORT_EMAIL = "info@crawlerque.com";   // ← replace if different
 const SALES_EMAIL   = "info@crawlerque.com"; // ← replace if different
 
 export default function ContactPage() {

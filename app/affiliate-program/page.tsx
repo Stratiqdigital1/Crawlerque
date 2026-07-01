@@ -35,7 +35,7 @@ export default function AffiliatePage() {
           <p className="mx-auto mt-2 max-w-md text-[15px] leading-relaxed text-[var(--cq-text-2)]">
             Tell us about your audience and how you'd promote Crawler Que. We approve applications within 2 business days.
           </p>
-          <a href="mailto:hello@stratiqdigital.com?subject=Affiliate%20application" className="cq-btn cq-btn--primary mt-5">
+          <a href="mailto:info@crawlerque.com?subject=Affiliate%20application" className="cq-btn cq-btn--primary mt-5">
             Apply via email →
           </a>
         </div>
