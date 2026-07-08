@@ -2992,7 +2992,867 @@ export const blogPosts: BlogPost[] = [
         "text": "Start free — then from $30/mo"
       }
     ]
-  }
+  },
+  {
+    "slug": "chatgpt-visibility-checker",
+    "title": "Free ChatGPT Visibility Checker: See What ChatGPT Says About Your Brand",
+    "metaTitle": "Free ChatGPT Visibility Checker | Is Your Brand In There?",
+    "metaDescription": "See whether ChatGPT names your brand when buyers ask for recommendations. Crawler Que's free ChatGPT visibility checker scores your mentions, no signup.",
+    "primaryKeyword": "chatgpt visibility checker",
+    "excerpt": "A ChatGPT visibility checker tests whether ChatGPT names your brand when someone asks it for recommendations in your category, then shows you where you stand against competitors. Crawler Que runs that check for free:...",
+    "category": "AI Visibility",
+    "publishedAt": "2026-06-27",
+    "readingTime": "4 min read",
+    "heroImage": "/blog/chatgpt-visibility-checker.png",
+    "heroAlt": "Free ChatGPT Visibility Checker: See What ChatGPT Says About Your Brand",
+    "images": [
+        {
+            "src": "/blog/chatgpt-visibility-checker.png",
+            "alt": "Free ChatGPT Visibility Checker: See What ChatGPT Says About Your Brand"
+        },
+        {
+            "src": "/blog/chatgpt-visibility-checker-support-1.png",
+            "alt": "ChatGPT visibility score gauge showing mention ratio, model coverage, share of voice and GEO readiness"
+        },
+        {
+            "src": "/blog/chatgpt-visibility-checker-support-2.png",
+            "alt": "Diagram showing a brand ranking on Google but not named in ChatGPT answers"
+        }
+    ],
+    "blocks": [
+        {
+            "type": "paragraph",
+            "text": "A ChatGPT visibility checker tests whether ChatGPT names your brand when someone asks it for recommendations in your category, then shows you where you stand against competitors. Crawler Que runs that check for free: enter a domain and the AI Visibility module queries multiple models with realistic buyer prompts, records whether your brand appears, and returns a single 0–100 score."
+        },
+        {
+            "type": "paragraph",
+            "text": "A ChatGPT visibility checker sends realistic buyer prompts to AI models and records whether your brand appears in the answers. It reports a 0–100 visibility score based on mention ratio and model coverage, plus your share of voice against competitors. Crawler Que's checker is free to run and needs no signup."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "What a ChatGPT visibility checker actually does"
+        },
+        {
+            "type": "paragraph",
+            "text": "It answers one question traditional SEO tools can't: when a buyer asks an AI assistant for options in your space, does your brand come up? Rank trackers measure your position on a page of links. A visibility checker measures something different, whether the model that increasingly writes the answer knows you exist and trusts you enough to name you."
+        },
+        {
+            "type": "paragraph",
+            "text": "Because a single prompt only tells you one outcome, a proper checker samples many prompts across more than one model and reports a rate, not a yes or no. That's what turns an anecdote into a measurement you can act on and re-run."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "Why your Google ranking doesn't tell you this"
+        },
+        {
+            "type": "paragraph",
+            "text": "You can sit at position three on Google and never surface in ChatGPT. The two systems select what to show in completely different ways. Google ranks live pages against a query; ChatGPT reconstructs an answer from what it learned in training plus what it can retrieve and trust in the moment. Strong rankings help, but they don't guarantee the model treats you as a recommendable entity. This is exactly the gap behind searches like \"my brand shows up on Google but is invisible when people ask ChatGPT.\""
+        },
+        {
+            "type": "image",
+            "src": "/blog/chatgpt-visibility-checker-support-2.png",
+            "alt": "Diagram showing a brand ranking on Google but not named in ChatGPT answers"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "What the visibility score is built from"
+        },
+        {
+            "type": "paragraph",
+            "text": "Crawler Que's AI Visibility module reduces the check to four readable signals. Each one answers a specific question about how AI sees your brand."
+        },
+        {
+            "type": "table",
+            "rows": [
+                [
+                    "Signal",
+                    "What it measures",
+                    "What a low reading means"
+                ],
+                [
+                    "Brand mention ratio",
+                    "How often you appear across the prompt set",
+                    "The model rarely surfaces you for buyer-intent questions"
+                ],
+                [
+                    "Model coverage",
+                    "How many AI models name you, not just one",
+                    "You show up in one model but are missing elsewhere"
+                ],
+                [
+                    "Share of voice",
+                    "How often you appear versus competitors",
+                    "Rivals own the category answer and you don't"
+                ],
+                [
+                    "GEO readiness verdict",
+                    "Entity signals, schema, FAQs and citations the site needs",
+                    "AI lacks the structured proof to cite you confidently"
+                ]
+            ]
+        },
+        {
+            "type": "image",
+            "src": "/blog/chatgpt-visibility-checker-support-1.png",
+            "alt": "ChatGPT visibility score gauge showing mention ratio, model coverage, share of voice and GEO readiness"
+        },
+        {
+            "type": "paragraph",
+            "text": "The score carries an honest confidence label. A thin sample is never presented as certainty, if only a handful of prompts were run, the checker says so rather than overselling the result."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "How to run a free ChatGPT visibility check"
+        },
+        {
+            "type": "paragraph",
+            "text": "Go to crawlerque.com and start a free audit, no signup is required for the first run."
+        },
+        {
+            "type": "paragraph",
+            "text": "Enter the domain you want to check (your brand or a client's)."
+        },
+        {
+            "type": "paragraph",
+            "text": "Add the AI Visibility module so the checker queries multiple models with buyer-intent prompts."
+        },
+        {
+            "type": "paragraph",
+            "text": "Read your 0–100 score alongside mention ratio, model coverage and share of voice."
+        },
+        {
+            "type": "paragraph",
+            "text": "Open the GEO readiness verdict for the specific signals to fix first."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "What to do when your brand doesn't show up"
+        },
+        {
+            "type": "paragraph",
+            "text": "A low score is a starting point, not a verdict. The fixes cluster into four moves: make your brand an unambiguous entity, put your key facts into structured, extractable form, earn credible third-party mentions, and make sure AI crawlers can actually reach and read your pages. The GEO readiness verdict tells you which of these is holding you back so you're not guessing."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "Common questions"
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Is there a tool that shows exactly what AI says about my brand?"
+        },
+        {
+            "type": "paragraph",
+            "text": "Yes, that's what an AI visibility checker is for. Crawler Que records whether each model names you for realistic buyer prompts and how that compares to competitors, so you see the actual pattern rather than one lucky or unlucky answer."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "How do I check brand mentions in ChatGPT?"
+        },
+        {
+            "type": "paragraph",
+            "text": "You can prompt-test manually, ask ChatGPT the questions your buyers would and note whether you appear, or run an automated check that samples many prompts across models and scores the result. The automated route is repeatable, which matters because a single manual check is only a snapshot."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Does ChatGPT recommend my business?"
+        },
+        {
+            "type": "paragraph",
+            "text": "The only reliable way to know is to measure it. Run the free check, look at your mention ratio for buyer-intent prompts, and compare your share of voice to the competitors you lose deals to."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Is the ChatGPT visibility checker actually free?"
+        },
+        {
+            "type": "paragraph",
+            "text": "Yes, the first audit runs with no signup, and you can see your visibility score before paying anything. The AI Visibility module then comes bundled on any paid plan when you want to track it on a schedule."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Why can't SEMrush or Ahrefs check my ChatGPT visibility?"
+        },
+        {
+            "type": "paragraph",
+            "text": "They're built to measure rankings on pages of links, not whether an AI model names you in an answer. A visibility checker asks a different question entirely, does the machine writing the answer know and trust your brand, which is why it needs its own tool."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "See what ChatGPT says about your brand"
+        },
+        {
+            "type": "paragraph",
+            "text": "Run a free AI visibility check, no signup, results in minutes."
+        },
+        {
+            "type": "paragraph",
+            "text": "Run free ChatGPT visibility check"
+        }
+    ]
+},
+  {
+    "slug": "how-to-measure-brand-visibility-in-chatgpt",
+    "title": "How to Measure Brand Visibility in ChatGPT: A Repeatable Framework",
+    "metaTitle": "How to Measure Brand Visibility in ChatGPT (2026 Guide)",
+    "metaDescription": "Measure brand visibility in ChatGPT with a repeatable framework: build a buyer-prompt set, track mention rate and share of voice, then benchmark it monthly.",
+    "primaryKeyword": "how to measure brand visibility in chatgpt",
+    "excerpt": "To measure brand visibility in ChatGPT, run a fixed set of buyer-intent prompts through the model on a schedule and track three things: how often your brand appears, how you compare to competitors, and how the mention...",
+    "category": "AI Visibility",
+    "publishedAt": "2026-06-28",
+    "readingTime": "4 min read",
+    "heroImage": "/blog/how-to-measure-brand-visibility-in-chatgpt.png",
+    "heroAlt": "How to Measure Brand Visibility in ChatGPT: A Repeatable Framework",
+    "images": [
+        {
+            "src": "/blog/how-to-measure-brand-visibility-in-chatgpt.png",
+            "alt": "How to Measure Brand Visibility in ChatGPT: A Repeatable Framework"
+        },
+        {
+            "src": "/blog/how-to-measure-brand-visibility-in-chatgpt-support-1.png",
+            "alt": "Prompt set tracker measuring ChatGPT brand visibility across models"
+        },
+        {
+            "src": "/blog/how-to-measure-brand-visibility-in-chatgpt-support-2.png",
+            "alt": "Line chart tracking a rising ChatGPT brand visibility score across four months"
+        }
+    ],
+    "blocks": [
+        {
+            "type": "paragraph",
+            "text": "To measure brand visibility in ChatGPT, run a fixed set of buyer-intent prompts through the model on a schedule and track three things: how often your brand appears, how you compare to competitors, and how the mentions read. Visibility is a rate, not a yes-or-no, so the method has to be repeatable enough to compare one month against the next."
+        },
+        {
+            "type": "paragraph",
+            "text": "Measure brand visibility in ChatGPT by (1) building a fixed set of buyer-intent prompts, (2) deciding which models to test, (3) scoring your mention ratio and share of voice against competitors, and (4) re-running the same set on a schedule so the numbers are comparable over time."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "Why \"does ChatGPT mention us?\" is the wrong question"
+        },
+        {
+            "type": "paragraph",
+            "text": "Ask ChatGPT the same question twice and you can get two different answers. That's why a single check tells you almost nothing. The useful question is a rate: across the prompts your buyers actually use, how often does your brand appear, and how does that change as you improve your signals? Framing visibility as a percentage is what makes it measurable and, more importantly, comparable over time."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "The four things you're actually measuring"
+        },
+        {
+            "type": "table",
+            "rows": [
+                [
+                    "Metric",
+                    "Question it answers",
+                    "How to read it"
+                ],
+                [
+                    "Mention ratio",
+                    "Of all prompts, how many named you?",
+                    "Your headline visibility number, 0–100%"
+                ],
+                [
+                    "Model coverage",
+                    "Do multiple models name you or just one?",
+                    "Breadth — one model is fragile, several is durable"
+                ],
+                [
+                    "Share of voice",
+                    "How do you compare to competitors?",
+                    "Category position, not just presence"
+                ],
+                [
+                    "Sentiment / accuracy",
+                    "When named, is it right and positive?",
+                    "A wrong mention can be worse than none"
+                ]
+            ]
+        },
+        {
+            "type": "image",
+            "src": "/blog/how-to-measure-brand-visibility-in-chatgpt-support-1.png",
+            "alt": "Prompt set tracker measuring ChatGPT brand visibility across models"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "How to measure brand visibility in ChatGPT, step by step"
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Step 1: Build a prompt set that mirrors buyer intent"
+        },
+        {
+            "type": "paragraph",
+            "text": "List the questions a real buyer asks before choosing in your category: \"best [category] tool for [use case],\" \"alternatives to [competitor],\" \"who should I use for [job].\" Aim for a spread of ten to twenty prompts and keep them fixed, the point is to reuse the exact same set every time so the numbers stay comparable."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Step 2: Decide model coverage"
+        },
+        {
+            "type": "paragraph",
+            "text": "Buyers don't all use the same assistant, so test more than one. Coverage across several models tells you whether your visibility is durable or resting on a single source that could shift with the next update."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Step 3: Score mention ratio and share of voice"
+        },
+        {
+            "type": "paragraph",
+            "text": "For each prompt, record whether you appeared and which competitors did too. Your mention ratio is the share of prompts that named you; your share of voice is how often you appeared relative to rivals in the same answers. Together they separate \"barely present\" from \"category leader.\""
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Step 4: Benchmark and re-run on a schedule"
+        },
+        {
+            "type": "paragraph",
+            "text": "Record the baseline, make your GEO changes, and re-run the identical prompt set monthly. Improvements in AI visibility are incremental and take weeks to show, so a fixed cadence is what lets you tell real movement from noise."
+        },
+        {
+            "type": "image",
+            "src": "/blog/how-to-measure-brand-visibility-in-chatgpt-support-2.png",
+            "alt": "Line chart tracking a rising ChatGPT brand visibility score across four months"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "Doing it manually vs measuring it automatically"
+        },
+        {
+            "type": "paragraph",
+            "text": "The manual method above works and costs nothing but time, expect roughly half an hour per full run if you're thorough. The trade-off is consistency: it's easy to vary the prompts, skip a model, or forget to re-run on schedule, and any of those breaks comparability."
+        },
+        {
+            "type": "paragraph",
+            "text": "Crawler Que's AI Visibility module automates the same framework, a fixed buyer-prompt set across multiple models, scored as mention ratio, model coverage and share of voice, with a confidence label so a thin sample is never dressed up as certainty. The value isn't a different method; it's running the identical method the same way every time so the trend is trustworthy."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "Common questions"
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "How do I see brand visibility in ChatGPT without a tool?"
+        },
+        {
+            "type": "paragraph",
+            "text": "Run your fixed prompt set in ChatGPT by hand and tally how many name your brand. It's a valid snapshot; it just isn't a trend until you repeat it identically over time."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Is my business visible in ChatGPT?"
+        },
+        {
+            "type": "paragraph",
+            "text": "Measure it rather than guess. If your mention ratio for buyer-intent prompts is low and competitors dominate share of voice, your business is effectively invisible where those buyers are now asking."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "How often should I track brand visibility in ChatGPT?"
+        },
+        {
+            "type": "paragraph",
+            "text": "Monthly works for most brands, since AI visibility shifts in weeks, not days, run the same prompt set on a fixed cadence so you're comparing like with like. Check more often only around a launch, rebrand, or a competitor's big push."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "What's a good brand visibility score in ChatGPT?"
+        },
+        {
+            "type": "paragraph",
+            "text": "There's no universal pass mark, what matters is your mention ratio relative to competitors, not the absolute number. If rivals are named far more often for your buyers' prompts, even a healthy-looking score means you're losing the category answer."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Is product visibility in ChatGPT different from brand visibility?"
+        },
+        {
+            "type": "paragraph",
+            "text": "Yes, a model can name your company while never surfacing the product a buyer asked about, so measure both. Add product-level prompts like \"best [product type] for [use case]\" and score them separately from brand prompts."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "Measure it once, then watch it move"
+        },
+        {
+            "type": "paragraph",
+            "text": "Run the same framework automatically and get a scored baseline for free."
+        },
+        {
+            "type": "paragraph",
+            "text": "Get your visibility score free"
+        }
+    ]
+},
+  {
+    "slug": "why-is-my-brand-not-showing-in-chatgpt",
+    "title": "Why Your Brand Is Invisible in ChatGPT (Even Though It Ranks on Google)",
+    "metaTitle": "Why Your Brand Is Invisible in ChatGPT But Not on Google",
+    "metaDescription": "Ranks on Google but missing from ChatGPT? Here are the five reasons AI skips your brand, which ones you can actually fix, and how to test it in minutes.",
+    "primaryKeyword": "why is my brand not showing in chatgpt",
+    "excerpt": "Your brand can rank on page one of Google and still never appear in ChatGPT because the two systems decide what to surface in completely different ways. This is the heart of why your brand is not showing in ChatGPT: G...",
+    "category": "AI Visibility",
+    "publishedAt": "2026-06-29",
+    "readingTime": "4 min read",
+    "heroImage": "/blog/why-is-my-brand-not-showing-in-chatgpt.png",
+    "heroAlt": "Why Your Brand Is Invisible in ChatGPT (Even Though It Ranks on Google)",
+    "images": [
+        {
+            "src": "/blog/why-is-my-brand-not-showing-in-chatgpt.png",
+            "alt": "Why Your Brand Is Invisible in ChatGPT (Even Though It Ranks on Google)"
+        },
+        {
+            "src": "/blog/why-is-my-brand-not-showing-in-chatgpt-support-1.png",
+            "alt": "Matrix of five reasons a brand is invisible in ChatGPT and whether each is fixable"
+        },
+        {
+            "src": "/blog/why-is-my-brand-not-showing-in-chatgpt-support-2.png",
+            "alt": "Before and after showing a brand added to a ChatGPT answer once AI visibility signals are fixed"
+        }
+    ],
+    "blocks": [
+        {
+            "type": "paragraph",
+            "text": "Your brand can rank on page one of Google and still never appear in ChatGPT because the two systems decide what to surface in completely different ways. This is the heart of why your brand is not showing in ChatGPT: Google ranks live pages against a query, while ChatGPT reconstructs an answer from what it learned in training plus what it can retrieve and trust in the moment. If you aren't a clear, well-cited entity in those sources, the model has no reason to name you."
+        },
+        {
+            "type": "paragraph",
+            "text": "A brand can rank on Google yet stay invisible in ChatGPT because Google ranks live pages while ChatGPT recalls trusted entities. The usual causes are weak entity recognition, key facts that aren't in structured form, few third-party citations, blocked AI crawlers, and training-data lag, most of which are fixable."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "Google ranks pages; ChatGPT recalls entities"
+        },
+        {
+            "type": "paragraph",
+            "text": "A search engine crawls the live web and orders pages for each query. A language model builds answers from a compressed memory of its training data plus, where available, real-time retrieval, and it leans on entities it can identify and trust. Ranking well signals quality, but it doesn't automatically make you a recognisable entity the model will cite. That mismatch is why strong SEO and weak AI visibility can sit side by side."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "What affects whether a business appears in ChatGPT"
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Reason 1: You're not a recognised entity"
+        },
+        {
+            "type": "paragraph",
+            "text": "If the model can't confidently connect your brand name to a clear description of what you do, it treats you as ambiguous and leaves you out. Consistent naming, a crisp category description, and matching signals across the web are what make you legible."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Reason 2: Your key facts aren't in extractable form"
+        },
+        {
+            "type": "paragraph",
+            "text": "Facts buried in images, inconsistent copy, or unstructured pages are hard for a model to lift cleanly. Structured data and plainly stated facts make your details easy to extract and reuse in an answer."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Reason 3: Nobody credible mentions you"
+        },
+        {
+            "type": "paragraph",
+            "text": "Models weigh third-party corroboration heavily. If reputable sites, directories, and publications in your category don't reference you, there's little external signal telling the model you belong in the answer."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Reason 4: You blocked or confused the AI crawlers"
+        },
+        {
+            "type": "paragraph",
+            "text": "If your robots rules block AI crawlers, or key content only renders through heavy JavaScript, the systems that feed retrieval may never read you properly. An AI-oriented crawlability check catches this quickly."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Reason 5: Training-data lag"
+        },
+        {
+            "type": "paragraph",
+            "text": "Models learn on snapshots taken at a point in time. A newer brand, a rebrand, or a recent pivot may simply predate what the model absorbed: which is why retrieval signals and fresh third-party mentions matter while the next training cycle catches up."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "Which of these you can actually fix"
+        },
+        {
+            "type": "table",
+            "rows": [
+                [
+                    "Reason",
+                    "Fixable?",
+                    "Rough timeline"
+                ],
+                [
+                    "Weak entity recognition",
+                    "Yes",
+                    "Weeks, consistent naming and description"
+                ],
+                [
+                    "Facts not extractable",
+                    "Yes",
+                    "Days to weeks, schema and clear copy"
+                ],
+                [
+                    "Few third-party citations",
+                    "Partly",
+                    "Months, earned mentions build slowly"
+                ],
+                [
+                    "Blocked / unreadable to crawlers",
+                    "Yes",
+                    "Days, fix robots rules and rendering"
+                ],
+                [
+                    "Training-data lag",
+                    "Indirect",
+                    "Bridge it with retrieval + citation signals"
+                ]
+            ]
+        },
+        {
+            "type": "image",
+            "src": "/blog/why-is-my-brand-not-showing-in-chatgpt-support-1.png",
+            "alt": "Matrix of five reasons a brand is invisible in ChatGPT and whether each is fixable"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "How to test whether AI actually understands your brand"
+        },
+        {
+            "type": "paragraph",
+            "text": "Don't assume, check. Ask ChatGPT to describe your brand and to recommend options in your category, and watch two things: whether it names you, and whether the description is accurate. A wrong description is its own problem, because a confidently incorrect mention can cost you more than silence."
+        },
+        {
+            "type": "paragraph",
+            "text": "Crawler Que's AI Visibility module runs that test at scale: buyer-intent prompts across multiple models, scored for mention ratio and model coverage, with a GEO readiness verdict that maps directly onto the five reasons above, so you see not just that you're invisible, but which signal is causing it."
+        },
+        {
+            "type": "image",
+            "src": "/blog/why-is-my-brand-not-showing-in-chatgpt-support-2.png",
+            "alt": "Before and after showing a brand added to a ChatGPT answer once AI visibility signals are fixed"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "Common questions"
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "My brand shows on Google but is invisible when people ask ChatGPT why?"
+        },
+        {
+            "type": "paragraph",
+            "text": "Because ranking a page and being a trusted entity are different achievements. Google can rank your page while ChatGPT, lacking clear entity and citation signals, leaves you out of the answer entirely."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Will fixing this hurt my normal SEO?"
+        },
+        {
+            "type": "paragraph",
+            "text": "No, the fixes are additive. Clear entities, structured data, credible mentions, and crawlability all support traditional SEO too. GEO sits on top of good SEO rather than replacing it."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "How long until my brand starts showing up in ChatGPT?"
+        },
+        {
+            "type": "paragraph",
+            "text": "Expect weeks, not days, crawlability and schema fixes register fastest, while entity clarity and third-party citations build over months. Retrieval-based signals can surface sooner than the next training cycle catches up."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Does ChatGPT pull from live pages or only its training data?"
+        },
+        {
+            "type": "paragraph",
+            "text": "Both, it recalls what it learned in training and, where retrieval is available, pulls from live sources in the moment. That's why fresh citations and readable pages matter even for facts the model hasn't been trained on yet."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "ChatGPT describes my brand incorrectly, is that worse than being invisible?"
+        },
+        {
+            "type": "paragraph",
+            "text": "Often yes, because a confident wrong answer actively misleads buyers, while silence just leaves a gap. Fixing it is the same work: clear entity signals and consistent, extractable facts give the model something accurate to repeat."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "Find the exact signal keeping you out of AI answers"
+        },
+        {
+            "type": "paragraph",
+            "text": "Run a free AI visibility check and get a GEO readiness verdict for your site."
+        },
+        {
+            "type": "paragraph",
+            "text": "Find your AI visibility gaps free"
+        }
+    ]
+},
+  {
+    "slug": "ai-competitor-visibility-analysis",
+    "title": "Your Competitors Are in ChatGPT Answers and You're Not: How to Close the Gap",
+    "metaTitle": "Competitors in ChatGPT Answers? How to Close the AI Gap",
+    "metaDescription": "Competitors keep appearing in ChatGPT and Perplexity answers while you don't? Learn to measure AI share of voice and close the visibility gap step by step.",
+    "primaryKeyword": "ai competitor visibility analysis",
+    "excerpt": "If competitors keep surfacing in ChatGPT and Perplexity answers while your brand doesn't, the gap is measurable, and closable. AI competitor visibility analysis compares how often each brand in a category is named acr...",
+    "category": "AI Visibility",
+    "publishedAt": "2026-06-30",
+    "readingTime": "4 min read",
+    "heroImage": "/blog/ai-competitor-visibility-analysis.png",
+    "heroAlt": "Your Competitors Are in ChatGPT Answers and You're Not: How to Close the Gap",
+    "images": [
+        {
+            "src": "/blog/ai-competitor-visibility-analysis.png",
+            "alt": "Your Competitors Are in ChatGPT Answers and You're Not: How to Close the Gap"
+        },
+        {
+            "src": "/blog/ai-competitor-visibility-analysis-support-1.png",
+            "alt": "AI share of voice bar chart showing the brand at twelve percent versus competitors"
+        },
+        {
+            "src": "/blog/ai-competitor-visibility-analysis-support-2.png",
+            "alt": "Checklist of signals to close the AI visibility gap against competitors"
+        }
+    ],
+    "blocks": [
+        {
+            "type": "paragraph",
+            "text": "If competitors keep surfacing in ChatGPT and Perplexity answers while your brand doesn't, the gap is measurable, and closable. AI competitor visibility analysis compares how often each brand in a category is named across AI models, so you can see exactly where rivals are winning share of voice and which signals are earning them the mention."
+        },
+        {
+            "type": "paragraph",
+            "text": "AI competitor visibility analysis measures how often each brand in a category is named across AI models for the same buyer prompts. It surfaces your share of voice versus competitors, shows where rivals win, and points to the signals, entity clarity, structured data, and citations, that close the gap."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "What \"AI share of voice\" means"
+        },
+        {
+            "type": "paragraph",
+            "text": "Share of voice is how often you appear relative to competitors when an AI model is asked for recommendations in your category. Presence alone isn't enough: being named in one answer out of ten while a rival is named in eight tells you the category answer belongs to them. The voice turns \"are we visible?\" into \"how much of the category do we own in AI answers?\""
+        },
+        {
+            "type": "image",
+            "src": "/blog/ai-competitor-visibility-analysis-support-1.png",
+            "alt": "AI share of voice bar chart showing the brand at twelve percent versus competitors"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "Why competitors show up and you don't"
+        },
+        {
+            "type": "paragraph",
+            "text": "It usually comes down to a few signals working in their favour: they read as a clearer entity, their facts are easier for a model to extract, and more credible third parties reference them. Crawler access and training-data timing play a part too. The point of an analysis is to find which of these is the actual difference in your category rather than guessing."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "How to run an AI competitor visibility analysis"
+        },
+        {
+            "type": "paragraph",
+            "text": "List three to five competitors that buyers realistically weigh against you."
+        },
+        {
+            "type": "paragraph",
+            "text": "Reuse a fixed set of buyer-intent prompts, the same set for every brand so the comparison is fair."
+        },
+        {
+            "type": "paragraph",
+            "text": "Run the prompts across multiple models and record which brands each answer names."
+        },
+        {
+            "type": "paragraph",
+            "text": "Calculate each brand's mention ratio and share of voice from the same runs."
+        },
+        {
+            "type": "paragraph",
+            "text": "Note the signals the leaders share, entity clarity, schema, citations, as your fix list."
+        },
+        {
+            "type": "table",
+            "rows": [
+                [
+                    "Compare on",
+                    "You",
+                    "What a gap tells you"
+                ],
+                [
+                    "Mention ratio",
+                    "Your % of prompts",
+                    "How present you are at all"
+                ],
+                [
+                    "Share of voice",
+                    "Your % vs rivals",
+                    "Whether you own or lose the category answer"
+                ],
+                [
+                    "Model coverage",
+                    "Which models name you",
+                    "If your visibility is broad or fragile"
+                ],
+                [
+                    "Accuracy",
+                    "Is the mention correct",
+                    "Whether AI describes you rightly when it does name you"
+                ]
+            ]
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "Reading the gap: mention ratio vs share of voice"
+        },
+        {
+            "type": "paragraph",
+            "text": "The two numbers together tell the story. A low mention ratio means you're barely present at all, a coverage problem. A decent mention ratio but low share of voice means you do appear, but competitors appear more and crowd you out, a positioning problem. The fix differs: coverage problems need foundational entity and crawlability work; positioning problems need stronger differentiation and citations that make you the obvious pick."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "Closing the gap: the signals that move share of voice"
+        },
+        {
+            "type": "paragraph",
+            "text": "Entity clarity: one consistent name and a crisp, repeated description of what you do and for whom."
+        },
+        {
+            "type": "paragraph",
+            "text": "Structured data: schema and plainly stated facts so a model can extract and reuse your details."
+        },
+        {
+            "type": "paragraph",
+            "text": "Third-party citations: earned references from credible sites in your category."
+        },
+        {
+            "type": "paragraph",
+            "text": "Direct-answer content: pages that answer buyer questions cleanly enough to be quoted."
+        },
+        {
+            "type": "paragraph",
+            "text": "Crawler access: AI crawlers can reach and render your key pages."
+        },
+        {
+            "type": "paragraph",
+            "text": "Crawler Que's AI Visibility module runs this as a benchmark: your brand and named competitors scored on the same prompts across multiple models, with share of voice side by side and a GEO readiness verdict that names the signals to fix first. Showing a client their score next to a competitor's is the fastest way to make the gap, and the plan to close it, concrete."
+        },
+        {
+            "type": "image",
+            "src": "/blog/ai-competitor-visibility-analysis-support-2.png",
+            "alt": "Checklist of signals to close the AI visibility gap against competitors"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "Common questions"
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Is there a tool that shows what AI says about my brand versus competitors?"
+        },
+        {
+            "type": "paragraph",
+            "text": "Yes. A competitor visibility benchmark scores you and your rivals on identical prompts across models, so you see who the AI names, how often, and how you rank against them rather than eyeballing a few answers."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "How many competitors should I track?"
+        },
+        {
+            "type": "paragraph",
+            "text": "Three to five is usually enough, the ones buyers genuinely compare you against. More than that dilutes the signal without changing the fixes."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "How do I know which competitors to benchmark in AI answers?"
+        },
+        {
+            "type": "paragraph",
+            "text": "The three to five rivals buyers actually compare you against, not your whole market. Unsure? Ask ChatGPT for recommendations in your category and use the brands it names."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Why does one competitor dominate ChatGPT answers?"
+        },
+        {
+            "type": "paragraph",
+            "text": "They read as the clearest entity with the most credible third-party coverage, so the model defaults to them. It's the stack of signals working together, not one factor."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "text": "Can I close the gap without more content?"
+        },
+        {
+            "type": "paragraph",
+            "text": "Often yes, much of the gap is structural, so fixing entity signals, schema, and crawler access moves share of voice first. Add content only where competitors answer questions you don't."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "text": "See exactly where competitors beat you in AI answers"
+        },
+        {
+            "type": "paragraph",
+            "text": "Benchmark your brand against rivals on the same prompts — free to run."
+        },
+        {
+            "type": "paragraph",
+            "text": "Compare against competitors free"
+        }
+    ]
+}
 ];
 
 export function getBlogPost(slug: string) {
