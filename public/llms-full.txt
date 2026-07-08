@@ -1,0 +1,2647 @@
+# https://crawlerque.com/ llms-full.txt
+
+## Website Audit Intelligence
+![](https://crawlerque.com/hero-bg.jpg)
+
+AI website growth intelligence
+
+# Audit your website.  Find the path tobetter growth.
+
+Run a complete website audit in minutes. Crawler Que checks SEO, technical performance, traffic, keywords, competitors, backlinks, and AI search visibility.
+
+Run free audit →
+
+Free audit · no signup · results in under 2 minutes
+
+Technical SEO scan
+
+Core Web Vitals check
+
+On-page SEO signals
+
+14K+
+
+Keywords tracked
+
+8
+
+Audit modules
+
+3×
+
+Faster reports
+
+14,000+Keywords analysed
+
+8Audit modules
+
+3×Faster reporting
+
+90-dayAction roadmap
+
+AIVisibility scoring
+
+Who can use it
+
+## Built for anyone who wants better website growth.
+
+Whether you own a business, manage a website, run marketing, or handle SEO for others, Crawler Que helps you understand what is holding the website back.
+
+Best start
+
+### Business Owners
+
+Understand what is stopping your website from ranking, loading faster, and getting more traffic.
+
+### Marketing Teams
+
+Audit SEO, performance, AI visibility, competitors, keywords, and backlinks from one dashboard.
+
+### SEO Teams
+
+Find technical issues, keyword gaps, traffic opportunities, and priority fixes faster.
+
+Popular
+
+### Agencies
+
+Manage multiple website audits, track opportunities, and export branded reports when needed.
+
+### Consultants
+
+Turn website audit data into a clear action plan with impact, timeline, and recommended owner.
+
+Intelligence powered by
+
+Google PageSpeed Insights
+
+Core Web Vitals
+
+DataForSEO
+
+Keywords, traffic & backlinks
+
+Proprietary AI Engine
+
+Recommendations & scoring
+
+SERP Data
+
+Rank position intelligence
+
+How it works
+
+## Audit. Analyse. Deliver.
+
+From website URL to clear SEO, performance, traffic, competitor, backlink, AI visibility, and recommendation insights in minutes.
+
+01
+
+### Enter any URL
+
+Paste any website URL. Crawler Que runs selected audit modules against live data with no install needed.
+
+02
+
+### AI analyses everything
+
+SEO, speed, traffic, AI visibility, competitors, backlinks, keywords — processed, scored, and ranked by impact.
+
+03
+
+### Use the growth report
+
+Review the dashboard, prioritize fixes, track opportunities, and export a report when you need to share the results.
+
+Inside the platform
+
+## See exactly what your website audit includes.
+
+A real look at the dashboard — no mockups. Click through the views.
+
+crawlerque.com/dashboard1 / 4
+
+![Crawler Que dashboard screenshot 1](https://crawlerque.com/_next/image?url=%2Fscreenshots%2Fdashboard-1.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)![Crawler Que dashboard screenshot 2](https://crawlerque.com/_next/image?url=%2Fscreenshots%2Fdashboard-2.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)![Crawler Que dashboard screenshot 3](https://crawlerque.com/_next/image?url=%2Fscreenshots%2Fdashboard-3.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)![Crawler Que dashboard screenshot 4](https://crawlerque.com/_next/image?url=%2Fscreenshots%2Fdashboard-4.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+Every score, issue, and opportunity for a domain — on one screen.
+
+Audit modules
+
+## Every intelligence layer your website needs.
+
+Modular by design. Run a full audit or go deep on a single signal.
+
+SEO
+
+### SEO Intelligence
+
+Title, H1, meta, crawlability, keyword density and structured data signals.
+
+On-pageTechnical
+
+TRAFFIC
+
+### Traffic Modelling
+
+CTR-curve traffic estimation across all ranked keywords with confidence scoring.
+
+CTR-curveKeywords
+
+SPEED
+
+### Core Web Vitals
+
+Google PageSpeed mobile and desktop scores with prioritised fix recommendations.
+
+LCPCLSFCP
+
+AI
+
+### AI Search Visibility
+
+Track how a brand appears in AI-generated search results across ChatGPT and Gemini.
+
+LLM rankGEO
+
+COMPETE
+
+### Competitor Intel
+
+Benchmark against organic competitors and surface the keyword gaps worth closing.
+
+Gap analysisThreats
+
+LINKS
+
+### Backlink Authority
+
+Backlink profile, referring domains, and authority gap signals with trust scoring.
+
+BacklinksTrust
+
+How we compare
+
+## Built for clearer website decisions.
+
+Traditional SEO tools can be complex and data-heavy. Crawler Que turns website audit data into clear priorities, insights, and action steps.
+
+| Feature | Crawler Que | SEMrush | Ahrefs |
+| --- | --- | --- | --- |
+| White-Label Reporting | ✅ | Partial | ❌ |
+| AI Search Visibility | ✅ | ❌ | ❌ |
+| Clear Growth Workflow | ✅ | Partial | Partial |
+| Action Plan Recommendations | ✅ | Limited | Limited |
+| Keyword Gap Intelligence | ✅ | ✅ | ✅ |
+| Core Web Vitals Audit | ✅ | ✅ | ✅ |
+| GEO / AI Visibility Score | ✅ | ❌ | ❌ |
+| Modular Report Selection | ✅ | ❌ | ❌ |
+| Price (Agency-tier) | $99/mo | $229/mo | $199/mo |
+
+Pricing
+
+## Website growth intelligence for every stage.
+
+Choose the plan that matches how many websites you want to audit each month.
+
+Start here
+
+### Try every plan's features free for 7 days
+
+All 8 audit modules, 3 full audits included. Card required — after 7 days, pick the plan below that fits your workflow.
+
+Start 7-day free trial
+
+Cancel anytime during your trial — you won't be charged.
+
+MonthlyAnnual2 months free
+
+### Starter
+
+For freelancers auditing client sites.
+
+$30/mo
+
+- 7 full audits / month
+- All 8 audit modules
+- Branded PDF export
+- 30-day report history
+- 1 user seat
+
+What this means
+
+Perfect for freelancers with up to 3-4 regular clients.
+
+Start with Starter
+
+Most Popular
+
+### Agency
+
+For agencies producing client deliverables.
+
+$99/mo
+
+- 40 full audits / month
+- White-label PDF reports
+- Comparison reports
+- 90-day report history
+- 3 user seats
+
+What this means
+
+40 audits covers 20+ recurring client reports monthly. Every PDF carries your brand.
+
+Start with Agency
+
+### Enterprise
+
+For high-volume agencies and consultancies.
+
+$299/mo
+
+- 150 full audits / month
+- White-label PDF reports
+- Priority support
+- Unlimited report history
+- 10 user seats
+
+What this means
+
+Scale to 50+ clients with 150 audits per month and dedicated priority support.
+
+Start with Enterprise
+
+Cancel any time · Secure payment via Stripe
+
+Website audit value
+
+## What can one missed website issue cost you?
+
+Crawler Que helps you find SEO, speed, traffic, AI visibility, keyword, competitor, and backlink issues before they keep costing you traffic and leads.
+
+SEO Issues
+
+What it helps withFix ranking blockers
+
+Signals checked5+ checks
+
+Estimated opportunity impact$750
+
+Action priorityHigh
+
+Potential value$750
+
+Speed Issues
+
+What it helps withImprove user experience
+
+Signals checked15+ checks
+
+Estimated opportunity impact$4,500
+
+Action priorityHigh
+
+Potential value$4,500
+
+Competitor Gaps
+
+What it helps withFind missed opportunities
+
+Signals checked40+ checks
+
+Estimated opportunity impact$20,000
+
+Action priorityHigh
+
+Potential value$20,000
+
+These are example opportunity values. Actual results depend on the website, market, traffic, and execution quality.
+
+FAQ
+
+## Questions, answered.
+
++−Do I need to create an account to run a free audit?
+
+No. Paste any URL on the homepage and you'll get SEO and performance scores instantly — no signup, no card.
+
++−What is AI search visibility scoring?
+
+We test whether AI assistants like ChatGPT actually mention your brand when asked for recommendations in your niche, then score it 0–100 with an honest confidence label.
+
++−Can I remove Crawler Que branding from reports?
+
+Yes — the Agency and Enterprise plans include full white-labelling: your logo, your accent color, your footer text on every PDF.
+
++−How is Crawler Que different from SEMrush or Ahrefs?
+
+Those are research tools for analysts. Crawler Que is a deliverable tool for agencies: it turns one URL into a client-ready growth plan PDF, and it measures AI visibility, which they don't.
+
++−Can I cancel anytime?
+
+Yes. Cancel from the dashboard's Subscription tab via the Stripe billing portal — you keep access until the end of the paid period.
+
+Get started today
+
+## Find what is holding your website back.  Start with a free audit.
+
+Run your first website audit free. No signup needed. Upgrade when you want deeper traffic, AI visibility, competitor, keyword, backlink, and reporting intelligence.
+
+Run a free audit → [See plans](https://crawlerque.com/#pricing)
+
+## SEO Resources and Tools
+https://crawlerque.com2026-07-08T15:33:07.134Zweekly1https://crawlerque.com/blog2026-07-08T15:33:07.134Zweekly0.7https://crawlerque.com/ai-search-visibility2026-07-08T15:33:07.134Zweekly0.7https://crawlerque.com/sample-report2026-07-08T15:33:07.134Zweekly0.7https://crawlerque.com/for-agencies2026-07-08T15:33:07.134Zweekly0.7https://crawlerque.com/for-seo-teams2026-07-08T15:33:07.134Zweekly0.7https://crawlerque.com/for-consultants2026-07-08T15:33:07.134Zweekly0.7https://crawlerque.com/testimonials2026-07-08T15:33:07.134Zweekly0.7https://crawlerque.com/affiliate-program2026-07-08T15:33:07.134Zweekly0.7https://crawlerque.com/contact2026-07-08T15:33:07.134Zweekly0.7https://crawlerque.com/changelog2026-07-08T15:33:07.134Zweekly0.7https://crawlerque.com/privacy-policy2026-07-08T15:33:07.134Zweekly0.7https://crawlerque.com/return-policy2026-07-08T15:33:07.134Zweekly0.7https://crawlerque.com/blog/how-to-estimate-your-websites-organic-traffic-without-google-analytics-access2026-06-15T00:00:00.000Zmonthly0.6https://crawlerque.com/blog/the-2026-technical-seo-audit-checklist-25-checks-every-website-needs-before-it-can-rank2026-06-16T00:00:00.000Zmonthly0.6https://crawlerque.com/blog/how-to-check-if-your-brand-appears-in-chatgpt-perplexity-and-gemini-step-by-step2026-06-17T00:00:00.000Zmonthly0.6https://crawlerque.com/blog/core-web-vitals-in-2026-what-they-are-why-they-still-matter-and-how-to-fix-them-fast2026-06-18T00:00:00.000Zmonthly0.6https://crawlerque.com/blog/aeo-vs-seo-vs-geo-what-is-the-difference-and-which-one-should-you-focus-on2026-06-19T00:00:00.000Zmonthly0.6https://crawlerque.com/blog/what-is-geo-generative-engine-optimization-the-complete-guide-for-20262026-06-20T00:00:00.000Zmonthly0.6https://crawlerque.com/blog/why-paying-229-month-for-semrush-makes-no-sense-for-most-agencies-anymore2026-06-21T00:00:00.000Zmonthly0.6https://crawlerque.com/blog/crawler-que-vs-semrush-vs-ahrefs-which-seo-audit-tool-is-actually-worth-it-in-20262026-06-22T00:00:00.000Zmonthly0.6https://crawlerque.com/blog/the-freelance-seo-consultants-toolkit-enterprise-level-reports-on-a-solo-budget2026-06-23T00:00:00.000Zmonthly0.6https://crawlerque.com/blog/how-agencies-are-billing-300-per-audit-report-and-delivering-it-in-5-minutes2026-06-24T00:00:00.000Zmonthly0.6https://crawlerque.com/blog/ai-search-visibility-explained-how-to-find-out-if-chatgpt-recommends-your-brand2026-06-25T00:00:00.000Zmonthly0.6https://crawlerque.com/blog/what-is-an-ai-website-audit-tool-and-why-your-seo-stack-needs-one-in-20262026-06-26T00:00:00.000Zmonthly0.6https://crawlerque.com/blog/chatgpt-visibility-checker2026-06-27T00:00:00.000Zmonthly0.6https://crawlerque.com/blog/how-to-measure-brand-visibility-in-chatgpt2026-06-28T00:00:00.000Zmonthly0.6https://crawlerque.com/blog/why-is-my-brand-not-showing-in-chatgpt2026-06-29T00:00:00.000Zmonthly0.6https://crawlerque.com/blog/ai-competitor-visibility-analysis2026-06-30T00:00:00.000Zmonthly0.6
+
+## SEO and AI Insights
+Crawler Que Blog
+
+# Website growth guides for SEO, AI search, and smarter audits.
+
+Learn how to find technical SEO issues, traffic gaps, competitor opportunities, backlink signals, Core Web Vitals problems, and AI search visibility gaps before they cost you growth.
+
+[![Your Competitors Are in ChatGPT Answers and You're Not: How to Close the Gap](https://crawlerque.com/_next/image?url=%2Fblog%2Fai-competitor-visibility-analysis.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)\\
+\\
+AI VisibilityJun 30, 2026 · 4 min read\\
+\\
+**Your Competitors Are in ChatGPT Answers and You're Not: How to Close the Gap** \\
+\\
+If competitors keep surfacing in ChatGPT and Perplexity answers while your brand doesn't, the gap is measurable, and closable. AI competitor visibility analysis compares how often each brand in a category is named acr...\\
+\\
+Read guide →](https://crawlerque.com/blog/ai-competitor-visibility-analysis) [![Why Your Brand Is Invisible in ChatGPT (Even Though It Ranks on Google)](https://crawlerque.com/_next/image?url=%2Fblog%2Fwhy-is-my-brand-not-showing-in-chatgpt.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)\\
+\\
+AI VisibilityJun 29, 2026 · 4 min read\\
+\\
+**Why Your Brand Is Invisible in ChatGPT (Even Though It Ranks on Google)** \\
+\\
+Your brand can rank on page one of Google and still never appear in ChatGPT because the two systems decide what to surface in completely different ways. This is the heart of why your brand is not showing in ChatGPT: G...\\
+\\
+Read guide →](https://crawlerque.com/blog/why-is-my-brand-not-showing-in-chatgpt) [![How to Measure Brand Visibility in ChatGPT: A Repeatable Framework](https://crawlerque.com/_next/image?url=%2Fblog%2Fhow-to-measure-brand-visibility-in-chatgpt.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)\\
+\\
+AI VisibilityJun 28, 2026 · 4 min read\\
+\\
+**How to Measure Brand Visibility in ChatGPT: A Repeatable Framework** \\
+\\
+To measure brand visibility in ChatGPT, run a fixed set of buyer-intent prompts through the model on a schedule and track three things: how often your brand appears, how you compare to competitors, and how the mention...\\
+\\
+Read guide →](https://crawlerque.com/blog/how-to-measure-brand-visibility-in-chatgpt) [![Free ChatGPT Visibility Checker: See What ChatGPT Says About Your Brand](https://crawlerque.com/_next/image?url=%2Fblog%2Fchatgpt-visibility-checker.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)\\
+\\
+AI VisibilityJun 27, 2026 · 4 min read\\
+\\
+**Free ChatGPT Visibility Checker: See What ChatGPT Says About Your Brand** \\
+\\
+A ChatGPT visibility checker tests whether ChatGPT names your brand when someone asks it for recommendations in your category, then shows you where you stand against competitors. Crawler Que runs that check for free:...\\
+\\
+Read guide →](https://crawlerque.com/blog/chatgpt-visibility-checker) [![What Is an AI Website Audit Tool | And Why Your SEO Stack Needs One in 2026](https://crawlerque.com/_next/image?url=%2Fblog%2Fwhat-is-an-ai-website-audit-tool-and-why-your-seo-stack-needs-one-in-2026.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)\\
+\\
+Website AuditJun 26, 2026 · 5 min read\\
+\\
+**What Is an AI Website Audit Tool \| And Why Your SEO Stack Needs One in 2026** \\
+\\
+An AI website audit tool runs a structured analysis of your website across multiple signals, SEO, speed, keywords, competitors, backlinks, and AI search visibility, and delivers the results as a clear, prioritized...\\
+\\
+Read guide →](https://crawlerque.com/blog/what-is-an-ai-website-audit-tool-and-why-your-seo-stack-needs-one-in-2026) [![AI Search Visibility Explained | How to Find Out if ChatGPT Recommends Your Brand](https://crawlerque.com/_next/image?url=%2Fblog%2Fai-search-visibility-explained-how-to-find-out-if-chatgpt-recommends-your-brand.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)\\
+\\
+AI VisibilityJun 25, 2026 · 5 min read\\
+\\
+**AI Search Visibility Explained \| How to Find Out if ChatGPT Recommends Your Brand** \\
+\\
+AI search visibility is a measure of how often and how prominently a brand appears when AI assistants like ChatGPT, Perplexity, and Gemini are asked buyer questions in that brand's category. A business with high AI...\\
+\\
+Read guide →](https://crawlerque.com/blog/ai-search-visibility-explained-how-to-find-out-if-chatgpt-recommends-your-brand) [![How Agencies Are Billing $300 Per Audit Report (And Delivering It in 5 Minutes)](https://crawlerque.com/_next/image?url=%2Fblog%2Fhow-agencies-are-billing-300-per-audit-report-and-delivering-it-in-5-minutes.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)\\
+\\
+AgenciesJun 24, 2026 · 4 min read\\
+\\
+**How Agencies Are Billing $300 Per Audit Report (And Delivering It in 5 Minutes)** \\
+\\
+The agencies billing the most for SEO audit deliverables are not the ones doing the most work per report. They are the ones who turned the report itself into a productized service, with a consistent format, a clear...\\
+\\
+Read guide →](https://crawlerque.com/blog/how-agencies-are-billing-300-per-audit-report-and-delivering-it-in-5-minutes) [![The Freelance SEO Consultant's Toolkit: Enterprise-Level Reports on a Solo Budget](https://crawlerque.com/_next/image?url=%2Fblog%2Fthe-freelance-seo-consultants-toolkit-enterprise-level-reports-on-a-solo-budget.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)\\
+\\
+ConsultantsJun 23, 2026 · 4 min read\\
+\\
+**The Freelance SEO Consultant's Toolkit: Enterprise-Level Reports on a Solo Budget** \\
+\\
+The biggest pricing gap in freelance SEO is not expertise, it is the deliverable. Two consultants with identical knowledge charge $150 and $750 for the same type of engagement. The difference is almost always the...\\
+\\
+Read guide →](https://crawlerque.com/blog/the-freelance-seo-consultants-toolkit-enterprise-level-reports-on-a-solo-budget) [![Crawler Que vs SEMrush vs Ahrefs: Which SEO Audit Tool Is Actually Worth It in 2026?](https://crawlerque.com/_next/image?url=%2Fblog%2Fcrawler-que-vs-semrush-vs-ahrefs-which-seo-audit-tool-is-actually-worth-it-in-2026.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)\\
+\\
+SEO ToolsJun 22, 2026 · 4 min read\\
+\\
+**Crawler Que vs SEMrush vs Ahrefs: Which SEO Audit Tool Is Actually Worth It in 2026?** \\
+\\
+This comparison covers three tools with different primary purposes. SEMrush and Ahrefs are research platforms built for SEO analysts. Crawler Que is an audit and deliverable platform built for agencies and...\\
+\\
+Read guide →](https://crawlerque.com/blog/crawler-que-vs-semrush-vs-ahrefs-which-seo-audit-tool-is-actually-worth-it-in-2026) [![Why Paying $229/Month for SEMrush Makes No Sense for Most Agencies Anymore](https://crawlerque.com/_next/image?url=%2Fblog%2Fwhy-paying-229-month-for-semrush-makes-no-sense-for-most-agencies-anymore.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)\\
+\\
+SEO ToolsJun 21, 2026 · 4 min read\\
+\\
+**Why Paying $229/Month for SEMrush Makes No Sense for Most Agencies Anymore** \\
+\\
+SEMrush is a genuinely powerful tool. Its keyword database is one of the largest available, its backlink crawler is fast, and its position tracking is reliable. This is not an argument that SEMrush is bad.\\
+\\
+Read guide →](https://crawlerque.com/blog/why-paying-229-month-for-semrush-makes-no-sense-for-most-agencies-anymore) [![What Is GEO (Generative Engine Optimization)? The Complete Guide for 2026](https://crawlerque.com/_next/image?url=%2Fblog%2Fwhat-is-geo-generative-engine-optimization-the-complete-guide-for-2026.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)\\
+\\
+GEOJun 20, 2026 · 5 min read\\
+\\
+**What Is GEO (Generative Engine Optimization)? The Complete Guide for 2026** \\
+\\
+Generative Engine Optimization (GEO) is the practice of structuring your brand, content, and technical signals so that AI-powered search engines, ChatGPT, Perplexity, Gemini, and Google AI Overviews, cite and...\\
+\\
+Read guide →](https://crawlerque.com/blog/what-is-geo-generative-engine-optimization-the-complete-guide-for-2026) [![AEO vs SEO vs GEO: What Is the Difference and Which One Should You Focus On?](https://crawlerque.com/_next/image?url=%2Fblog%2Faeo-vs-seo-vs-geo-what-is-the-difference-and-which-one-should-you-focus-on.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)\\
+\\
+SEO, AEO & GEOJun 19, 2026 · 4 min read\\
+\\
+**AEO vs SEO vs GEO: What Is the Difference and Which One Should You Focus On?** \\
+\\
+Three acronyms are now circulating in the SEO industry: SEO, AEO, and GEO. They describe different optimization targets within the broader landscape of search visibility. Understanding which one does what, and which...\\
+\\
+Read guide →](https://crawlerque.com/blog/aeo-vs-seo-vs-geo-what-is-the-difference-and-which-one-should-you-focus-on) [![Core Web Vitals in 2026: What They Are, Why They Still Matter, and How to Fix Them Fast](https://crawlerque.com/_next/image?url=%2Fblog%2Fcore-web-vitals-in-2026-what-they-are-why-they-still-matter-and-how-to-fix-them-fast.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)\\
+\\
+Core Web VitalsJun 18, 2026 · 4 min read\\
+\\
+**Core Web Vitals in 2026: What They Are, Why They Still Matter, and How to Fix Them Fast** \\
+\\
+Core Web Vitals are a set of speed and user experience metrics that Google uses as ranking signals. They measure how fast the page loads, how stable it is while loading, and how quickly it becomes interactive. Poor...\\
+\\
+Read guide →](https://crawlerque.com/blog/core-web-vitals-in-2026-what-they-are-why-they-still-matter-and-how-to-fix-them-fast) [![How to Check if Your Brand Appears in ChatGPT, Perplexity, and Gemini (Step-by-Step)](https://crawlerque.com/_next/image?url=%2Fblog%2Fhow-to-check-if-your-brand-appears-in-chatgpt-perplexity-and-gemini-step-by-step.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)\\
+\\
+AI VisibilityJun 17, 2026 · 4 min read\\
+\\
+**How to Check if Your Brand Appears in ChatGPT, Perplexity, and Gemini (Step-by-Step)** \\
+\\
+Most business owners and marketers have a version of the same question right now: "Is our brand showing up when people ask ChatGPT about what we do?" The answer matters commercially, if AI assistants are not...\\
+\\
+Read guide →](https://crawlerque.com/blog/how-to-check-if-your-brand-appears-in-chatgpt-perplexity-and-gemini-step-by-step) [![The 2026 Technical SEO Audit Checklist: 25 Checks Every Website Needs Before It Can Rank](https://crawlerque.com/_next/image?url=%2Fblog%2Fthe-2026-technical-seo-audit-checklist-25-checks-every-website-needs-before-it-can-rank.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)\\
+\\
+Technical SEOJun 16, 2026 · 6 min read\\
+\\
+**The 2026 Technical SEO Audit Checklist: 25 Checks Every Website Needs Before It Can Rank** \\
+\\
+Technical SEO issues are the silent rank killers. A site can have excellent content, strong backlinks, and a good product, and still fail to rank because Google cannot crawl it properly, pages are loading in 8...\\
+\\
+Read guide →](https://crawlerque.com/blog/the-2026-technical-seo-audit-checklist-25-checks-every-website-needs-before-it-can-rank) [![How to Estimate Your Website's Organic Traffic Without Google Analytics Access](https://crawlerque.com/_next/image?url=%2Fblog%2Fhow-to-estimate-your-websites-organic-traffic-without-google-analytics-access.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)\\
+\\
+Organic TrafficJun 15, 2026 · 4 min read\\
+\\
+**How to Estimate Your Website's Organic Traffic Without Google Analytics Access** \\
+\\
+Google Analytics access is not always available. You might be auditing a prospect's site before they become a client. You might be benchmarking a competitor. You might be doing due diligence on an acquisition. In all...\\
+\\
+Read guide →](https://crawlerque.com/blog/how-to-estimate-your-websites-organic-traffic-without-google-analytics-access)
+
+## AI Search Visibility Tool
+AI search visibility
+
+# Your clients are being searched on ChatGPT. Are they showing up?
+
+Search is moving from ten blue links to AI-generated answers. Crawler Que measures whether AI assistants actually recommend your client's brand — and tells you how to fix it when they don't.
+
+## What the AI Visibility module measures
+
+### Brand mention testing
+
+We query multiple AI models with realistic buyer prompts for the client's niche and record whether the brand appears in the answers.
+
+### AI Visibility Score (0–100)
+
+A single score built from mention ratio and model coverage, with an honest confidence label — we never present a thin sample as certainty.
+
+### Share of voice
+
+How often the client appears versus competitors when AI is asked for recommendations in their category.
+
+### GEO readiness verdict
+
+Generative Engine Optimisation: the entity signals, schema, FAQs, and third-party citations the site needs so AI models can cite it confidently.
+
+## Why this sells audits for you
+
+Every business owner has heard that "AI is changing search" — almost none of them can see where they stand. Showing a client their AI Visibility Score next to their competitors' is the fastest trust-builder in your audit, because it answers a question no traditional SEO tool answers. SEMrush and Ahrefs report rankings; Crawler Que reports whether the machines that increasingly answer buyers' questions know your client exists.
+
+## Check any brand's AI visibility.
+
+Run a free audit and add the AI Visibility module on any paid plan.
+
+[Run a free audit →](https://crawlerque.com/) [See plans](https://crawlerque.com/#pricing)
+
+## Comprehensive SEO Sample Report
+Sample report
+
+# See exactly what your clients receive.
+
+A real Crawler Que report, exported from a live audit. This is the white-label PDF your clients open — judge it the way they will.
+
+### Executive Snapshot
+
+Overall, SEO, performance, and AI visibility scores with benchmarks and the single biggest risk and opportunity.
+
+### Organic Traffic Intelligence
+
+Modelled monthly traffic, keyword footprint, and the top ranking keywords driving visibility.
+
+### AI Search Visibility
+
+Whether AI assistants like ChatGPT and Perplexity actually mention the brand, with a GEO readiness verdict.
+
+### Competitor Intelligence
+
+The ten domains capturing the client's organic visibility, with threat scores and shared keywords.
+
+### Technical & Performance
+
+Core Web Vitals on mobile and desktop, crawl results, broken links, and metadata gaps.
+
+### Recommendations & Roadmap
+
+Prioritised action cards with owner, impact, and timeline — plus a 30/60/90-day execution plan.
+
+Download
+
+## Full sample PDF
+
+18 pages. Real data from a live audit, with client details anonymised.
+
+[Download sample report (PDF)](https://crawlerque.com/sample-report.pdf)
+
+On Agency and Enterprise plans, this same report carries your logo, colors, and footer — not ours.
+
+## Want this report for your own site?
+
+Run a free audit now — no signup — and see your scores in under two minutes.
+
+[Run a free audit →](https://crawlerque.com/) [See plans](https://crawlerque.com/#pricing)
+
+## Agency Reporting Solutions
+For agencies
+
+# The audit tool that makes your agency look bigger.
+
+Win pitches with white-label intelligence reports, deliver monthly client reporting in minutes, and add AI visibility — a service your competitors can't show.
+
+## Sound familiar?
+
+### Reports eat billable hours
+
+Stitching tool exports into a client deck takes hours per client, every month.
+
+### Clients don't read data dumps
+
+Forty pages of keyword tables impress nobody. Clients want to know what to do next.
+
+### Hard to stand out in pitches
+
+Every agency shows the same ranking screenshots. Differentiating is getting harder.
+
+## How Crawler Que fixes it
+
+### White-label PDF in one click
+
+Your logo, your accent color, your footer. Clients never see our name — Agency plan and up.
+
+### Growth plan, not data dump
+
+Every report ends with prioritised action cards and a 30/60/90-day roadmap your client can actually follow.
+
+### AI visibility scoring
+
+Show clients whether ChatGPT recommends them. It's the strongest pitch-opener in 2026 — and only you have it.
+
+### 40 audits, 3 seats, $99
+
+Flat pricing with no per-client fees. Audit every client and every prospect without watching a meter.
+
+Typical agency math: at $300 per audit-backed report and 15 clients per month, the Agency plan returns over $4,400 in monthly revenue against a $99 cost. The PDF is the product — Crawler Que just makes it take five minutes instead of five hours.
+
+## Run your first audit free.
+
+No signup needed. See what Crawler Que finds on any site in under two minutes.
+
+[Run a free audit →](https://crawlerque.com/) [See plans](https://crawlerque.com/#pricing)
+
+## SEO Team Solutions
+For SEO teams
+
+# One audit. Every signal your team works from.
+
+Stop juggling five tools to assemble one picture. Crawler Que runs technical, content, keyword, competitor, backlink, and AI visibility analysis in a single pass.
+
+## Sound familiar?
+
+### Signal scattered across tools
+
+Crawl data here, keywords there, Core Web Vitals somewhere else. Assembling the picture is the job before the job.
+
+### Stakeholders need translations
+
+Leadership doesn't want crawl logs — they want scores, trends, and priorities they can read in two minutes.
+
+### AI search is a blind spot
+
+Traffic is shifting to AI answers and most teams have zero measurement of where they stand.
+
+## How Crawler Que fixes it
+
+### Eight modules, one run
+
+SEO foundation, Core Web Vitals, traffic modelling, keywords, competitors, backlinks, content quality, and AI visibility — one URL, one report.
+
+### Executive-ready exports
+
+Score gauges, benchmarks, and a prioritised roadmap that survives being forwarded to a VP.
+
+### Honest confidence labels
+
+Traffic estimates carry confidence tiers based on ranked keyword depth. We never dress up thin data as certainty.
+
+### Saved history & re-runs
+
+Every audit is stored. Re-run monthly and show movement, not snapshots.
+
+Teams use Crawler Que as the shared starting point: run the audit Monday, assign the action cards by owner (SEO, content, dev), and track score movement month over month. The 30/60/90 roadmap doubles as your sprint backlog.
+
+## Run your first audit free.
+
+No signup needed. See what Crawler Que finds on any site in under two minutes.
+
+[Run a free audit →](https://crawlerque.com/) [See plans](https://crawlerque.com/#pricing)
+
+## SEO Reports for Consultants
+For consultants & freelancers
+
+# Look enterprise-level. Pay freelancer prices.
+
+Deliver branded intelligence reports that justify premium rates — starting at $30/month for ten full audits.
+
+## Sound familiar?
+
+### Big-tool prices, solo budget
+
+Mainstream SEO suites start at $199+/month — hard to justify with five clients.
+
+### Deliverables decide your rate
+
+A polished report is the difference between charging $150 and $500 for the same expertise.
+
+### Every prospect wants proof
+
+Closing new clients means showing them something concrete about their site — fast.
+
+## How Crawler Que fixes it
+
+### Starter plan at $30
+
+Ten full audits per month, all eight modules, branded PDF export. Pays for itself with one report.
+
+### The free-audit close
+
+Run a free audit on a prospect's site before the call. Walking in with their scores wins the room.
+
+### Reports clients keep
+
+Executive snapshot, plain-language insights, and a roadmap — a deliverable that gets forwarded, with your name on it.
+
+### Grow into white-label
+
+When you scale, the Agency plan adds full white-labelling and three seats. Your brand on everything.
+
+Consultant math: charge $150 per audit report at just 5 clients per month and the Starter plan returns $701 in profit. Most consultants we see charge more and deliver the report as the opening of a retainer conversation.
+
+## Run your first audit free.
+
+No signup needed. See what Crawler Que finds on any site in under two minutes.
+
+[Run a free audit →](https://crawlerque.com/) [See plans](https://crawlerque.com/#pricing)
+
+## Crawler Que Testimonials
+Testimonials
+
+# What agencies say about Crawler Que
+
+Real teams, real reports, real client wins.
+
+"
+
+> \[Replace with a real client quote about time saved on reporting.\]
+
+\[Client name\]
+
+\[Role, Company\]
+
+"
+
+> \[Replace with a real client quote about winning a pitch using the report.\]
+
+\[Client name\]
+
+\[Role, Company\]
+
+"
+
+> \[Replace with a real client quote about the AI visibility module.\]
+
+\[Client name\]
+
+\[Role, Company\]
+
+"
+
+> \[Replace with a real client quote about white-label branding.\]
+
+\[Client name\]
+
+\[Role, Company\]
+
+"
+
+> \[Replace with a real client quote about value vs. bigger tools.\]
+
+\[Client name\]
+
+\[Role, Company\]
+
+"
+
+> \[Replace with a real client quote about client reactions to the PDF.\]
+
+\[Client name\]
+
+\[Role, Company\]
+
+Using Crawler Que and want to be featured here? [Tell us your story →](https://crawlerque.com/contact)
+
+## Run your first audit free.
+
+No signup needed. See what Crawler Que finds on any site in under two minutes.
+
+[Run a free audit →](https://crawlerque.com/) [See plans](https://crawlerque.com/#pricing)
+
+## Affiliate Program Overview
+Affiliate program
+
+# Earn 30% recurring for every agency you refer.
+
+Know agencies, consultants, or SEO teams who'd use Crawler Que? Refer them and earn 30% of their subscription, every month, for as long as they stay.
+
+### 30% recurring
+
+Not a one-time bounty. You earn on every renewal — an Agency-plan referral pays you $29.70/month, ongoing.
+
+### 90-day cookie
+
+Your referral link credits you for signups within 90 days of the click.
+
+### Made for our audience
+
+Agencies talk to agencies. If your audience runs client websites, Crawler Que practically sells itself with the free audit.
+
+## Apply to join
+
+Tell us about your audience and how you'd promote Crawler Que. We approve applications within 2 business days.
+
+[Apply via email →](mailto:info@crawlerque.com?subject=Affiliate%20application)
+
+## Run your first audit free.
+
+No signup needed. See what Crawler Que finds on any site in under two minutes.
+
+[Run a free audit →](https://crawlerque.com/) [See plans](https://crawlerque.com/#pricing)
+
+## Contact Us
+Contact
+
+# Talk to a human
+
+Questions about plans, white-labelling, or a specific audit? We reply within one business day.
+
+Support
+
+## Product & billing help
+
+Account issues, audit questions, billing, and bug reports.
+
+[info@crawlerque.com](mailto:info@crawlerque.com)
+
+Sales & partnerships
+
+## Enterprise & white-label
+
+Custom audit volumes, team onboarding, reseller and affiliate partnerships.
+
+[info@crawlerque.com](mailto:info@crawlerque.com)
+
+Crawler Que is built and operated by [Strat IQ Digital](https://stratiqdigital.com/).
+
+## Crawler Que Updates
+Changelog
+
+# What's new in Crawler Que
+
+We ship improvements continuously. Here's what changed and when.
+
+June 2026Major
+
+## Report Engine v2 + full product redesign
+
+- Completely redesigned PDF reports: cleaner layout, larger type, zero text overflow, and sections that flow naturally instead of one per page.
+- Removed duplicate tables and internal module details from client reports.
+- New site and dashboard design with improved readability throughout.
+- Smarter number formatting across reports ($75.2K instead of raw decimals).
+
+May 2026Feature
+
+## Real-time audit progress
+
+- Live progress bar with per-module status while your audit runs.
+- Audits are saved automatically — reload any report from History.
+
+April 2026Feature
+
+## White-label PDF branding
+
+- Agency and Enterprise plans can replace Crawler Que branding with their own logo, accent color, and footer text.
+- Branding is configured once in Account Settings and applied to every export.
+
+## Run your first audit free.
+
+No signup needed. See what Crawler Que finds on any site in under two minutes.
+
+[Run a free audit →](https://crawlerque.com/) [See plans](https://crawlerque.com/#pricing)
+
+## Privacy Policy Overview
+Legal
+
+# Privacy Policy
+
+Last updated: 2026-07-01
+
+## Who we are
+
+Crawler Que is operated by Strat IQ Digital ("we", "us"), registered at 1/3-5 Winston St, Asquith NSW 2077, Australia. This policy explains what data we collect when you use crawlerque.com and why.
+
+## What we collect
+
+Account data: name, email, and a hashed password when you register. Billing data: handled entirely by Stripe — we never store card numbers; we store only your Stripe customer reference and subscription status. Usage data: the domains you audit, generated reports, and audit counts, so we can provide history and enforce plan limits. Technical data: IP address and basic request logs used for rate limiting and abuse prevention.
+
+## How we use it
+
+To run audits you request, store your report history, manage your subscription, send transactional emails (password resets, billing notices), and keep the service secure. We do not sell your data, and we do not use your audit data to market to the websites you audit.
+
+## Third-party processors
+
+Stripe (payments), Vercel (hosting), Neon (database), Resend (transactional email), DataForSEO and Google PageSpeed Insights (audit data sources). Each receives only the data needed to perform its function.
+
+## Cookies
+
+We use a single authentication cookie (crawlerque\_session) to keep you logged in. We do not use third-party advertising cookies.
+
+## Data retention
+
+Reports are retained per your plan's history window. Account data is kept while your account is active; request deletion at any time at info@crawlerque.com and we will remove your account and reports within 30 days, except records we must keep for tax or legal reasons.
+
+## Your rights
+
+You may request a copy, correction, or deletion of your personal data at info@crawlerque.com. If you are in the EU/UK, you have rights under GDPR including complaint to a supervisory authority.
+
+## Changes
+
+We will post any changes to this policy here and update the date below. Material changes will be announced by email.
+
+## Return Policy Overview
+Legal
+
+# Return & Refund Policy
+
+Last updated: \[DATE\]
+
+## Try before you buy
+
+Crawler Que offers a free audit with no signup, so you can evaluate the product before paying. We encourage every customer to run a free audit and review the sample report before subscribing.
+
+## 7-day money-back guarantee
+
+If Crawler Que isn't right for you, email info@crawlerque.com within 7 days of your first payment and we will refund it in full — no questions, no forms. This applies to your first subscription payment only.
+
+## Renewals & cancellation
+
+Subscriptions renew automatically each month. Cancel any time from the dashboard's Subscription tab (via the Stripe billing portal); you keep access until the end of the paid period. Renewal payments are not refundable once the new period has begun, except where required by law.
+
+## Fair use
+
+Refunds may be declined where audit usage indicates the service was consumed in bulk before the refund request (for example, exhausting the full monthly audit allowance within the refund window). We apply this only to prevent abuse.
+
+## How refunds are paid
+
+Refunds are issued to the original payment method via Stripe and typically appear within 5–10 business days.
+
+## Contact
+
+Questions about billing or this policy: info@crawlerque.com.
+
+## Estimate Organic Traffic
+[← Back to blog](https://crawlerque.com/blog)
+
+Organic Traffic
+
+# How to Estimate Your Website's Organic Traffic Without Google Analytics Access
+
+June 15, 2026•4 min read•By Crawler Que
+
+Google Analytics access is not always available. You might be auditing a prospect's site before they become a client. You might be benchmarking a competitor. You might be doing due diligence on an acquisition. In all...
+
+![How to Estimate Your Website's Organic Traffic Without Google Analytics Access](https://crawlerque.com/_next/image?url=%2Fblog%2Fhow-to-estimate-your-websites-organic-traffic-without-google-analytics-access.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+Google Analytics access is not always available. You might be auditing a prospect's site before they become a client. You might be benchmarking a competitor. You might be doing due diligence on an acquisition. In all of these cases, you need a traffic estimate, and GA is off the table.
+
+The method for estimating organic traffic without analytics access is called CTR-curve traffic modelling. It is the same methodology used by Ahrefs, SEMrush, and Crawler Que's Traffic Modelling module, and understanding how it works helps you interpret the estimates correctly and explain them to clients.
+
+CTR-curve traffic modelling estimates organic traffic by identifying all keywords a site ranks for, applying position-based click-through rates to each keyword's search volume, and summing the result. The accuracy depends on keyword coverage and how accurately the ranking data reflects real positions.
+
+## How CTR-Curve Traffic Modelling Works
+
+The model has four inputs:
+
+Keyword footprint: every keyword the domain ranks for, from position 1 to position 100+
+
+Search volume per keyword: how many times that keyword is searched per month
+
+Ranking position: where the site currently ranks for that keyword
+
+CTR curve: the average click-through rate for each ranking position based on industry data
+
+The formula for each keyword is:
+
+Estimated traffic = Search volume × CTR for that position
+
+Sum this across all ranked keywords and you have an estimated total monthly organic traffic figure.
+
+## The CTR Curve: What Click-Through Rates Actually Look Like
+
+|     |     |     |
+| --- | --- | --- |
+| Google Position | Average CTR (desktop) | Average CTR (mobile) |
+| 1 | 27–30% | 24–26% |
+| 2 | 15–17% | 12–14% |
+| 3 | 11–13% | 9–11% |
+| 4 | 8–9% | 7–8% |
+| 5 | 6–7% | 5–6% |
+| 6–10 | 3–5% | 2–4% |
+| 11–20 (page 2) | 1–2% | 0.5–1% |
+| 21–50 | 0.3–0.8% | 0.2–0.5% |
+| 51–100 | 0.1–0.3% | 0.05–0.2% |
+
+These rates vary significantly based on query type. Navigational queries (brand searches) have much higher CTRs for position one. Informational queries with featured snippets have lower CTRs because Google answers the question directly in the SERP. Commercial queries with shopping ads or rich results have lower organic CTRs across all positions.
+
+![What Click Through Rates Actually Look Like](https://crawlerque.com/_next/image?url=%2Fblog%2Fhow-to-estimate-your-websites-organic-traffic-without-google-analytics-access-support-1.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## Why Estimates Are Always Approximations
+
+Traffic modelling produces estimates, not exact figures. Three sources of inaccuracy are always present:
+
+### 1\. Keyword coverage gap
+
+No third-party tool captures 100% of the keywords a site ranks for. Ahrefs, SEMrush, and enterprise SEO data providers all miss long-tail keywords with very low individual search volumes. A site ranking for 50,000 long-tail keywords at low volumes will be underestimated by any model that only captures the top 5,000.
+
+### 2\. Ranking position variance
+
+Rankings change daily and vary by geography, device, and user history. The position recorded in a keyword database is a snapshot, actual positions at the moment of a given search may be higher or lower.
+
+### 3\. CTR curve variation by query type
+
+Applying a generic CTR curve to all keywords flattens out real variation. A site ranking position one for a branded navigational query will receive a much higher CTR than position one for a broad informational query with AI Overview coverage.
+
+This is why Crawler Que's Traffic Modelling module attaches confidence labels to its estimates. A site with a large, well-ranked keyword footprint in a reliable keyword database gets a high-confidence estimate. A site with sparse keyword data gets a clearly labeled low-confidence estimate, because presenting a thin-data estimate as a precise figure would be misleading.
+
+## How to Use Traffic Estimates in Client Conversations
+
+The most useful application of traffic estimates is not the absolute number, it is the comparison. Showing a client that their site attracts an estimated 2,400 organic visits per month while their top competitor attracts an estimated 14,000 creates immediate, actionable context. The gap is the opportunity.
+
+Similarly, showing a client that their current traffic is concentrated in positions 6–10 (where CTR is 3–5%) and that moving five keywords to positions 1–3 (where CTR is 11–27%) would roughly triple estimated traffic, without needing any new content, is a clear, compelling ROI argument for SEO investment.
+
+## Comparing a Site's Traffic to Competitors Without GA
+
+Crawler Que's Competitor Intel module identifies the domains competing for the same organic visibility as the audited site. The Traffic Modelling module runs the same CTR-curve estimation on all of them simultaneously, producing a comparable traffic figure across the competitive set.
+
+This means you can generate a traffic benchmark for an entire competitive landscape, including the audited site, its top ten organic competitors, and the estimated keyword gap between them, from a single URL input, in under two minutes, without GA access on any of those domains.
+
+The key disclosure for clients: These are modelled estimates based on keyword ranking data and average CTR curves, not analytics measurements. They are directionally accurate and useful for benchmarking and prioritization, but should not be presented as verified traffic figures.
+
+Traffic Modelling module → See sample traffic report → Try Traffic Modelling free →
+
+## Estimate any site's organic traffic, free trial, no signup
+
+Crawler Que's Traffic Modelling module estimates monthly organic traffic with confidence scoring. 7-day free trial includes all 8 modules.
+
+Try Traffic Modelling free →
+
+## Want to audit your website?
+
+Run a Crawler Que audit to check SEO, Core Web Vitals, traffic signals, competitors, backlinks, recommendations, and AI search visibility.
+
+[Run website audit](https://crawlerque.com/)
+
+## 2026 SEO Audit Checklist
+[← Back to blog](https://crawlerque.com/blog)
+
+Technical SEO
+
+# The 2026 Technical SEO Audit Checklist: 25 Checks Every Website Needs Before It Can Rank
+
+June 16, 2026•6 min read•By Crawler Que
+
+Technical SEO issues are the silent rank killers. A site can have excellent content, strong backlinks, and a good product, and still fail to rank because Google cannot crawl it properly, pages are loading in 8...
+
+![The 2026 Technical SEO Audit Checklist: 25 Checks Every Website Needs Before It Can Rank](https://crawlerque.com/_next/image?url=%2Fblog%2Fthe-2026-technical-seo-audit-checklist-25-checks-every-website-needs-before-it-can-rank.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+Technical SEO issues are the silent rank killers. A site can have excellent content, strong backlinks, and a good product, and still fail to rank because Google cannot crawl it properly, pages are loading in 8 seconds on mobile, or canonical tags are pointing in the wrong direction.
+
+This checklist covers the 25 technical SEO checks that matter most in 2026. Each one is something Crawler Que's audit modules check automatically, but understanding what each check is and why it matters helps you prioritize fixes with your development team effectively.
+
+How to use this list: Work through each section in order. Crawlability and indexation issues should always be fixed first, there is no point optimizing content that search engines cannot reach. Then address speed, then on-page signals, then structured data.
+
+## Section 1: Crawlability & Indexation (Checks 1–6)
+
+### 1\. robots.txt is present and correctly configured HIGH
+
+Every site needs a robots.txt at the domain root. It should allow crawlers access to all indexable content and block internal paths (login, dashboard, API routes). Missing or misconfigured robots.txt is one of the most common causes of indexation problems, and of AI crawlers being blocked.
+
+### 2\. XML sitemap exists and is submitted HIGH
+
+A sitemap.xml tells search engines which pages exist and when they were last updated. It should be referenced in robots.txt and submitted to Google Search Console and Bing Webmaster Tools. Without a sitemap, new pages rely entirely on internal links for discovery.
+
+### 3\. All key pages are indexable HIGH
+
+Check that important pages do not carry a noindex meta tag accidentally. This is a common issue after site migrations or staging environment configurations that were not fully reverted.
+
+### 4\. No broken internal links (404s) HIGH
+
+Broken internal links waste crawl budget and create dead ends for users. A site with multiple 404s on navigational pages signals poor maintenance to Google's quality systems.
+
+### 5\. Redirect chains are short (max 2 hops) MEDIUM
+
+Each redirect in a chain loses a small amount of link equity and adds latency. Redirect chains longer than two hops should be collapsed to direct redirects where possible.
+
+### 6\. HTTP/HTTPS redirect is correctly configured HIGH
+
+All HTTP versions of pages should 301 redirect to HTTPS. All www variations should resolve consistently to the canonical version (either www or non-www, not both).
+
+## Section 2: On-Page Structure (Checks 7–13)
+
+### 7\. Every page has a unique, keyword-targeted title tag HIGH
+
+Title tags should be 50–60 characters, contain the primary target keyword, and be unique across all pages. Duplicate title tags are one of the most common technical SEO issues on multi-page sites.
+
+### 8\. Every page has a unique meta description (150–158 chars) HIGH
+
+While not a direct ranking signal, unique meta descriptions improve click-through rates from SERPs. The same meta description on every page signals a low-effort site to Google's quality systems.
+
+### 9\. Each page has exactly one H1 MEDIUM
+
+Multiple H1 tags on a single page weaken the heading signal. No H1 means the page has no declared primary topic. Each page should have one H1 that matches or is closely related to the title tag.
+
+### 10\. Canonical tags are set correctly HIGH
+
+Self-referencing canonical tags should be present on every page. For paginated content or URL parameter variations, canonical tags should point to the preferred version to consolidate link equity.
+
+### 11\. All images have descriptive alt text MEDIUM
+
+Alt text helps search engines understand image content and improves accessibility. Decorative images should use empty alt attributes (alt=""). Content images should use descriptive text that includes relevant keywords naturally.
+
+### 12\. URL structure is clean and descriptive LOW
+
+URLs should be readable, use hyphens not underscores, and reflect the page content. Avoid parameters in URLs for key pages where possible.
+
+### 13\. Internal linking connects key pages logically MEDIUM
+
+Every important page should receive at least one internal link from a related page. Orphan pages, pages with no inbound internal links, do not receive link equity and are harder to discover by crawlers.
+
+![Brand Authority Metrix](https://crawlerque.com/_next/image?url=%2Fblog%2Fthe-2026-technical-seo-audit-checklist-25-checks-every-website-needs-before-it-can-rank-support-1.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## Section 3: Page Speed & Core Web Vitals (Checks 14–18)
+
+### 14\. LCP under 2.5 seconds on mobile HIGH
+
+Largest Contentful Paint on mobile. This is typically the hero image. If it is failing, image compression, CDN delivery, and lazy-load configuration are the first places to look.
+
+### 15\. CLS under 0.1 on all key pages HIGH
+
+Cumulative Layout Shift. Images without explicit dimensions and dynamically injected content (ads, cookie banners) are the most common causes. Add width/height to all img tags.
+
+### 16\. FCP under 1.8 seconds MEDIUM
+
+First Contentful Paint. Render-blocking scripts in the page head are the most common cause of poor FCP. Use defer or async attributes on non-critical JavaScript.
+
+### 17\. Images are compressed and in modern format HIGH
+
+Uncompressed PNG or JPEG images are the single most common cause of poor page speed on small business sites. Convert to WebP, set maximum dimensions, and compress to under 100KB for most images.
+
+### 18\. TTFB (server response time) under 200ms MEDIUM
+
+Time to First Byte is a server performance metric. If it exceeds 400ms consistently, investigate hosting quality, server-side caching, and CDN configuration.
+
+## Section 4: Structured Data & AI Signals (Checks 19–22)
+
+### 19\. Organization schema on homepage HIGH
+
+JSON-LD Organization schema tells search engines and AI models your brand name, URL, description, logo, and social profiles as structured data. Missing this schema is the most common GEO readiness failure.
+
+### 20\. FAQPage schema on pages with Q&A content HIGH
+
+FAQPage schema enables featured snippets and helps AI models extract your content as structured answers. Any page with a FAQ section should have this schema implemented.
+
+### 21\. AI crawlers are permitted in robots.txt HIGH
+
+GPTBot, ClaudeBot, PerplexityBot, Google-Extended, and meta-externalagent should all be explicitly allowed in robots.txt. Blocking AI crawlers (intentionally or by accident) removes you from AI training data and real-time retrieval.
+
+### 22\. Open Graph and Twitter Card tags are present MEDIUM
+
+OG tags control how your pages appear when shared on LinkedIn, Slack, and Twitter/X. Missing OG tags result in unbranded, unattractive link previews, a lost brand impression every time someone shares your content.
+
+## Section 5: Content Quality Signals (Checks 23–25)
+
+### 23\. No pages with thin content (under 300 words) are indexed MEDIUM
+
+Thin content pages, particularly solution or feature pages with fewer than 300 words, which dilute site quality signals. Either expand them meaningfully or set them to noindex until they are built out.
+
+### 24\. No placeholder or lorem ipsum text is live on any page HIGH
+
+Placeholder text being indexed as real content is a direct quality signal failure. Check all published pages, particularly those recently launched or built from templates.
+
+### 25\. Blog section has published content HIGH
+
+A blog section linked from the main navigation that contains no published posts, or only "Coming Soon" placeholder articles, sends a negative quality signal and provides no topical authority benefit until content is live.
+
+## How to Run All 25 Checks Automatically
+
+Running this checklist manually across a single site takes several hours and requires access to multiple tools: Google Search Console, PageSpeed Insights, a crawler, and a structured data validator. For agencies auditing multiple sites per month, that time multiplies quickly.
+
+Crawler Que automates the majority of these checks in a single audit run. The technical SEO module covers crawlability, metadata, on-page structure, and broken links. The Core Web Vitals module covers speed checks 14–18. The AI Search Visibility module covers schema and AI crawler signals. The full audit runs in under two minutes and produces a prioritized report with specific fixes, no manual assembly required.
+
+The free audit (no signup) covers a subset of checks. All 25 are covered across the full eight modules on any paid plan, with a 7-day free trial available on all tiers.
+
+All audit modules → See a sample audit report → Start free audit — no signup →
+
+## Run all 25 checks automatically, free audit, no signup
+
+Enter any URL. Crawler Que runs 8 modules covering technical SEO, speed, AI visibility, competitors, and backlinks. Results in under 2 minutes.
+
+Run free audit now →
+
+## Want to audit your website?
+
+Run a Crawler Que audit to check SEO, Core Web Vitals, traffic signals, competitors, backlinks, recommendations, and AI search visibility.
+
+[Run website audit](https://crawlerque.com/)
+
+## Brand Visibility in AI
+[← Back to blog](https://crawlerque.com/blog)
+
+AI Visibility
+
+# How to Check if Your Brand Appears in ChatGPT, Perplexity, and Gemini (Step-by-Step)
+
+June 17, 2026•4 min read•By Crawler Que
+
+Most business owners and marketers have a version of the same question right now: "Is our brand showing up when people ask ChatGPT about what we do?" The answer matters commercially, if AI assistants are not...
+
+![How to Check if Your Brand Appears in ChatGPT, Perplexity, and Gemini (Step-by-Step)](https://crawlerque.com/_next/image?url=%2Fblog%2Fhow-to-check-if-your-brand-appears-in-chatgpt-perplexity-and-gemini-step-by-step.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+Most business owners and marketers have a version of the same question right now: "Is our brand showing up when people ask ChatGPT about what we do?" The answer matters commercially, if AI assistants are not recommending you when buyers ask about your category, you are invisible to an increasingly large segment of purchase-intent queries.
+
+This post covers how to check your brand's AI visibility manually, what to look for in the results, and how to automate the process so you are tracking it over time rather than guessing.
+
+What you will learn: The manual prompt testing method, what a good vs poor result looks like, how to interpret the findings, and how Crawler Que automates this into a trackable score.
+
+## Method 1: Manual Prompt Testing (Free, Takes ~30 Minutes)
+
+You can test your brand's AI visibility manually by running structured prompts across the three main AI platforms: ChatGPT, Perplexity, and Gemini.
+
+### Step 1: Build your prompt list
+
+Write 8–10 prompts that represent how a buyer in your category would ask AI for recommendations. These should be buyer questions, not brand searches. Examples for a project management SaaS:
+
+"What is the best project management tool for a 10-person marketing agency?"
+
+"What software do small agencies use to manage client projects?"
+
+"Recommend a project management tool that integrates with Slack and has client-facing views"
+
+"What are the top project management tools for remote teams in 2026?"
+
+The key is writing prompts that describe your buyer's problem, not prompts that name your brand. If you write "tell me about \[Brand Name\]," you will get a different (and less useful) result than buyer-intent prompts.
+
+### Step 2: Run each prompt across all three platforms
+
+Open ChatGPT (chat.openai.com), Perplexity (perplexity.ai), and Google Gemini (gemini.google.com) in separate tabs.
+
+Paste each prompt into all three platforms one at a time. Do not modify the prompt between platforms, you want consistent input for comparison.
+
+Record whether your brand name appears in the response. Mark it as: Mentioned / Not Mentioned / Mentioned with context (e.g., positive comparison, category leader, etc.).
+
+Note which competitors are mentioned when your brand is not.
+
+### Step 3: Calculate a rough mention rate
+
+If you ran 10 prompts across 3 platforms (30 total tests), and your brand appeared in 9 of those responses, your mention rate is 30%. That is your baseline.
+
+## What Your Results Mean
+
+|     |     |     |
+| --- | --- | --- |
+| Mention Rate | What It Means | Priority Action |
+| 0–15% | AI models do not recognize your brand as a category authority | Urgent: schema markup, third-party presence, content restructuring |
+| 16–35% | Some AI platforms mention you but inconsistently | High: build entity signals, add FAQPage schema, earn more reviews |
+| 36–60% | Brand is recognized but not dominant in AI answers | Medium: expand content depth, build more external citations |
+| 61–80% | Strong AI visibility, competitive but improvable | Maintain: keep content fresh, monitor competitor mention rates |
+| 81–100% | Category leader in AI-generated answers | Protect: monitor for emerging competitors, keep schema updated |
+
+![Calculate A Rough Mention Rate](https://crawlerque.com/_next/image?url=%2Fblog%2Fhow-to-check-if-your-brand-appears-in-chatgpt-perplexity-and-gemini-step-by-step-support-1.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## The Problem With Manual Testing
+
+Manual testing gives you a snapshot, not a trend. AI models update their knowledge bases, change retrieval behavior, and respond differently across geographies. A test you run today may produce different results next month, not because anything changed on your site, but because the AI model updated.
+
+Tracking AI visibility meaningfully requires consistent prompt sets run at regular intervals, ideally monthly, to see whether your score is improving, declining, or stable over time.
+
+This is what Crawler Que's AI Search Visibility module automates. It constructs and runs buyer prompts relevant to the audited brand's category, tests across multiple AI models, and returns a standardized 0–100 score with a share of voice benchmark against competitors. Running it monthly gives you a comparable score over time, something manual testing cannot provide consistently.
+
+## Method 2: Crawler Que AI Visibility Audit (Automated, Takes 2 Minutes)
+
+Go to crawlerque.com and enter your website URL. No signup required for the free audit.
+
+The audit runs all eight modules including AI Search Visibility automatically.
+
+Your AI Visibility Score (0–100) appears in the dashboard alongside your competitors' scores.
+
+The GEO readiness verdict identifies the specific signals missing from your site, schema, content structure, third-party presence, in priority order.
+
+Export the result as a PDF for reporting or track it monthly by re-running the audit.
+
+The full AI visibility module, including competitor share of voice and the GEO readiness verdict, is available on all paid plans. The 7-day free trial includes all eight modules and three full audits.
+
+Check your competitors too. Run the same audit on your top two competitors. Seeing their AI Visibility Scores next to yours is the clearest way to understand your relative position, and the most compelling slide in a client presentation.
+
+AI Search Visibility module → Start free trial — all modules → All audit modules →
+
+## Check your brand's AI visibility in 2 minutes
+
+Get your AI Visibility Score, competitor share of voice, and GEO readiness verdict. Free audit, no signup needed.
+
+Run AI visibility check free →
+
+## Want to audit your website?
+
+Run a Crawler Que audit to check SEO, Core Web Vitals, traffic signals, competitors, backlinks, recommendations, and AI search visibility.
+
+[Run website audit](https://crawlerque.com/)
+
+## Core Web Vitals 2026
+[← Back to blog](https://crawlerque.com/blog)
+
+Core Web Vitals
+
+# Core Web Vitals in 2026: What They Are, Why They Still Matter, and How to Fix Them Fast
+
+June 18, 2026•4 min read•By Crawler Que
+
+Core Web Vitals are a set of speed and user experience metrics that Google uses as ranking signals. They measure how fast the page loads, how stable it is while loading, and how quickly it becomes interactive. Poor...
+
+![Core Web Vitals in 2026: What They Are, Why They Still Matter, and How to Fix Them Fast](https://crawlerque.com/_next/image?url=%2Fblog%2Fcore-web-vitals-in-2026-what-they-are-why-they-still-matter-and-how-to-fix-them-fast.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+Core Web Vitals are a set of speed and user experience metrics that Google uses as ranking signals. They measure how fast the page loads, how stable it is while loading, and how quickly it becomes interactive. Poor scores do not immediately kill your rankings, but they create a disadvantage in competitive SERPs, and they directly impact the user experience that determines whether visitors stay or leave.
+
+Core Web Vitals measure LCP (load speed), CLS (layout stability), and FCP (time to first content). Google confirmed these remain ranking signals in 2026. Poor scores cost you ranking equity in competitive searches and increase bounce rates.
+
+## The Three Core Web Vitals Explained
+
+## LCP — Largest Contentful Paint
+
+LCP measures how long it takes for the largest visible content element on the page to load. This is usually the hero image, a large heading, or a video thumbnail. LCP is the metric most directly connected to perceived load speed from a user's perspective.
+
+|     |     |     |
+| --- | --- | --- |
+| Score | LCP Time | Status |
+| Good | Under 2.5 seconds | Pass |
+| Needs improvement | 2.5 – 4.0 seconds | Monitor |
+| Poor | Over 4.0 seconds | Fix required |
+
+Most common causes of poor LCP: uncompressed images, render-blocking JavaScript, slow server response time, and no CDN for static assets.
+
+![Impact On Score After Optimizations](https://crawlerque.com/_next/image?url=%2Fblog%2Fcore-web-vitals-in-2026-what-they-are-why-they-still-matter-and-how-to-fix-them-fast-support-1.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## CLS — Cumulative Layout Shift
+
+CLS measures how much the page layout unexpectedly shifts during loading. If a button moves just as a user is about to tap it, or an image loads and pushes text down the screen, that is a layout shift. CLS scores the total amount of unexpected movement during the page's life.
+
+|     |     |     |
+| --- | --- | --- |
+| Score | CLS Value | Status |
+| Good | Under 0.1 | Pass |
+| Needs improvement | 0.1 – 0.25 | Monitor |
+| Poor | Over 0.25 | Fix required |
+
+Most common causes of poor CLS: images without explicit width and height attributes, dynamically injected content (ads, banners, cookie notices), and web fonts loading after text.
+
+## FCP — First Contentful Paint
+
+FCP measures the time from page load to when any content element, text, image, or non-white canvas, first appears on screen. It is the user's first signal that something is happening. Slow FCP makes a page feel broken even when LCP is acceptable.
+
+|     |     |     |
+| --- | --- | --- |
+| Score | FCP Time | Status |
+| Good | Under 1.8 seconds | Pass |
+| Needs improvement | 1.8 – 3.0 seconds | Monitor |
+| Poor | Over 3.0 seconds | Fix required |
+
+Most common causes of poor FCP: render-blocking resources in the page head, large JavaScript bundles, and slow initial server response (TTFB).
+
+## How to Check Your Core Web Vitals
+
+There are two types of Core Web Vitals data: field data (real user measurements) and lab data (controlled test results).
+
+Field data comes from Chrome users actually loading your pages and is what Google uses for ranking. You can access it in Google Search Console under "Core Web Vitals" or in PageSpeed Insights under the "Discover what your real users are experiencing" section.
+
+Lab data is a simulated test from a controlled environment, useful for debugging specific issues but not what Google uses for ranking. PageSpeed Insights, Lighthouse, and Crawler Que's Core Web Vitals module all provide lab data with specific issue breakdowns.
+
+Crawler Que runs PageSpeed Insights on both mobile and desktop for every audit and returns prioritized fix recommendations specific to the tested URL, not generic advice, but the actual issues affecting that site's scores.
+
+## The Fastest Fixes by Metric
+
+### To improve LCP
+
+Compress and convert hero images to WebP format
+
+Add loading="eager" and fetchpriority="high" to the LCP image element
+
+Remove or defer render-blocking JavaScript and CSS in the page head
+
+Use a CDN to reduce server distance for static assets
+
+### To improve CLS
+
+Add explicit width and height attributes to all <img> tags
+
+Reserve space for ad slots and dynamically loaded content with CSS aspect-ratio or fixed height
+
+Use font-display: swap and preload critical fonts to prevent font-swap shifts
+
+### To improve FCP
+
+Move render-blocking scripts to the bottom of the body or add defer / async attributes
+
+Inline critical CSS needed for above-the-fold rendering
+
+Improve server response time, target under 200ms TTFB
+
+## Why Mobile Scores Matter More Than Desktop
+
+Google uses mobile-first indexing, which means the mobile version of your site is what determines rankings, not the desktop version. Core Web Vitals scores on mobile are typically significantly worse than desktop scores, especially for image-heavy sites on slower connections.
+
+Crawler Que's Core Web Vitals module tests both mobile and desktop and flags the gap when mobile performance is the primary issue. Focusing fixed effort on mobile typically produces more ranking benefits than equivalent desktop improvements.
+
+Run the check first. A free Crawler Que audit will show you your current LCP, CLS, and FCP scores on mobile and desktop with specific issues listed in priority order. Fixing the top three issues in the report is usually enough to move from "needs improvement" to "good" for most small business sites.
+
+Core Web Vitals audit module → See a sample report → Run free Core Web Vitals check →
+
+## Check your Core Web Vitals scores, free
+
+Crawler Que runs PageSpeed mobile and desktop with prioritized fix recommendations. No signup, results in under 2 minutes.
+
+Run free audit →
+
+## Want to audit your website?
+
+Run a Crawler Que audit to check SEO, Core Web Vitals, traffic signals, competitors, backlinks, recommendations, and AI search visibility.
+
+[Run website audit](https://crawlerque.com/)
+
+## SEO, AEO, GEO Explained
+[← Back to blog](https://crawlerque.com/blog)
+
+SEO, AEO & GEO
+
+# AEO vs SEO vs GEO: What Is the Difference and Which One Should You Focus On?
+
+June 19, 2026•4 min read•By Crawler Que
+
+Three acronyms are now circulating in the SEO industry: SEO, AEO, and GEO. They describe different optimization targets within the broader landscape of search visibility. Understanding which one does what, and which...
+
+![AEO vs SEO vs GEO: What Is the Difference and Which One Should You Focus On?](https://crawlerque.com/_next/image?url=%2Fblog%2Faeo-vs-seo-vs-geo-what-is-the-difference-and-which-one-should-you-focus-on.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+Three acronyms are now circulating in the SEO industry: SEO, AEO, and GEO. They describe different optimization targets within the broader landscape of search visibility. Understanding which one does what, and which combination you should be investing in, is the practical question this post answers.
+
+SEO = rank in Google. AEO = appear in featured snippets and voice answers. GEO = get cited inside AI-generated responses from ChatGPT, Perplexity, and Gemini. You need all three in 2026, and they share most of the same foundation.
+
+## SEO: Search Engine Optimization
+
+SEO is the practice of improving a website's visibility in traditional search engine results pages (SERPs). The primary target is Google, though Bing and others are relevant for some markets. Success is measured by ranking position, appearing on page one for target keywords, and by the organic traffic those positions generate.
+
+Core signals: technical site health, on-page content relevance, backlink authority, page experience (Core Web Vitals), and keyword alignment.
+
+What it does not cover: Featured snippets, voice search, AI-generated answers, and chat-based query surfaces like ChatGPT or Perplexity.
+
+## AEO: Answer Engine Optimization
+
+AEO is the practice of structuring content to appear as the direct answer in zero-click search experiences: Google's featured snippets ("position zero"), knowledge panels, voice search responses (Google Assistant, Siri, Alexa), and similar answer-box formats.
+
+Core signals: structured Q&A content, clear heading hierarchy, concise direct answers at the top of pages, FAQPage schema, and HowTo schema.
+
+What it does not cover: AI model citations in chat interfaces like ChatGPT or Perplexity, which have their own answer generation logic.
+
+![Key Overlaps In Aeo Seo And Geo](https://crawlerque.com/_next/image?url=%2Fblog%2Faeo-vs-seo-vs-geo-what-is-the-difference-and-which-one-should-you-focus-on-support-1.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## GEO: Generative Engine Optimization
+
+GEO is the practice of making your brand the source AI generative models cite when they answer questions in your category. The target surfaces are ChatGPT, Perplexity, Gemini, Claude, Grok, and Google AI Overviews.
+
+Core signals: entity clarity (consistent brand identity across the web), third-party citations, structured data (Organization, FAQPage schemas), direct-answer content format, and organic SEO performance as a foundation.
+
+What it does not cover: Traditional ranking position in blue-link search results, though strong organic performance directly supports GEO.
+
+## How They Overlap
+
+|     |     |     |     |
+| --- | --- | --- | --- |
+| Signal | Helps SEO | Helps AEO | Helps GEO |
+| Technical SEO (crawlability, speed, structure) | Direct | Foundation | Foundation |
+| Quality content that answers questions | Direct | Direct | Direct |
+| FAQPage schema | Indirect | Direct | Direct |
+| Organization schema | Indirect | Indirect | Direct |
+| Backlinks from authority sites | Direct | Indirect | Indirect |
+| Third-party review presence (G2, Capterra) | Indirect | No | Direct |
+| Concise direct-answer paragraphs | Indirect | Direct | Direct |
+
+## Which One Should You Focus On in 2026
+
+The honest answer is: all three, starting with SEO as the foundation, then layering AEO and GEO signals on top. The reason is that GEO and AEO improvements largely fail without a solid SEO base, AI models source from content that is technically sound, well-structured, and already performing in organic search.
+
+The order of operations:
+
+Fix technical SEO first: crawlability, page speed, Core Web Vitals, meta structure. This is the foundation everything else requires.
+
+Add structured data: FAQPage, Organization, and HowTo schemas. These serve AEO (featured snippets) and GEO (AI citations) simultaneously.
+
+Restructure key pages for direct answers: content that begins with a concise answer before expanding detail performs in snippets and AI responses.
+
+Build third-party presence: review platforms, directories, editorial mentions. This is where GEO diverges from traditional SEO most significantly.
+
+Measure AI visibility: use a tool that actively tests whether your brand appears in AI answers, so you can track improvement over time.
+
+Crawler Que's AI Search Visibility module covers step five, it tests brand mentions across AI models and scores GEO readiness so you know where you stand and what to fix. The full audit covers steps one through four as well, identifying the exact technical and content signals missing from each layer.
+
+The practical reality: If you are already doing solid SEO, adding AEO and GEO signals is incremental work, primarily schema markup and content restructuring. The brands that ignore GEO entirely are the ones that will lose AI search visibility to competitors who do not.
+
+AI Search Visibility module → All audit modules → Measure all three signals free →
+
+## Measure your SEO, AEO, and GEO signals in one audit
+
+Crawler Que's 8-module audit covers technical SEO, AI visibility, and GEO readiness in a single run. Free audit, no signup needed.
+
+Run free audit →
+
+## Want to audit your website?
+
+Run a Crawler Que audit to check SEO, Core Web Vitals, traffic signals, competitors, backlinks, recommendations, and AI search visibility.
+
+[Run website audit](https://crawlerque.com/)
+
+## Guide to Generative Engine Optimization
+[← Back to blog](https://crawlerque.com/blog)
+
+GEO
+
+# What Is GEO (Generative Engine Optimization)? The Complete Guide for 2026
+
+June 20, 2026•5 min read•By Crawler Que
+
+Generative Engine Optimization (GEO) is the practice of structuring your brand, content, and technical signals so that AI-powered search engines, ChatGPT, Perplexity, Gemini, and Google AI Overviews, cite and...
+
+![What Is GEO (Generative Engine Optimization)? The Complete Guide for 2026](https://crawlerque.com/_next/image?url=%2Fblog%2Fwhat-is-geo-generative-engine-optimization-the-complete-guide-for-2026.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+Generative Engine Optimization (GEO) is the practice of structuring your brand, content, and technical signals so that AI-powered search engines, ChatGPT, Perplexity, Gemini, and Google AI Overviews, cite and recommend your brand when users ask relevant questions.
+
+Traditional SEO optimizes for a ranking position on a search results page. GEO optimizes for a citation inside an AI-generated answer. Those are different outputs, measured differently, influenced by different signals.
+
+GEO = making your brand the answer AI gives when buyers ask questions in your category. It is not a replacement for SEO. It is the next layer built on top of it.
+
+## Why GEO Exists as a Separate Discipline
+
+When a user types a query into Google, the result is a ranked list of pages. Visibility means appearing on page one. The mechanism is ranking position.
+
+When a user asks ChatGPT "what is the best project management tool for a 5-person agency," the result is a synthesized answer. There is no page one. ChatGPT names specific products based on what it knows, what real-time web searches return, and what signals make a brand trustworthy enough to cite. The mechanism is citation, not ranking.
+
+That shift requires a different optimization framework, and that framework is GEO.
+
+## GEO vs SEO: The Key Differences
+
+|     |     |     |
+| --- | --- | --- |
+| Dimension | SEO | GEO |
+| Target surface | Google, Bing search results pages | ChatGPT, Perplexity, Gemini, AI Overviews |
+| Success metric | Ranking position (1–10+) | Citation rate and mention frequency |
+| Primary input | Keywords, backlinks, technical signals | Entity clarity, structured data, third-party citations |
+| Output | A ranked page in a list | A named recommendation in an AI answer |
+| User journey | User clicks to your site | AI answers on your behalf; user may never click |
+| Measurement tool | Google Search Console, rank trackers | AI visibility scoring (e.g. Crawler Que) |
+
+The two disciplines share a foundation. Strong organic SEO performance helps GEO because AI models frequently source from highly-ranked content. But GEO requires additional, specific signals that SEO alone does not generate.
+
+![What Signals Drive Geo Performance](https://crawlerque.com/_next/image?url=%2Fblog%2Fwhat-is-geo-generative-engine-optimization-the-complete-guide-for-2026-support-1.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## What Signals Drive GEO Performance
+
+### 1\. Entity clarity
+
+AI models need to know what your brand is, what it does, and what category it belongs to. This means using consistent brand name, description, and category language across your website, your Google Business Profile, Wikipedia (if applicable), and third-party review platforms. Inconsistency confuses entity recognition.
+
+### 2\. Structured data markup
+
+Schema markup, specifically Organization, FAQPage, Product, and Review schemas, gives AI models machine-readable signals about your brand. An Organization schema on your homepage explicitly tells AI parsers your name, description, URL, and social profiles. FAQPage schema marks your answer content as structured Q&A that AI can extract directly.
+
+### 3\. Third-party citations
+
+AI models weight brands more heavily when they appear across authoritative third-party sources: G2, Capterra, industry review sites, editorial publications, and relevant directories. A brand that only exists on its own domain is harder for AI to verify as a credible recommendation.
+
+### 4\. Direct-answer content
+
+Content structured to answer specific buyer questions, using the exact language buyers use in AI prompts, is more extractable by generative models. Instead of a page titled "Our Project Management Features," a page titled "How does \[Brand\] help agencies manage client projects?" directly matches the type of prompt an AI user would ask.
+
+### 5\. Organic SEO performance
+
+AI Overviews and Perplexity both use live web search as part of their answer generation. Pages that rank well organically have a higher probability of being sourced in AI answers. GEO and SEO are not competing, SEO is the foundation that GEO is built on.
+
+## How to Measure GEO Performance
+
+This is where most brands currently have a gap. There is no Google Search Console equivalent for GEO. The measurement requires actively querying AI platforms with buyer prompts and recording whether your brand appears, which is time-consuming to do manually across ChatGPT, Perplexity, Gemini, and Grok.
+
+Crawler Que's AI Search Visibility module automates this process. It constructs relevant buyer prompts for the audited brand's category, queries multiple AI models, records brand appearance, and returns:
+
+An AI Visibility Score from 0 to 100
+
+A share of voice benchmark against organic competitors
+
+A GEO readiness verdict identifying the specific missing signals
+
+Prioritized recommendations for improving the score
+
+This replaces what would otherwise be an hour of manual prompt testing across multiple AI platforms, and does it consistently every time an audit is run, making it trackable over time.
+
+## GEO Readiness: What the Verdict Means
+
+The GEO readiness verdict in a Crawler Que audit assesses five specific infrastructure signals:
+
+|     |     |     |
+| --- | --- | --- |
+| Signal | What It Checks | Impact on GEO |
+| Organization schema | Is the brand's entity data structured and machine-readable? | High |
+| FAQPage schema | Is Q&A content marked up for AI extraction? | High |
+| Third-party presence | Does the brand appear on authoritative external sources? | High |
+| Direct-answer content | Are pages structured to answer specific buyer questions? | Medium |
+| Technical crawlability for AI bots | Are AI crawlers (GPTBot, ClaudeBot, PerplexityBot) permitted in robots.txt? | Medium |
+
+## How Long Does GEO Take to Work
+
+GEO improvements take longer to show results than on-page SEO changes because they depend partly on AI model update cycles and partly on accumulating third-party signals over time. A realistic timeline:
+
+Technical fixes (schema, robots.txt): 2–8 weeks to be picked up by AI crawlers
+
+Content restructuring: 4–12 weeks to influence AI answer generation
+
+Third-party citation building: 3–6 months to accumulate sufficient signal weight
+
+Score improvement (measurable): 6–16 weeks for the first meaningful score movement
+
+Starting now matters. The brands that build GEO infrastructure in 2026 will have a compounding advantage as AI search usage continues to grow.
+
+Measure first. Run a Crawler Que audit to get your current AI Visibility Score before deciding which GEO fixes to prioritize. The GEO readiness verdict will tell you exactly which signals are missing, so you are not guessing.
+
+AI Search Visibility module → All audit modules → Check your GEO score free →
+
+## Check your brand's GEO readiness score, free
+
+Find out if ChatGPT and Gemini recommend your brand. Get your AI Visibility Score and GEO readiness verdict in under 2 minutes.
+
+Run AI visibility check →
+
+## Want to audit your website?
+
+Run a Crawler Que audit to check SEO, Core Web Vitals, traffic signals, competitors, backlinks, recommendations, and AI search visibility.
+
+[Run website audit](https://crawlerque.com/)
+
+## SEMrush Costs vs. Agency Needs
+[← Back to blog](https://crawlerque.com/blog)
+
+SEO Tools
+
+# Why Paying $229/Month for SEMrush Makes No Sense for Most Agencies Anymore
+
+June 21, 2026•4 min read•By Crawler Que
+
+SEMrush is a genuinely powerful tool. Its keyword database is one of the largest available, its backlink crawler is fast, and its position tracking is reliable. This is not an argument that SEMrush is bad.
+
+![Why Paying $229/Month for SEMrush Makes No Sense for Most Agencies Anymore](https://crawlerque.com/_next/image?url=%2Fblog%2Fwhy-paying-229-month-for-semrush-makes-no-sense-for-most-agencies-anymore.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+SEMrush is a genuinely powerful tool. Its keyword database is one of the largest available, its backlink crawler is fast, and its position tracking is reliable. This is not an argument that SEMrush is bad.
+
+The argument is that most agencies, particularly those under 20 clients, pay for a research platform when what they actually need is a deliverable platform. Those are different things. And paying $229/month for capabilities you use 20% of, while the capabilities you use every day (white-label reporting, AI visibility, client roadmaps) are missing or limited, is a meaningful cost problem.
+
+The honest question: What percentage of SEMrush's features do you actually use in a typical client month? For most agencies, the answer is keyword research, site audit, and position tracking, about three of its forty-plus tools.
+
+## What Agencies Actually Use SEMrush For
+
+Based on what agency workflows typically look like, the tools most consistently used are:
+
+Site audit: checking for technical SEO issues
+
+Keyword research: finding terms to target
+
+Position tracking: monitoring client rankings
+
+Competitor analysis: identifying keyword gaps
+
+Almost everything else in SEMrush, the social media toolkit, the content marketing platform, the paid advertising tools, the PR and brand monitoring features, goes largely unused by agencies whose core offering is SEO auditing and reporting.
+
+## What You Are Not Getting for $229/Month
+
+Here is what SEMrush Guru ($229/month) does not include that agencies specifically need:
+
+|     |     |     |
+| --- | --- | --- |
+| Agency Need | SEMrush Guru ($229/mo) | Crawler Que Agency ($99/mo) |
+| AI search visibility (GEO score) | Not available | Full module |
+| Full white-label PDF reports | Basic branding only | Your logo, colors, footer |
+| 30/60/90-day client roadmap | Not in reports | Every audit |
+| Modular report selection | Fixed format | Select modules per client |
+| Multi-seat for team (at this price) | 1 seat at $229 | 3 seats at $99 |
+| Free audit without account | No | Yes |
+
+![What You Are Not Getting For $229 Month](https://crawlerque.com/_next/image?url=%2Fblog%2Fwhy-paying-229-month-for-semrush-makes-no-sense-for-most-agencies-anymore-support-1.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## The White-Label Gap Is the Biggest Issue
+
+For an agency, the report is the product. When a client opens a PDF at the end of a month, the quality, branding, and clarity of that document directly shapes their perception of your agency's value. A report with your logo, your colors, and your footer says: "This is our proprietary intelligence."
+
+SEMrush's white-label options are limited. You can add a logo to some exports, but the underlying formatting, layout, and structure is SEMrush's, not yours. Clients who recognize the interface will know you are reselling a tool's output rather than delivering your own.
+
+Crawler Que's Agency plan generates a fully branded 18-page PDF. Your logo is in the header. Your accent color runs through the document. Your footer text appears on every page. The client receives a Crawler Que report only if you specifically choose not to white-label it.
+
+## The AI Visibility Gap Is the New Differentiator
+
+Every agency now has a client asking some version of: "Are we showing up in ChatGPT results?" or "How do we get recommended by AI?"
+
+SEMrush cannot answer this question. Neither can Ahrefs. Neither can Google Search Console. These tools were built for traditional search engine ranking, and AI-generated answers operate on a different measurement framework entirely.
+
+Crawler Que's AI Search Visibility module tests brand mentions directly against AI models using buyer prompts, scores the result 0–100, and benchmarks it against competitors. That capability is not available at any price point in SEMrush.
+
+## A More Honest Stack for Under $300/Month Total
+
+For most agency workflows, a more cost-effective and more capable stack looks like this:
+
+|     |     |     |
+| --- | --- | --- |
+| Tool | Purpose | Cost |
+| Crawler Que Agency | Client audit deliverables, AI visibility, white-label PDF, roadmaps | $99/mo |
+| Ahrefs Lite (optional) | Deep backlink research and keyword database for research-heavy clients | $199/mo |
+| Google Search Console | Actual Google performance data, indexing, impressions | Free |
+| Total |  | $298/mo |
+
+That is less than SEMrush Guru alone ($229/mo), and delivers white-label PDFs, AI visibility scoring, and deeper backlink research than SEMrush provides at its price point.
+
+If backlink depth is not a priority, which it often is not for agencies focused primarily on audit delivery and monthly reporting, Crawler Que alone at $99/month covers the core workflow.
+
+Run the audit first. Crawler Que's free audit (no signup) will show you what the output looks like. If it covers what your clients need, the decision is straightforward.
+
+Feature comparison table → Agency plan — $99/mo → Crawler Que for Agencies →
+
+## Switch to an agency tool that actually fits agency work
+
+40 audits/month, white-label PDF, AI visibility, 3 seats, comparison reports. 7-day free trial, all features, no charge.
+
+Start Agency plan — $99/mo →
+
+## Want to audit your website?
+
+Run a Crawler Que audit to check SEO, Core Web Vitals, traffic signals, competitors, backlinks, recommendations, and AI search visibility.
+
+[Run website audit](https://crawlerque.com/)
+
+## SEO Tool Comparison Guide
+[← Back to blog](https://crawlerque.com/blog)
+
+SEO Tools
+
+# Crawler Que vs SEMrush vs Ahrefs: Which SEO Audit Tool Is Actually Worth It in 2026?
+
+June 22, 2026•4 min read•By Crawler Que
+
+This comparison covers three tools with different primary purposes. SEMrush and Ahrefs are research platforms built for SEO analysts. Crawler Que is an audit and deliverable platform built for agencies and...
+
+![Crawler Que vs SEMrush vs Ahrefs: Which SEO Audit Tool Is Actually Worth It in 2026?](https://crawlerque.com/_next/image?url=%2Fblog%2Fcrawler-que-vs-semrush-vs-ahrefs-which-seo-audit-tool-is-actually-worth-it-in-2026.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+This comparison covers three tools with different primary purposes. SEMrush and Ahrefs are research platforms built for SEO analysts. Crawler Que is an audit and deliverable platform built for agencies and consultants who need to turn a URL into a client-ready report quickly.
+
+Understanding that distinction first makes the comparison more useful. You are not choosing between equal alternatives, you are choosing which tool fits your actual workflow.
+
+If you need white-label PDF reports, AI visibility scoring, and a tool your whole team can use at a fixed price per month, Crawler Que at $99/month does what SEMrush at $229/month and Ahrefs at $199/month do not.
+
+## Pricing Comparison
+
+|     |     |     |     |
+| --- | --- | --- | --- |
+| Plan Type | Crawler Que | SEMrush | Ahrefs |
+| Entry level | $30/mo (Starter) | $139/mo (Pro) | $199/mo (Lite) |
+| Agency tier | $99/mo (Agency)Best value | $229/mo (Guru) | $199/mo (Standard) |
+| Enterprise | $299/mo | $449/mo+ | $399/mo+ |
+| Free trial | 7 days (all features) | 7 days (limited) | No free trial |
+| Free audit (no signup) | Yes | No | No |
+
+## Feature Comparison
+
+|     |     |     |     |
+| --- | --- | --- | --- |
+| Feature | Crawler Que | SEMrush | Ahrefs |
+| AI Search Visibility (GEO score) | Full module | Not available | Not available |
+| White-label PDF reports | Agency plan+ | Partial, basic branding | Not available |
+| Technical SEO audit | Yes | Yes | Yes |
+| Core Web Vitals | Yes | Yes | Yes |
+| Keyword research | Ranked keyword footprint | Full database | Full database |
+| Backlink analysis | Authority gap + profile | Full database | Full database |
+| Competitor intelligence | Yes | Yes | Yes |
+| 30/60/90-day action roadmap | Every report | Limited recommendations | Limited recommendations |
+| Modular report selection | No | No | No |
+| No signup free audit | Yes | No | No |
+| Multi-seat agency plan | 3 seats ($99/mo) | 1 seat ($229/mo) | 1 seat ($199/mo) |
+
+![Features And Price Camparison Between Tools](https://crawlerque.com/_next/image?url=%2Fblog%2Fcrawler-que-vs-semrush-vs-ahrefs-which-seo-audit-tool-is-actually-worth-it-in-2026-support-1.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## Where SEMrush Wins
+
+SEMrush has the deepest keyword research database in the market, 25+ billion keywords across multiple countries, with historical trend data going back years. If your primary workflow is finding keyword opportunities at scale, tracking position changes across hundreds of keywords, or running competitive keyword gap analysis for large sites, SEMrush's keyword infrastructure is genuinely hard to match.
+
+It also integrates with Google Analytics and Google Search Console, which is useful for agencies managing large content programs where connecting audit findings to actual traffic data matters.
+
+## Where Ahrefs Wins
+
+Ahrefs has the most frequently updated backlink index in the industry. For link-building focused agencies, where finding new link opportunities, monitoring competitor backlink acquisition, and identifying lost links are core daily activities, Ahrefs' Site Explorer is the strongest tool available.
+
+Its "Always-On Audit" feature, which monitors sites continuously without requiring manual re-runs, is also genuinely useful for in-house teams managing large sites with frequent changes.
+
+## Where Crawler Que Wins
+
+There are three areas where Crawler Que is the only tool that delivers what agencies actually need:
+
+### 1\. AI Search Visibility scoring
+
+Neither SEMrush nor Ahrefs measures whether a brand appears in ChatGPT, Perplexity, or Gemini answers. Crawler Que's AI visibility module tests this directly and returns a 0–100 GEO readiness score with a share of voice benchmark against competitors. In 2026, this is the question every client is asking, and only one tool answers it.
+
+### 2\. White-label PDF deliverable
+
+Ahrefs has no white-label reporting. SEMrush offers basic logo placement on some report types. Crawler Que's Agency plan ($99/month) generates a fully branded 18-page PDF, your logo, your colors, your footer, on every single audit. The report is a finished product, not an export that needs reformatting.
+
+### 3\. Client-ready action roadmap
+
+SEMrush and Ahrefs return data. Crawler Que returns a 30/60/90-day prioritized action plan with each audit, owner assignments, impact ratings, and timelines. For agencies that need to hand clients something actionable, not a spreadsheet of issues, this is the core difference.
+
+## Which Tool Should You Use
+
+|     |     |
+| --- | --- |
+| Your primary need | Best fit |
+| Deep keyword research database at scale | SEMrush |
+| Advanced backlink analysis and link prospecting | Ahrefs |
+| White-label audit deliverables for agency clients | Crawler Que |
+| AI search visibility scoring (GEO) | Crawler Que |
+| Client-ready audit reports without manual assembly | Crawler Que |
+| Affordable tool for freelance consultant workflow | Crawler Que |
+| Enterprise keyword tracking at scale (1000+ keywords) | SEMrush or Ahrefs |
+
+It is also worth noting these tools are not mutually exclusive. Some agencies use Crawler Que for client-facing audit deliverables and reporting, and Ahrefs or SEMrush for deeper research tasks that do not feed directly into a client PDF. The total cost of Crawler Que Agency ($99) plus Ahrefs Lite ($199) is still less than SEMrush Guru ($229) alone.
+
+The clearest test: Run a free Crawler Que audit on a client's site right now (no signup). See whether the output, including the AI visibility score, is the kind of deliverable you would be confident presenting to a client. If yes, you have your answer.
+
+Feature comparison table → See all plans → Crawler Que for Agencies →
+
+## Try Crawler Que free for 7 days, all features included
+
+All 8 modules, 3 full audits, white-label PDF on Agency plan. No charge until the trial ends. Cancel any time.
+
+Start free trial →
+
+## Want to audit your website?
+
+Run a Crawler Que audit to check SEO, Core Web Vitals, traffic signals, competitors, backlinks, recommendations, and AI search visibility.
+
+[Run website audit](https://crawlerque.com/)
+
+## Freelance SEO Toolkit
+[← Back to blog](https://crawlerque.com/blog)
+
+Consultants
+
+# The Freelance SEO Consultant's Toolkit: Enterprise-Level Reports on a Solo Budget
+
+June 23, 2026•4 min read•By Crawler Que
+
+The biggest pricing gap in freelance SEO is not expertise, it is the deliverable. Two consultants with identical knowledge charge $150 and $750 for the same type of engagement. The difference is almost always the...
+
+![The Freelance SEO Consultant's Toolkit: Enterprise-Level Reports on a Solo Budget](https://crawlerque.com/_next/image?url=%2Fblog%2Fthe-freelance-seo-consultants-toolkit-enterprise-level-reports-on-a-solo-budget.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+The biggest pricing gap in freelance SEO is not expertise, it is the deliverable. Two consultants with identical knowledge charge $150 and $750 for the same type of engagement. The difference is almost always the quality and format of what the client receives at the end.
+
+A polished, branded, data-rich audit report is not just a document. It is proof of work. It is the tangible evidence that justifies a rate. And until recently, producing one at that quality level required either $199–$229/month tools that most solo consultants cannot justify, or hours of manual assembly that erases the profit margin.
+
+The Starter plan is $30/month. That is 7 full audits, all 8 modules, branded PDF export, and 30-day report history. One paid audit report covers the cost for the month.
+
+## The Pricing Problem for Solo Consultants
+
+SEMrush starts at $139/month. Ahrefs starts at $199/month. Screaming Frog is £199/year. For a freelancer with four or five clients billing $500–$1,500 per month each, committing $200+ per month to a single research tool, before accounting for time, taxes, and other costs, is a real decision, not a no-brainer.
+
+The result is that many independent consultants either overpay for tools they use 20% of, or underdeliver on report quality because they are assembling data manually from free tools. Neither is a winning position when competing for better clients at higher rates.
+
+## What the Starter Plan Covers
+
+|     |     |
+| --- | --- |
+| Feature | Starter ($30/mo) |
+| Full audits per month | 7 audits |
+| Audit modules | All 8 modules |
+| Branded PDF export | Included |
+| 30-day report history | Included |
+| White-label (remove Crawler Que branding) | Agency plan required |
+| User seats | 1 seat |
+| 7-day free trial | All features included |
+
+Seven audits per month is enough for four regular clients (one monthly re-audit each) plus three prospect audits to use in pitches. That is a standard freelance workload at a tool cost of $1 per day.
+
+![The Free Audit Close Winning Prospects Before The Call](https://crawlerque.com/_next/image?url=%2Fblog%2Fthe-freelance-seo-consultants-toolkit-enterprise-level-reports-on-a-solo-budget-support-1.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## The Free-Audit Close: Winning Prospects Before the Call
+
+One of the most effective techniques for freelance consultants is running a free audit on a prospect's website before the discovery call. Crawler Que's free audit requires no signup, paste the URL, get a score in two minutes.
+
+Walking into a sales call with the prospect's actual SEO score, their top three technical issues, and a Core Web Vitals reading removes all the abstract positioning from the conversation. Instead of saying "I can help improve your rankings," you say: "Your site scored 42 on technical SEO. Your largest competitor scored 78. Here are the three things causing that gap, and here is what fixing them would likely do to your traffic."
+
+That conversation closes at a higher rate and at a higher price point than a generic pitch.
+
+## How to Price Audit Reports as a Consultant
+
+There is no universal rate, but here is a realistic range based on what the audit includes and who the client is:
+
+|     |     |     |
+| --- | --- | --- |
+| Report Type | Typical Rate | What Justifies It |
+| Basic technical audit (prospect pitch) | $0–$150 | Door opener; often discounted or free to earn the retainer |
+| Full 8-module audit report | $150–$500 | All modules, 30/60/90 roadmap, branded PDF |
+| Audit + strategic consultation session | $500–$1,500 | Report plus a 60-minute walkthrough and prioritization session |
+| Monthly re-audit retainer | $200–$600/mo | Monthly score tracking, issue monitoring, roadmap updates |
+
+The key insight: the audit is not the end product when you are consulting. It is the opening of a longer engagement. Clients who receive a well-structured audit and roadmap naturally have follow-up questions, and those questions are the retainer.
+
+## Starter Plan ROI: The Math
+
+### Monthly ROI, Starter Plan at $30/mo
+
+Starter plan cost$30/month
+
+Audits available7/month
+
+Used for 4 regular clients (re-audits)4 audits
+
+Used for 3 prospect pitches3 audits
+
+Charge per audit report (conservative)$150
+
+Revenue from 4 client reports$600
+
+Tool cost($30)
+
+Net return on tool investment$570/month
+
+## When to Upgrade to Agency Plan
+
+The Starter plan makes sense until you are consistently running more than 7 audits per month or you want to fully white-label reports (remove Crawler Que branding). Once you hit either of those thresholds, the Agency plan at $99/month gives you 40 audits, full white-labelling, comparison reports, 90-day history, and 3 user seats.
+
+For a consultant with 8+ clients or one who is sub-contracting to a team member, the Agency plan is the natural next step.
+
+Start with the 7-day free trial. All 8 modules, 3 full audits, no charge. Run it on your own site first, then on a prospect's site before your next discovery call.
+
+Crawler Que for Consultants → See a sample report → Starter plan — $30/mo →
+
+## Start delivering premium audit reports, from $30/month
+
+7 full audits, all 8 modules, branded PDF export. 7-day free trial with no charge. Cancel any time.
+
+Start with Starter — $30/mo →
+
+## Want to audit your website?
+
+Run a Crawler Que audit to check SEO, Core Web Vitals, traffic signals, competitors, backlinks, recommendations, and AI search visibility.
+
+[Run website audit](https://crawlerque.com/)
+
+## Efficient SEO Audit Billing
+[← Back to blog](https://crawlerque.com/blog)
+
+Agencies
+
+# How Agencies Are Billing $300 Per Audit Report (And Delivering It in 5 Minutes)
+
+June 24, 2026•4 min read•By Crawler Que
+
+The agencies billing the most for SEO audit deliverables are not the ones doing the most work per report. They are the ones who turned the report itself into a productized service, with a consistent format, a clear...
+
+![How Agencies Are Billing $300 Per Audit Report (And Delivering It in 5 Minutes)](https://crawlerque.com/_next/image?url=%2Fblog%2Fhow-agencies-are-billing-300-per-audit-report-and-delivering-it-in-5-minutes.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+The agencies billing the most for SEO audit deliverables are not the ones doing the most work per report. They are the ones who turned the report itself into a productized service, with a consistent format, a clear price, and a tool that handles the production in minutes rather than hours.
+
+Here is how that workflow looks in practice, and the exact economics behind it.
+
+The math:
+
+## The Problem With Traditional Agency Reporting
+
+The old workflow goes like this: export keyword data from Ahrefs, export technical issues from Screaming Frog, check PageSpeed manually, pull backlink data, open a Google Doc or Slides template, copy data across, write recommendations, format the report, export to PDF, re-brand. Per client. Per month.
+
+At a conservative estimate, that is three to four hours per client report. At an agency with 15 active clients, that is up to 60 hours of non-billable assembly work every month. The people doing that work are often senior enough that the opportunity cost is significant, time spent on report production is time not spent on strategy, business development, or client retention.
+
+## What White-Label PDF Reporting Actually Means
+
+White-label reporting means the client receives a professional PDF report with your agency's logo, brand colors, and footer, not the tool's branding. The client never knows which platform generated the data. The report appears to be your proprietary intelligence product.
+
+This matters for two reasons:
+
+Perceived value: A branded, designed PDF report signals professionalism and justifies higher pricing. A raw export from someone else's tool does not.
+
+Client retention: When the report carries your brand, the client associates the intelligence with your agency. That relationship is harder to replicate if they decide to go elsewhere.
+
+Crawler Que's Agency plan ($99/month) includes full white-label PDF output on all 40 audits. You configure your logo, accent color, and footer text once in Account Settings, it applies automatically to every export after that.
+
+![The 5 Minute Agency Audit Workflow](https://crawlerque.com/_next/image?url=%2Fblog%2Fhow-agencies-are-billing-300-per-audit-report-and-delivering-it-in-5-minutes-support-1.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## The 5-Minute Agency Audit Workflow
+
+Enter the client's URL: paste into Crawler Que's audit interface. No install, no configuration per client.
+
+Select modules: run all eight for a full audit, or select specific modules for a focused report (e.g., just Core Web Vitals and Technical SEO for a site migration client).
+
+Audit runs automatically: all eight modules process in parallel. A real-time progress bar shows each module completing. Total time: under two minutes for most sites.
+
+Review the dashboard: scores, prioritized issues, and action cards are displayed immediately. Add notes or adjust priorities before exporting.
+
+Export the white-label PDF: one click. The 18-page report carries your branding and is ready to send to the client or present in a call.
+
+## What Is in the Audit Report Clients Receive
+
+The sample report is available to download. The 18-page PDF covers:
+
+|     |     |
+| --- | --- |
+| Section | What Clients See |
+| Executive Snapshot | Overall score, SEO score, performance score, and AI visibility score with benchmarks, the one-page summary leadership actually reads |
+| Organic Traffic Intelligence | Modelled monthly traffic, keyword footprint, and top ranking keywords |
+| AI Search Visibility | Whether AI assistants mention the brand, with a GEO readiness verdict, the section no competitor can show |
+| Competitor Intelligence | The ten domains taking the client's organic visibility, with threat scores and shared keywords |
+| Technical & Performance | Core Web Vitals, crawl results, broken links, and metadata gaps |
+| Recommendations & Roadmap | Prioritized action cards with owner, impact, timeline, and a 30/60/90-day execution plan |
+
+## The AI Visibility Section Is Your Pitch Differentiator
+
+Every agency can show a client their Google rankings. Very few can show a client whether ChatGPT recommends them.
+
+Opening an audit presentation with a client's AI Visibility Score, and showing them their competitors' scores beside it, answers a question every business owner is currently thinking about but has no data on. That single slide creates urgency and positions your agency as forward-looking, not just technically competent.
+
+Here is your AI visibility score. This tells us how often ChatGPT and Gemini recommend your brand versus competitors when buyers ask questions in your space. Your score is 22. Your top competitor is at 61. Here is what we do to close that gap.
+
+## Agency Plan Economics
+
+### Monthly Revenue Model, Agency Plan
+
+Crawler Que Agency plan cost$99/month
+
+Audit capacity40 audits/month
+
+Audits used for 15 clients (monthly)15 audits
+
+Audits used for prospect pitches10 audits
+
+Charge per audit-backed report$300
+
+Monthly revenue from 15 client reports$4,500
+
+Tool cost($99)
+
+Net return on tool investment$4,401/month
+
+These numbers use a conservative $300 per report. Agencies positioned as strategic partners, not just report producers, routinely charge $500 to $1,500 for a white-label audit that opens a retainer conversation. The report is the door opener, not the end product.
+
+Crawler Que for Agencies → Download sample report → Agency plan — $99/mo →
+
+## Start delivering white-label audit reports today
+
+Agency plan: 40 audits/month, white-label PDF, 3 seats, comparison reports. 7-day free trial — all features included.
+
+Start Agency plan — $99/mo →
+
+## Want to audit your website?
+
+Run a Crawler Que audit to check SEO, Core Web Vitals, traffic signals, competitors, backlinks, recommendations, and AI search visibility.
+
+[Run website audit](https://crawlerque.com/)
+
+## AI Search Visibility
+[← Back to blog](https://crawlerque.com/blog)
+
+AI Visibility
+
+# AI Search Visibility Explained \| How to Find Out if ChatGPT Recommends Your Brand
+
+June 25, 2026•5 min read•By Crawler Que
+
+AI search visibility is a measure of how often and how prominently a brand appears when AI assistants like ChatGPT, Perplexity, and Gemini are asked buyer questions in that brand's category. A business with high AI...
+
+![AI Search Visibility Explained | How to Find Out if ChatGPT Recommends Your Brand](https://crawlerque.com/_next/image?url=%2Fblog%2Fai-search-visibility-explained-how-to-find-out-if-chatgpt-recommends-your-brand.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+AI search visibility is a measure of how often and how prominently a brand appears when AI assistants like ChatGPT, Perplexity, and Gemini are asked buyer questions in that brand's category. A business with high AI search visibility gets recommended by AI. One with low visibility gets replaced by a competitor in the answer, without ever knowing it happened.
+
+This is now a measurable signal, not a theory. Crawler Que's AI Search Visibility module tests brand mentions across AI models using realistic buyer prompts and returns a score from 0 to 100. This post explains exactly what that score measures, why it matters, and what to do when the number is low.
+
+AI search visibility measures whether AI assistants recommend your brand when buyers ask questions in your category. Crawler Que scores this 0–100 and shows you how you compare to your competitors.
+
+## Why AI Search Visibility Is Now a Commercial Priority
+
+ChatGPT reached over 800 million weekly active users in 2026. Google AI Overviews appear in more than 25% of all searches. Perplexity is growing at a rate that makes it one of the fastest-adopted search interfaces in history.
+
+When a buyer asks ChatGPT "what is the best CRM for a 10-person sales team," ChatGPT does not return a list of blue links. It names specific products. Those products are the ones with AI search visibility. The brands not mentioned are invisible to that buyer at the exact moment they are making a decision.
+
+Traditional SEO tools, SEMrush, Ahrefs, Google Search Console, measure ranking positions on Google. None of them tell you whether you appear in AI-generated answers. That is the gap AI Search Visibility scoring fills.
+
+## What Crawler Que's AI Visibility Module Measures
+
+### Brand mention testing
+
+Crawler Que queries multiple AI models with realistic buyer prompts constructed for the audited brand's niche. For example, if auditing a project management SaaS, the prompts would be things like "best project management tools for remote teams" or "what software do agencies use to manage client projects." The module records whether the brand appears in the AI responses and under what conditions.
+
+### AI Visibility Score (0–100)
+
+The score is built from two factors: mention ratio (how often the brand appeared across all prompts tested) and model coverage (how many AI platforms mentioned the brand). An honest confidence label is attached, if the sample is thin, that is stated explicitly rather than presenting a low-sample result as definitive.
+
+### Share of voice
+
+The module benchmarks the audited brand against the organic competitors identified in the Competitor Intel module. This shows not just raw visibility but relative visibility, a brand might have an absolute score of 35, but if competitors average 12, that is a strong position. If competitors average 68, it is a warning signal.
+
+### GEO readiness verdict
+
+GEO stands for Generative Engine Optimization. The GEO readiness check identifies the specific technical and content signals that determine whether AI models can confidently cite a brand: entity signals, schema markup, FAQ content, and third-party citations. The verdict tells you whether the infrastructure is in place, and if not, exactly what is missing.
+
+![What Crawler Que S Ai Visibility Module Measures](https://crawlerque.com/_next/image?url=%2Fblog%2Fai-search-visibility-explained-how-to-find-out-if-chatgpt-recommends-your-brand-support-1.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## What Factors Determine AI Search Visibility
+
+AI models cite brands based on what they have learned from the web and what real-time search returns when they look up a query. The following factors are the most consistently significant:
+
+|     |     |     |
+| --- | --- | --- |
+| Factor | Why It Matters | Fixable? |
+| Google organic ranking | AI models frequently pull from top-ranking content when generating answers | Yes, SEO improvement |
+| Third-party mentions | Review sites, directories, and editorial coverage signal brand credibility to AI | Yes, link building and PR |
+| Schema markup | Structured data (Organization, FAQPage, Product) helps AI parse brand identity | Yes, developer task |
+| FAQ and Q&A content | Content that directly answers buyer questions is more extractable by AI | Yes, content work |
+| Entity consistency | Brand name, description, and category used consistently across the web | Yes, content audit |
+| Model training data | Older, established brands have advantage; newer brands need accelerated signals | Partial, timeline factor |
+
+## Why SEMrush and Ahrefs Cannot Tell You This
+
+SEMrush and Ahrefs are built to measure one specific thing: how a website performs in traditional search engine results pages. They are excellent at that. They track keyword rankings, crawl for technical issues, and analyze backlink profiles, all against the Google index.
+
+AI-generated answers are not the Google index. ChatGPT does not rank pages. Perplexity does not return position 1 through 10 in the way Google does. The measurement framework for AI search visibility is entirely different, and it requires actively querying AI models with buyer prompts, not scraping a search engine results page.
+
+This is why Crawler Que's AI visibility module is a genuine differentiator. It is not a rebranding of an existing metric. It is a different measurement methodology for a different search channel.
+
+## How to Improve Your AI Search Visibility Score
+
+If your score is low, the GEO readiness verdict in the audit will tell you the specific gaps. The most common fixes are:
+
+Add Organization schema to your homepage: this gives AI models a structured signal of your brand name, description, and category.
+
+Add FAQPage schema to key landing pages: AI models extract question-answer pairs more reliably when they are marked up structurally.
+
+Earn mentions on third-party review platforms: G2, Capterra, Trustpilot, and editorial publications all contribute to AI brand recognition.
+
+Publish content that directly answers buyer questions: using the exact language buyers use when asking AI assistants, not keyword-stuffed titles.
+
+Improve your Google organic ranking: AI models still heavily weigh content that ranks well organically. A strong SEO foundation feeds GEO performance.
+
+The fastest starting point: Run a free Crawler Que audit on your site. The AI visibility score will show you exactly where you stand versus competitors, and the GEO readiness verdict will tell you the three highest-impact fixes for your specific situation.
+
+AI Search Visibility module → All audit modules → Pricing →
+
+## Check your brand's AI search visibility, free
+
+Run a free audit and see your AI Visibility Score, GEO readiness verdict, and competitor share of voice. No signup required for the basic audit.
+
+Run AI visibility check →
+
+## Want to audit your website?
+
+Run a Crawler Que audit to check SEO, Core Web Vitals, traffic signals, competitors, backlinks, recommendations, and AI search visibility.
+
+[Run website audit](https://crawlerque.com/)
+
+## AI Audit Tools Overview
+[← Back to blog](https://crawlerque.com/blog)
+
+Website Audit
+
+# What Is an AI Website Audit Tool \| And Why Your SEO Stack Needs One in 2026
+
+June 26, 2026•5 min read•By Crawler Que
+
+An AI website audit tool runs a structured analysis of your website across multiple signals, SEO, speed, keywords, competitors, backlinks, and AI search visibility, and delivers the results as a clear, prioritized...
+
+![What Is an AI Website Audit Tool | And Why Your SEO Stack Needs One in 2026](https://crawlerque.com/_next/image?url=%2Fblog%2Fwhat-is-an-ai-website-audit-tool-and-why-your-seo-stack-needs-one-in-2026.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+An AI website audit tool runs a structured analysis of your website across multiple signals, SEO, speed, keywords, competitors, backlinks, and AI search visibility, and delivers the results as a clear, prioritized report. Instead of opening five separate tools and manually assembling the picture, you get everything in one run.
+
+In 2026, this matters more than it did two years ago. Search is no longer just Google. ChatGPT, Perplexity, and Gemini are answering buyer queries directly, and most websites have zero visibility into whether they appear in those answers. A modern audit tool needs to measure that too.
+
+An AI website audit tool checks your site's technical health, content signals, traffic estimates, and AI search visibility in a single pass, then tells you what to fix first.
+
+## What Does a Website Audit Tool Actually Check?
+
+Not all audit tools check the same things. The ones worth using in 2026 cover at minimum six signal layers:
+
+Technical SEO: crawlability, robots.txt, sitemap, canonical tags, broken links, redirect chains, metadata gaps
+
+On-page signals: title tags, H1 structure, meta descriptions, keyword density, structured data
+
+Page speed and Core Web Vitals: LCP, CLS, FCP on mobile and desktop with specific fix recommendations
+
+Keyword and traffic intelligence: what keywords the site ranks for, estimated traffic, and gaps vs competitors
+
+Backlink authority: referring domains, trust signals, authority gap vs category leaders
+
+AI search visibility: whether AI assistants mention the brand when asked buyer questions in the niche
+
+Most legacy tools, SEMrush, Ahrefs, Screaming Frog, cover the first five to varying degrees. Almost none cover the sixth. That gap is now the most commercially significant blind spot in a typical agency or in-house SEO stack.
+
+## The 8 Modules Inside Crawler Que
+
+Crawler Que runs eight audit modules from a single URL input:
+
+|     |     |
+| --- | --- |
+| Module | What It Checks |
+| SEO Intelligence | Title, H1, meta, crawlability, keyword density, structured data signals |
+| Traffic Modelling | CTR-curve traffic estimates across all ranked keywords with confidence scoring |
+| Core Web Vitals | Google PageSpeed mobile and desktop scores with prioritized fix recommendations |
+| AI Search Visibility | Brand mention testing across ChatGPT and Gemini with a 0–100 GEO readiness score |
+| Competitor Intel | The domains competing for the same organic visibility and keyword gap analysis |
+| Backlink Authority | Backlink profile, referring domains, and authority gap signals with trust scoring |
+| Content Quality | Thin content detection, duplicate signals, and on-page content gap analysis |
+| Recommendations & Roadmap | Prioritized action cards with owner, impact, timeline, and a 30/60/90-day execution plan |
+
+Each module pulls from live data providers: Google PageSpeed Insights for Core Web Vitals, enterprise SEO data providers for keyword and backlink data, and Crawler Que's proprietary AI engine for recommendations and visibility scoring.
+
+![The 8 Modules Inside Crawler Que](https://crawlerque.com/_next/image?url=%2Fblog%2Fwhat-is-an-ai-website-audit-tool-and-why-your-seo-stack-needs-one-in-2026-support-1.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## Why Running Five Separate Tools Is Costing You Time
+
+The standard SEO stack for an agency in 2025 looked something like this: Ahrefs or SEMrush for keywords and backlinks, Screaming Frog for technical crawl, Google Search Console for impressions, and PageSpeed Insights for performance. That is four logins, four exports, and forty minutes of manual assembly before you can write a single recommendation.
+
+For a freelancer with five clients, that overhead adds up to several billable hours every month. For an agency delivering monthly reports to twenty clients, it is a genuine operational bottleneck.
+
+The problem isn't the data, it's the assembly time. Most SEO professionals already know what to look for. What they don't have is a tool that collects everything and prioritizes it automatically, so the deliverable is the report, not the research.
+
+## What Makes an Audit Tool "AI-Powered" in 2026
+
+The term "AI" is used loosely in the tools market. There are two meaningful definitions:
+
+### 1\. AI-generated analysis and recommendations
+
+The tool uses a language model to interpret audit data and produce plain-language findings instead of raw metric tables. This is what most "AI SEO tools" mean when they use the term.
+
+### 2\. AI search visibility measurement
+
+The tool actively tests whether the audited brand appears in AI-generated search answers from ChatGPT, Perplexity, Gemini, and similar platforms. This is what Crawler Que's AI Search Visibility module does, and it is a fundamentally different signal from anything traditional SEO tools measure.
+
+The first type improves reporting speed. The second type measures a search channel that is growing faster than any other and that almost no other tool in the market currently tracks.
+
+### Who Should Use an AI Website Audit Tool
+
+The use case is different depending on who is running the audit:
+
+Agencies need volume, consistency, and a white-label output. Running 40 audits per month and exporting branded PDFs is the core workflow. Crawler Que's Agency plan ($99/month) covers 40 full audits with white-label PDF reports and three user seats.
+
+Freelance consultants need an affordable tool that produces a deliverable that justifies premium rates. Crawler Que's Starter plan ($30/month) includes 7 full audits per month with branded PDF export, enough for four or five regular clients.
+
+In-house SEO teams need a shared starting point: one audit run at the start of each sprint, action cards assigned by the owner, and score tracking over time to show movement to leadership.
+
+Business owners running their first audit need plain-language findings, not crawl logs. The priority is answering: "What is stopping my site from ranking, and what should I fix first?"
+
+## How to Run a Free Website Audit Right Now
+
+Crawler Que lets you run a free audit on any URL without creating an account. The free audit includes a technical SEO scan, Core Web Vitals check, and on-page SEO signals, delivered in under two minutes.
+
+To access all eight modules including AI Search Visibility, Traffic Modelling, Competitor Intel, and Backlink Authority, a paid plan is required. All plans include a 7-day free trial with all eight modules and three full audits, no charge until the trial ends.
+
+Audit modules → See a sample report → View pricing →
+
+## Run a free website audit — no signup needed
+
+See your SEO score, Core Web Vitals, and on-page signals in under 2 minutes. Upgrade for AI visibility, traffic modelling, competitors, and backlinks.
+
+Start free — then from $30/mo
+
+## Want to audit your website?
+
+Run a Crawler Que audit to check SEO, Core Web Vitals, traffic signals, competitors, backlinks, recommendations, and AI search visibility.
+
+[Run website audit](https://crawlerque.com/)
+
+## ChatGPT Visibility Tool
+[← Back to blog](https://crawlerque.com/blog)
+
+AI Visibility
+
+# Free ChatGPT Visibility Checker: See What ChatGPT Says About Your Brand
+
+June 27, 2026•4 min read•By Crawler Que
+
+A ChatGPT visibility checker tests whether ChatGPT names your brand when someone asks it for recommendations in your category, then shows you where you stand against competitors. Crawler Que runs that check for free:...
+
+![Free ChatGPT Visibility Checker: See What ChatGPT Says About Your Brand](https://crawlerque.com/_next/image?url=%2Fblog%2Fchatgpt-visibility-checker.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+A ChatGPT visibility checker tests whether ChatGPT names your brand when someone asks it for recommendations in your category, then shows you where you stand against competitors. Crawler Que runs that check for free: enter a domain and the AI Visibility module queries multiple models with realistic buyer prompts, records whether your brand appears, and returns a single 0–100 score.
+
+A ChatGPT visibility checker sends realistic buyer prompts to AI models and records whether your brand appears in the answers. It reports a 0–100 visibility score based on mention ratio and model coverage, plus your share of voice against competitors. Crawler Que's checker is free to run and needs no signup.
+
+## What a ChatGPT visibility checker actually does
+
+It answers one question traditional SEO tools can't: when a buyer asks an AI assistant for options in your space, does your brand come up? Rank trackers measure your position on a page of links. A visibility checker measures something different, whether the model that increasingly writes the answer knows you exist and trusts you enough to name you.
+
+Because a single prompt only tells you one outcome, a proper checker samples many prompts across more than one model and reports a rate, not a yes or no. That's what turns an anecdote into a measurement you can act on and re-run.
+
+## Why your Google ranking doesn't tell you this
+
+You can sit at position three on Google and never surface in ChatGPT. The two systems select what to show in completely different ways. Google ranks live pages against a query; ChatGPT reconstructs an answer from what it learned in training plus what it can retrieve and trust in the moment. Strong rankings help, but they don't guarantee the model treats you as a recommendable entity. This is exactly the gap behind searches like "my brand shows up on Google but is invisible when people ask ChatGPT."
+
+![Diagram showing a brand ranking on Google but not named in ChatGPT answers](https://crawlerque.com/_next/image?url=%2Fblog%2Fchatgpt-visibility-checker-support-2.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## What the visibility score is built from
+
+Crawler Que's AI Visibility module reduces the check to four readable signals. Each one answers a specific question about how AI sees your brand.
+
+|     |     |     |
+| --- | --- | --- |
+| Signal | What it measures | What a low reading means |
+| Brand mention ratio | How often you appear across the prompt set | The model rarely surfaces you for buyer-intent questions |
+| Model coverage | How many AI models name you, not just one | You show up in one model but are missing elsewhere |
+| Share of voice | How often you appear versus competitors | Rivals own the category answer and you don't |
+| GEO readiness verdict | Entity signals, schema, FAQs and citations the site needs | AI lacks the structured proof to cite you confidently |
+
+![ChatGPT visibility score gauge showing mention ratio, model coverage, share of voice and GEO readiness](https://crawlerque.com/_next/image?url=%2Fblog%2Fchatgpt-visibility-checker-support-1.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+The score carries an honest confidence label. A thin sample is never presented as certainty, if only a handful of prompts were run, the checker says so rather than overselling the result.
+
+## How to run a free ChatGPT visibility check
+
+Go to crawlerque.com and start a free audit, no signup is required for the first run.
+
+Enter the domain you want to check (your brand or a client's).
+
+Add the AI Visibility module so the checker queries multiple models with buyer-intent prompts.
+
+Read your 0–100 score alongside mention ratio, model coverage and share of voice.
+
+Open the GEO readiness verdict for the specific signals to fix first.
+
+## What to do when your brand doesn't show up
+
+A low score is a starting point, not a verdict. The fixes cluster into four moves: make your brand an unambiguous entity, put your key facts into structured, extractable form, earn credible third-party mentions, and make sure AI crawlers can actually reach and read your pages. The GEO readiness verdict tells you which of these is holding you back so you're not guessing.
+
+## Common questions
+
+### Is there a tool that shows exactly what AI says about my brand?
+
+Yes, that's what an AI visibility checker is for. Crawler Que records whether each model names you for realistic buyer prompts and how that compares to competitors, so you see the actual pattern rather than one lucky or unlucky answer.
+
+### How do I check brand mentions in ChatGPT?
+
+You can prompt-test manually, ask ChatGPT the questions your buyers would and note whether you appear, or run an automated check that samples many prompts across models and scores the result. The automated route is repeatable, which matters because a single manual check is only a snapshot.
+
+### Does ChatGPT recommend my business?
+
+The only reliable way to know is to measure it. Run the free check, look at your mention ratio for buyer-intent prompts, and compare your share of voice to the competitors you lose deals to.
+
+### Is the ChatGPT visibility checker actually free?
+
+Yes, the first audit runs with no signup, and you can see your visibility score before paying anything. The AI Visibility module then comes bundled on any paid plan when you want to track it on a schedule.
+
+### Why can't SEMrush or Ahrefs check my ChatGPT visibility?
+
+They're built to measure rankings on pages of links, not whether an AI model names you in an answer. A visibility checker asks a different question entirely, does the machine writing the answer know and trust your brand, which is why it needs its own tool.
+
+## See what ChatGPT says about your brand
+
+Run a free AI visibility check, no signup, results in minutes.
+
+Run free ChatGPT visibility check
+
+## Want to audit your website?
+
+Run a Crawler Que audit to check SEO, Core Web Vitals, traffic signals, competitors, backlinks, recommendations, and AI search visibility.
+
+[Run website audit](https://crawlerque.com/)
+
+## Measure Brand Visibility
+[← Back to blog](https://crawlerque.com/blog)
+
+AI Visibility
+
+# How to Measure Brand Visibility in ChatGPT: A Repeatable Framework
+
+June 28, 2026•4 min read•By Crawler Que
+
+To measure brand visibility in ChatGPT, run a fixed set of buyer-intent prompts through the model on a schedule and track three things: how often your brand appears, how you compare to competitors, and how the mention...
+
+![How to Measure Brand Visibility in ChatGPT: A Repeatable Framework](https://crawlerque.com/_next/image?url=%2Fblog%2Fhow-to-measure-brand-visibility-in-chatgpt.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+To measure brand visibility in ChatGPT, run a fixed set of buyer-intent prompts through the model on a schedule and track three things: how often your brand appears, how you compare to competitors, and how the mentions read. Visibility is a rate, not a yes-or-no, so the method has to be repeatable enough to compare one month against the next.
+
+Measure brand visibility in ChatGPT by (1) building a fixed set of buyer-intent prompts, (2) deciding which models to test, (3) scoring your mention ratio and share of voice against competitors, and (4) re-running the same set on a schedule so the numbers are comparable over time.
+
+## Why "does ChatGPT mention us?" is the wrong question
+
+Ask ChatGPT the same question twice and you can get two different answers. That's why a single check tells you almost nothing. The useful question is a rate: across the prompts your buyers actually use, how often does your brand appear, and how does that change as you improve your signals? Framing visibility as a percentage is what makes it measurable and, more importantly, comparable over time.
+
+## The four things you're actually measuring
+
+|     |     |     |
+| --- | --- | --- |
+| Metric | Question it answers | How to read it |
+| Mention ratio | Of all prompts, how many named you? | Your headline visibility number, 0–100% |
+| Model coverage | Do multiple models name you or just one? | Breadth — one model is fragile, several is durable |
+| Share of voice | How do you compare to competitors? | Category position, not just presence |
+| Sentiment / accuracy | When named, is it right and positive? | A wrong mention can be worse than none |
+
+![Prompt set tracker measuring ChatGPT brand visibility across models](https://crawlerque.com/_next/image?url=%2Fblog%2Fhow-to-measure-brand-visibility-in-chatgpt-support-1.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## How to measure brand visibility in ChatGPT, step by step
+
+### Step 1: Build a prompt set that mirrors buyer intent
+
+List the questions a real buyer asks before choosing in your category: "best \[category\] tool for \[use case\]," "alternatives to \[competitor\]," "who should I use for \[job\]." Aim for a spread of ten to twenty prompts and keep them fixed, the point is to reuse the exact same set every time so the numbers stay comparable.
+
+### Step 2: Decide model coverage
+
+Buyers don't all use the same assistant, so test more than one. Coverage across several models tells you whether your visibility is durable or resting on a single source that could shift with the next update.
+
+### Step 3: Score mention ratio and share of voice
+
+For each prompt, record whether you appeared and which competitors did too. Your mention ratio is the share of prompts that named you; your share of voice is how often you appeared relative to rivals in the same answers. Together they separate "barely present" from "category leader."
+
+### Step 4: Benchmark and re-run on a schedule
+
+Record the baseline, make your GEO changes, and re-run the identical prompt set monthly. Improvements in AI visibility are incremental and take weeks to show, so a fixed cadence is what lets you tell real movement from noise.
+
+![Line chart tracking a rising ChatGPT brand visibility score across four months](https://crawlerque.com/_next/image?url=%2Fblog%2Fhow-to-measure-brand-visibility-in-chatgpt-support-2.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## Doing it manually vs measuring it automatically
+
+The manual method above works and costs nothing but time, expect roughly half an hour per full run if you're thorough. The trade-off is consistency: it's easy to vary the prompts, skip a model, or forget to re-run on schedule, and any of those breaks comparability.
+
+Crawler Que's AI Visibility module automates the same framework, a fixed buyer-prompt set across multiple models, scored as mention ratio, model coverage and share of voice, with a confidence label so a thin sample is never dressed up as certainty. The value isn't a different method; it's running the identical method the same way every time so the trend is trustworthy.
+
+## Common questions
+
+### How do I see brand visibility in ChatGPT without a tool?
+
+Run your fixed prompt set in ChatGPT by hand and tally how many name your brand. It's a valid snapshot; it just isn't a trend until you repeat it identically over time.
+
+### Is my business visible in ChatGPT?
+
+Measure it rather than guess. If your mention ratio for buyer-intent prompts is low and competitors dominate share of voice, your business is effectively invisible where those buyers are now asking.
+
+### How often should I track brand visibility in ChatGPT?
+
+Monthly works for most brands, since AI visibility shifts in weeks, not days, run the same prompt set on a fixed cadence so you're comparing like with like. Check more often only around a launch, rebrand, or a competitor's big push.
+
+### What's a good brand visibility score in ChatGPT?
+
+There's no universal pass mark, what matters is your mention ratio relative to competitors, not the absolute number. If rivals are named far more often for your buyers' prompts, even a healthy-looking score means you're losing the category answer.
+
+### Is product visibility in ChatGPT different from brand visibility?
+
+Yes, a model can name your company while never surfacing the product a buyer asked about, so measure both. Add product-level prompts like "best \[product type\] for \[use case\]" and score them separately from brand prompts.
+
+## Measure it once, then watch it move
+
+Run the same framework automatically and get a scored baseline for free.
+
+Get your visibility score free
+
+## Want to audit your website?
+
+Run a Crawler Que audit to check SEO, Core Web Vitals, traffic signals, competitors, backlinks, recommendations, and AI search visibility.
+
+[Run website audit](https://crawlerque.com/)
+
+## Brand Visibility in ChatGPT
+[← Back to blog](https://crawlerque.com/blog)
+
+AI Visibility
+
+# Why Your Brand Is Invisible in ChatGPT (Even Though It Ranks on Google)
+
+June 29, 2026•4 min read•By Crawler Que
+
+Your brand can rank on page one of Google and still never appear in ChatGPT because the two systems decide what to surface in completely different ways. This is the heart of why your brand is not showing in ChatGPT: G...
+
+![Why Your Brand Is Invisible in ChatGPT (Even Though It Ranks on Google)](https://crawlerque.com/_next/image?url=%2Fblog%2Fwhy-is-my-brand-not-showing-in-chatgpt.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+Your brand can rank on page one of Google and still never appear in ChatGPT because the two systems decide what to surface in completely different ways. This is the heart of why your brand is not showing in ChatGPT: Google ranks live pages against a query, while ChatGPT reconstructs an answer from what it learned in training plus what it can retrieve and trust in the moment. If you aren't a clear, well-cited entity in those sources, the model has no reason to name you.
+
+A brand can rank on Google yet stay invisible in ChatGPT because Google ranks live pages while ChatGPT recalls trusted entities. The usual causes are weak entity recognition, key facts that aren't in structured form, few third-party citations, blocked AI crawlers, and training-data lag, most of which are fixable.
+
+## Google ranks pages; ChatGPT recalls entities
+
+A search engine crawls the live web and orders pages for each query. A language model builds answers from a compressed memory of its training data plus, where available, real-time retrieval, and it leans on entities it can identify and trust. Ranking well signals quality, but it doesn't automatically make you a recognisable entity the model will cite. That mismatch is why strong SEO and weak AI visibility can sit side by side.
+
+## What affects whether a business appears in ChatGPT
+
+### Reason 1: You're not a recognised entity
+
+If the model can't confidently connect your brand name to a clear description of what you do, it treats you as ambiguous and leaves you out. Consistent naming, a crisp category description, and matching signals across the web are what make you legible.
+
+### Reason 2: Your key facts aren't in extractable form
+
+Facts buried in images, inconsistent copy, or unstructured pages are hard for a model to lift cleanly. Structured data and plainly stated facts make your details easy to extract and reuse in an answer.
+
+### Reason 3: Nobody credible mentions you
+
+Models weigh third-party corroboration heavily. If reputable sites, directories, and publications in your category don't reference you, there's little external signal telling the model you belong in the answer.
+
+### Reason 4: You blocked or confused the AI crawlers
+
+If your robots rules block AI crawlers, or key content only renders through heavy JavaScript, the systems that feed retrieval may never read you properly. An AI-oriented crawlability check catches this quickly.
+
+### Reason 5: Training-data lag
+
+Models learn on snapshots taken at a point in time. A newer brand, a rebrand, or a recent pivot may simply predate what the model absorbed: which is why retrieval signals and fresh third-party mentions matter while the next training cycle catches up.
+
+## Which of these you can actually fix
+
+|     |     |     |
+| --- | --- | --- |
+| Reason | Fixable? | Rough timeline |
+| Weak entity recognition | Yes | Weeks, consistent naming and description |
+| Facts not extractable | Yes | Days to weeks, schema and clear copy |
+| Few third-party citations | Partly | Months, earned mentions build slowly |
+| Blocked / unreadable to crawlers | Yes | Days, fix robots rules and rendering |
+| Training-data lag | Indirect | Bridge it with retrieval + citation signals |
+
+![Matrix of five reasons a brand is invisible in ChatGPT and whether each is fixable](https://crawlerque.com/_next/image?url=%2Fblog%2Fwhy-is-my-brand-not-showing-in-chatgpt-support-1.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## How to test whether AI actually understands your brand
+
+Don't assume, check. Ask ChatGPT to describe your brand and to recommend options in your category, and watch two things: whether it names you, and whether the description is accurate. A wrong description is its own problem, because a confidently incorrect mention can cost you more than silence.
+
+Crawler Que's AI Visibility module runs that test at scale: buyer-intent prompts across multiple models, scored for mention ratio and model coverage, with a GEO readiness verdict that maps directly onto the five reasons above, so you see not just that you're invisible, but which signal is causing it.
+
+![Before and after showing a brand added to a ChatGPT answer once AI visibility signals are fixed](https://crawlerque.com/_next/image?url=%2Fblog%2Fwhy-is-my-brand-not-showing-in-chatgpt-support-2.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## Common questions
+
+### My brand shows on Google but is invisible when people ask ChatGPT why?
+
+Because ranking a page and being a trusted entity are different achievements. Google can rank your page while ChatGPT, lacking clear entity and citation signals, leaves you out of the answer entirely.
+
+### Will fixing this hurt my normal SEO?
+
+No, the fixes are additive. Clear entities, structured data, credible mentions, and crawlability all support traditional SEO too. GEO sits on top of good SEO rather than replacing it.
+
+### How long until my brand starts showing up in ChatGPT?
+
+Expect weeks, not days, crawlability and schema fixes register fastest, while entity clarity and third-party citations build over months. Retrieval-based signals can surface sooner than the next training cycle catches up.
+
+### Does ChatGPT pull from live pages or only its training data?
+
+Both, it recalls what it learned in training and, where retrieval is available, pulls from live sources in the moment. That's why fresh citations and readable pages matter even for facts the model hasn't been trained on yet.
+
+### ChatGPT describes my brand incorrectly, is that worse than being invisible?
+
+Often yes, because a confident wrong answer actively misleads buyers, while silence just leaves a gap. Fixing it is the same work: clear entity signals and consistent, extractable facts give the model something accurate to repeat.
+
+## Find the exact signal keeping you out of AI answers
+
+Run a free AI visibility check and get a GEO readiness verdict for your site.
+
+Find your AI visibility gaps free
+
+## Want to audit your website?
+
+Run a Crawler Que audit to check SEO, Core Web Vitals, traffic signals, competitors, backlinks, recommendations, and AI search visibility.
+
+[Run website audit](https://crawlerque.com/)
+
+## AI Competitor Visibility
+[← Back to blog](https://crawlerque.com/blog)
+
+AI Visibility
+
+# Your Competitors Are in ChatGPT Answers and You're Not: How to Close the Gap
+
+June 30, 2026•4 min read•By Crawler Que
+
+If competitors keep surfacing in ChatGPT and Perplexity answers while your brand doesn't, the gap is measurable, and closable. AI competitor visibility analysis compares how often each brand in a category is named acr...
+
+![Your Competitors Are in ChatGPT Answers and You're Not: How to Close the Gap](https://crawlerque.com/_next/image?url=%2Fblog%2Fai-competitor-visibility-analysis.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+If competitors keep surfacing in ChatGPT and Perplexity answers while your brand doesn't, the gap is measurable, and closable. AI competitor visibility analysis compares how often each brand in a category is named across AI models, so you can see exactly where rivals are winning share of voice and which signals are earning them the mention.
+
+AI competitor visibility analysis measures how often each brand in a category is named across AI models for the same buyer prompts. It surfaces your share of voice versus competitors, shows where rivals win, and points to the signals, entity clarity, structured data, and citations, that close the gap.
+
+## What "AI share of voice" means
+
+Share of voice is how often you appear relative to competitors when an AI model is asked for recommendations in your category. Presence alone isn't enough: being named in one answer out of ten while a rival is named in eight tells you the category answer belongs to them. The voice turns "are we visible?" into "how much of the category do we own in AI answers?"
+
+![AI share of voice bar chart showing the brand at twelve percent versus competitors](https://crawlerque.com/_next/image?url=%2Fblog%2Fai-competitor-visibility-analysis-support-1.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## Why competitors show up and you don't
+
+It usually comes down to a few signals working in their favour: they read as a clearer entity, their facts are easier for a model to extract, and more credible third parties reference them. Crawler access and training-data timing play a part too. The point of an analysis is to find which of these is the actual difference in your category rather than guessing.
+
+## How to run an AI competitor visibility analysis
+
+List three to five competitors that buyers realistically weigh against you.
+
+Reuse a fixed set of buyer-intent prompts, the same set for every brand so the comparison is fair.
+
+Run the prompts across multiple models and record which brands each answer names.
+
+Calculate each brand's mention ratio and share of voice from the same runs.
+
+Note the signals the leaders share, entity clarity, schema, citations, as your fix list.
+
+|     |     |     |
+| --- | --- | --- |
+| Compare on | You | What a gap tells you |
+| Mention ratio | Your % of prompts | How present you are at all |
+| Share of voice | Your % vs rivals | Whether you own or lose the category answer |
+| Model coverage | Which models name you | If your visibility is broad or fragile |
+| Accuracy | Is the mention correct | Whether AI describes you rightly when it does name you |
+
+## Reading the gap: mention ratio vs share of voice
+
+The two numbers together tell the story. A low mention ratio means you're barely present at all, a coverage problem. A decent mention ratio but low share of voice means you do appear, but competitors appear more and crowd you out, a positioning problem. The fix differs: coverage problems need foundational entity and crawlability work; positioning problems need stronger differentiation and citations that make you the obvious pick.
+
+## Closing the gap: the signals that move share of voice
+
+Entity clarity: one consistent name and a crisp, repeated description of what you do and for whom.
+
+Structured data: schema and plainly stated facts so a model can extract and reuse your details.
+
+Third-party citations: earned references from credible sites in your category.
+
+Direct-answer content: pages that answer buyer questions cleanly enough to be quoted.
+
+Crawler access: AI crawlers can reach and render your key pages.
+
+Crawler Que's AI Visibility module runs this as a benchmark: your brand and named competitors scored on the same prompts across multiple models, with share of voice side by side and a GEO readiness verdict that names the signals to fix first. Showing a client their score next to a competitor's is the fastest way to make the gap, and the plan to close it, concrete.
+
+![Checklist of signals to close the AI visibility gap against competitors](https://crawlerque.com/_next/image?url=%2Fblog%2Fai-competitor-visibility-analysis-support-2.png&w=3840&q=75&dpl=dpl_Ei1qXQCVYyFpLvTWAbTxwJ3CMLbb)
+
+## Common questions
+
+### Is there a tool that shows what AI says about my brand versus competitors?
+
+Yes. A competitor visibility benchmark scores you and your rivals on identical prompts across models, so you see who the AI names, how often, and how you rank against them rather than eyeballing a few answers.
+
+### How many competitors should I track?
+
+Three to five is usually enough, the ones buyers genuinely compare you against. More than that dilutes the signal without changing the fixes.
+
+### How do I know which competitors to benchmark in AI answers?
+
+The three to five rivals buyers actually compare you against, not your whole market. Unsure? Ask ChatGPT for recommendations in your category and use the brands it names.
+
+### Why does one competitor dominate ChatGPT answers?
+
+They read as the clearest entity with the most credible third-party coverage, so the model defaults to them. It's the stack of signals working together, not one factor.
+
+### Can I close the gap without more content?
+
+Often yes, much of the gap is structural, so fixing entity signals, schema, and crawler access moves share of voice first. Add content only where competitors answer questions you don't.
+
+## See exactly where competitors beat you in AI answers
+
+Benchmark your brand against rivals on the same prompts — free to run.
+
+Compare against competitors free
+
+## Want to audit your website?
+
+Run a Crawler Que audit to check SEO, Core Web Vitals, traffic signals, competitors, backlinks, recommendations, and AI search visibility.
+
+[Run website audit](https://crawlerque.com/)
+
