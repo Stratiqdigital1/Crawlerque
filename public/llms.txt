@@ -1,4 +1,4 @@
-# https://crawlerque.com/ llms-full.txt
+# https://crawlerque.com/ llms.txt
 
 ## Website Audit Intelligence
 ![](https://crawlerque.com/hero-bg.jpg)
