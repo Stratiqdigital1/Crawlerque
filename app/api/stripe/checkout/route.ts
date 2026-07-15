@@ -29,9 +29,15 @@ const checkoutParams: Stripe.Checkout.SessionCreateParams = {
   line_items: [{ price: priceId, quantity: 1 }],
   success_url: `${origin}/signup?session_id={CHECKOUT_SESSION_ID}&plan=${encodeURIComponent(packageName)}`,
   cancel_url: `${origin}/#pricing`,
-  metadata: { packageName },
-  subscription_data: {
-    metadata: { packageName },
+metadata: {
+  app: "crawlerque",
+  packageName,
+},
+subscription_data: {
+  metadata: {
+    app: "crawlerque",
+    packageName,
+  },
     // Only the "Trial" package gets a free trial period. Direct plan
     // purchases (Starter/Agency/Enterprise) are charged immediately.
     ...(packageName === "Trial" && {

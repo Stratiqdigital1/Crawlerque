@@ -72,3 +72,452 @@ export async function sendPasswordResetEmail(to: string, resetLink: string) {
     `,
   });
 }
+
+type SubscriptionEmailKind =
+  | "trial"
+  | "purchase"
+  | "renewal"
+  | "payment";
+
+type SubscriptionEmailParams = {
+  kind: SubscriptionEmailKind;
+  to: string;
+  name?: string | null;
+  planName: string;
+  monthlyAudits: number;
+  dashboardUrl: string;
+  amountPaid?: number | null;
+  currency?: string | null;
+  billingInterval?: string | null;
+  invoiceNumber?: string | null;
+  nextBillingDate?: Date | null;
+  hostedInvoiceUrl?: string | null;
+  invoicePdfUrl?: string | null;
+};
+
+function escapeEmailHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => {
+    const replacements: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;",
+    };
+
+    return replacements[character] || character;
+  });
+}
+
+function formatEmailMoney(
+  amount?: number | null,
+  currency?: string | null
+) {
+  if (amount === null || amount === undefined) {
+    return null;
+  }
+
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: (currency || "usd").toUpperCase(),
+    }).format(amount / 100);
+  } catch {
+    return `$${(amount / 100).toFixed(2)}`;
+  }
+}
+
+function formatEmailDate(date?: Date | null) {
+  if (!date) return null;
+
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "long",
+  }).format(date);
+}
+
+export async function sendSubscriptionEmail({
+  kind,
+  to,
+  name,
+  planName,
+  monthlyAudits,
+  dashboardUrl,
+  amountPaid,
+  currency,
+  billingInterval,
+  invoiceNumber,
+  nextBillingDate,
+  hostedInvoiceUrl,
+  invoicePdfUrl,
+}: SubscriptionEmailParams) {
+  const firstName =
+    name?.trim().split(/\s+/)[0] || "there";
+
+  const formattedAmount = formatEmailMoney(
+    amountPaid,
+    currency
+  );
+
+  const formattedNextBillingDate =
+    formatEmailDate(nextBillingDate);
+
+  const subject =
+    kind === "trial"
+      ? "Welcome to Crawler Que — your free trial is active"
+      : kind === "purchase"
+        ? `Welcome to Crawler Que — your ${planName} plan is active`
+        : kind === "renewal"
+          ? `Crawler Que subscription renewed — ${planName}`
+          : `Crawler Que payment received — ${planName}`;
+
+  const heading =
+    kind === "trial"
+      ? "Your free trial has started"
+      : kind === "purchase"
+        ? "Welcome to Crawler Que"
+        : kind === "renewal"
+          ? "Your subscription has been renewed"
+          : "Your payment was successful";
+
+  const introduction =
+    kind === "trial"
+      ? `Your Crawler Que ${escapeEmailHtml(
+          planName
+        )} trial is now active. You can start running website audits from your dashboard.`
+      : kind === "purchase"
+        ? `Your payment was successful and your ${escapeEmailHtml(
+            planName
+          )} plan is now active.`
+        : kind === "renewal"
+          ? `We successfully received your latest subscription payment. Your ${escapeEmailHtml(
+              planName
+            )} plan remains active.`
+          : `We successfully received your payment for the ${escapeEmailHtml(
+              planName
+            )} plan.`;
+
+  await sendEmail({
+    to,
+    subject,
+    html: `
+      <div style="
+        margin:0;
+        padding:32px 16px;
+        background:#f3f6f8;
+        font-family:Arial,Helvetica,sans-serif;
+      ">
+        <div style="
+          max-width:600px;
+          margin:0 auto;
+          overflow:hidden;
+          background:#ffffff;
+          border:1px solid #dfe6eb;
+          border-radius:16px;
+        ">
+
+          <div style="
+            padding:28px 32px;
+            background:#0B1929;
+          ">
+            <div style="
+              color:#ffffff;
+              font-size:24px;
+              font-weight:700;
+            ">
+              Crawler Que
+            </div>
+
+            <div style="
+              margin-top:6px;
+              color:#a8b7c3;
+              font-size:14px;
+            ">
+              AI Website Growth Intelligence
+            </div>
+          </div>
+
+          <div style="padding:32px;">
+            <p style="
+              margin:0 0 8px;
+              color:#00A987;
+              font-size:13px;
+              font-weight:700;
+              letter-spacing:0.08em;
+              text-transform:uppercase;
+            ">
+              ${
+                kind === "trial"
+                  ? "Trial activated"
+                  : "Payment confirmed"
+              }
+            </p>
+
+            <h1 style="
+              margin:0;
+              color:#0B1929;
+              font-size:27px;
+              line-height:1.3;
+            ">
+              ${heading}
+            </h1>
+
+            <p style="
+              margin:16px 0 0;
+              color:#465563;
+              font-size:15px;
+              line-height:1.7;
+            ">
+              Hi ${escapeEmailHtml(firstName)},
+            </p>
+
+            <p style="
+              margin:10px 0 0;
+              color:#465563;
+              font-size:15px;
+              line-height:1.7;
+            ">
+              ${introduction}
+            </p>
+
+            <div style="
+              margin:24px 0;
+              padding:20px;
+              background:#f7f9fa;
+              border:1px solid #e0e6ea;
+              border-radius:12px;
+            ">
+              <table style="
+                width:100%;
+                border-collapse:collapse;
+                font-size:14px;
+              ">
+                <tr>
+                  <td style="
+                    padding:8px 0;
+                    color:#6c7984;
+                  ">
+                    Plan
+                  </td>
+
+                  <td style="
+                    padding:8px 0;
+                    color:#0B1929;
+                    font-weight:700;
+                    text-align:right;
+                  ">
+                    ${escapeEmailHtml(planName)}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="
+                    padding:8px 0;
+                    color:#6c7984;
+                  ">
+                    Status
+                  </td>
+
+                  <td style="
+                    padding:8px 0;
+                    color:#0B1929;
+                    font-weight:700;
+                    text-align:right;
+                  ">
+                    ${
+                      kind === "trial"
+                        ? "Trial active"
+                        : "Active"
+                    }
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="
+                    padding:8px 0;
+                    color:#6c7984;
+                  ">
+                    Audit allowance
+                  </td>
+
+                  <td style="
+                    padding:8px 0;
+                    color:#0B1929;
+                    font-weight:700;
+                    text-align:right;
+                  ">
+                    ${monthlyAudits} audits
+                  </td>
+                </tr>
+
+                ${
+                  formattedAmount
+                    ? `
+                      <tr>
+                        <td style="
+                          padding:8px 0;
+                          color:#6c7984;
+                        ">
+                          Amount paid
+                        </td>
+
+                        <td style="
+                          padding:8px 0;
+                          color:#0B1929;
+                          font-weight:700;
+                          text-align:right;
+                        ">
+                          ${escapeEmailHtml(formattedAmount)}
+                          ${
+                            billingInterval
+                              ? `/ ${escapeEmailHtml(
+                                  billingInterval
+                                )}`
+                              : ""
+                          }
+                        </td>
+                      </tr>
+                    `
+                    : ""
+                }
+
+                ${
+                  invoiceNumber
+                    ? `
+                      <tr>
+                        <td style="
+                          padding:8px 0;
+                          color:#6c7984;
+                        ">
+                          Invoice
+                        </td>
+
+                        <td style="
+                          padding:8px 0;
+                          color:#0B1929;
+                          font-weight:700;
+                          text-align:right;
+                        ">
+                          ${escapeEmailHtml(invoiceNumber)}
+                        </td>
+                      </tr>
+                    `
+                    : ""
+                }
+
+                ${
+                  formattedNextBillingDate
+                    ? `
+                      <tr>
+                        <td style="
+                          padding:8px 0;
+                          color:#6c7984;
+                        ">
+                          ${
+                            kind === "trial"
+                              ? "Trial ends"
+                              : "Next billing date"
+                          }
+                        </td>
+
+                        <td style="
+                          padding:8px 0;
+                          color:#0B1929;
+                          font-weight:700;
+                          text-align:right;
+                        ">
+                          ${escapeEmailHtml(
+                            formattedNextBillingDate
+                          )}
+                        </td>
+                      </tr>
+                    `
+                    : ""
+                }
+              </table>
+            </div>
+
+            <div style="margin-top:24px;">
+              <a
+                href="${escapeEmailHtml(dashboardUrl)}"
+                style="
+                  display:inline-block;
+                  padding:13px 22px;
+                  background:#00D4AA;
+                  color:#071526;
+                  border-radius:8px;
+                  font-size:14px;
+                  font-weight:700;
+                  text-decoration:none;
+                "
+              >
+                Open dashboard
+              </a>
+
+              ${
+                hostedInvoiceUrl
+                  ? `
+                    <a
+                      href="${escapeEmailHtml(
+                        hostedInvoiceUrl
+                      )}"
+                      style="
+                        display:inline-block;
+                        margin-left:8px;
+                        padding:12px 19px;
+                        color:#0B1929;
+                        border:1px solid #cbd5dc;
+                        border-radius:8px;
+                        font-size:14px;
+                        font-weight:700;
+                        text-decoration:none;
+                      "
+                    >
+                      View invoice
+                    </a>
+                  `
+                  : ""
+              }
+            </div>
+
+            ${
+              invoicePdfUrl
+                ? `
+                  <p style="
+                    margin:18px 0 0;
+                    font-size:14px;
+                  ">
+                    <a
+                      href="${escapeEmailHtml(invoicePdfUrl)}"
+                      style="
+                        color:#087f70;
+                        font-weight:700;
+                      "
+                    >
+                      Download invoice PDF
+                    </a>
+                  </p>
+                `
+                : ""
+            }
+
+            <p style="
+              margin:30px 0 0;
+              color:#6b7884;
+              font-size:13px;
+              line-height:1.7;
+            ">
+              Questions about your account, audits, or billing?
+              Contact
+              <a
+                href="mailto:info@crawlerque.com"
+                style="color:#087f70;"
+              >
+                info@crawlerque.com
+              </a>.
+            </p>
+          </div>
+        </div>
+      </div>
+    `,
+  });
+}
