@@ -36,18 +36,37 @@ export async function POST(req: Request) {
       },
     });
 
-    const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "";
-    const resetLink = `${appUrl}/reset-password?token=${token}`;
+const appUrl = (
+  process.env.APP_URL ||
+  process.env.NEXT_PUBLIC_APP_URL ||
+  "https://crawlerque.com"
+).replace(/\/$/, "");
 
-    try {
-      await sendPasswordResetEmail(user.email, resetLink);
-    } catch (mailError) {
-      console.error("Failed to send password reset email:", mailError);
-      // Don't expose mail failures to the client — token still exists,
-      // user can be helped manually if needed.
-    }
+const resetLink = `${appUrl}/reset-password?token=${token}`;
 
-    return NextResponse.json({ success: true });
+try {
+  await sendPasswordResetEmail(user.email, resetLink);
+} catch (mailError) {
+  console.error("Failed to send password reset email:", mailError);
+
+  // Remove the unusable token when email delivery fails.
+  await prisma.passwordResetToken
+    .delete({
+      where: { token },
+    })
+    .catch(() => null);
+
+  return NextResponse.json(
+    {
+      success: false,
+      error:
+        "We could not send the reset email right now. Please try again shortly.",
+    },
+    { status: 500 }
+  );
+}
+
+return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Forgot password error:", error);
     return NextResponse.json(

@@ -9,14 +9,16 @@ export async function sendEmail({
   subject: string;
   html: string;
 }) {
-  if (
-    !process.env.SMTP_HOST ||
-    !process.env.SMTP_USER ||
-    !process.env.SMTP_PASS
-  ) {
-    console.warn("SMTP not configured. Email skipped.");
-    return;
-  }
+if (
+  !process.env.SMTP_HOST ||
+  !process.env.SMTP_USER ||
+  !process.env.SMTP_PASS ||
+  !process.env.SMTP_FROM
+) {
+  throw new Error(
+    "SMTP configuration is incomplete. Check SMTP_HOST, SMTP_USER, SMTP_PASS, and SMTP_FROM."
+  );
+}
 
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -28,12 +30,17 @@ export async function sendEmail({
     },
   });
 
-await transporter.sendMail({
-    from: process.env.SMTP_FROM,
-    to,
-    subject,
-    html,
-  });
+const result = await transporter.sendMail({
+  from: process.env.SMTP_FROM,
+  to,
+  subject,
+  html,
+});
+
+console.log("Email sent successfully:", {
+  messageId: result.messageId,
+  to,
+});
 }
 
 export async function sendPasswordResetEmail(to: string, resetLink: string) {
