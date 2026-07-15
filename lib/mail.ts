@@ -521,3 +521,337 @@ export async function sendSubscriptionEmail({
     `,
   });
 }
+
+type TrialExpiryReminderEmailParams = {
+  to: string;
+  name?: string | null;
+  trialEndsAt: Date;
+  upgradeUrl: string;
+};
+
+function escapeTrialReminderHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => {
+    const replacements: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;",
+    };
+
+    return replacements[character] || character;
+  });
+}
+
+function formatTrialReminderDate(date: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "long",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+export async function sendTrialExpiryReminderEmail({
+  to,
+  name,
+  trialEndsAt,
+  upgradeUrl,
+}: TrialExpiryReminderEmailParams) {
+  const firstName =
+    name?.trim().split(/\s+/)[0] || "there";
+
+  const formattedTrialEnd =
+    formatTrialReminderDate(trialEndsAt);
+
+  await sendEmail({
+    to,
+    subject:
+      "Your Crawler Que trial ends tomorrow — choose your plan",
+    html: `
+      <div style="
+        margin:0;
+        padding:32px 16px;
+        background:#f3f6f8;
+        font-family:Arial,Helvetica,sans-serif;
+      ">
+        <div style="
+          max-width:620px;
+          margin:0 auto;
+          overflow:hidden;
+          background:#ffffff;
+          border:1px solid #dfe6eb;
+          border-radius:16px;
+        ">
+
+          <div style="
+            padding:28px 32px;
+            background:#0B1929;
+          ">
+            <div style="
+              color:#ffffff;
+              font-size:24px;
+              font-weight:700;
+            ">
+              Crawler Que
+            </div>
+
+            <div style="
+              margin-top:6px;
+              color:#a8b7c3;
+              font-size:14px;
+            ">
+              AI Website Growth Intelligence
+            </div>
+          </div>
+
+          <div style="padding:32px;">
+            <p style="
+              margin:0 0 8px;
+              color:#00A987;
+              font-size:13px;
+              font-weight:700;
+              letter-spacing:0.08em;
+              text-transform:uppercase;
+            ">
+              Trial ending soon
+            </p>
+
+            <h1 style="
+              margin:0;
+              color:#0B1929;
+              font-size:28px;
+              line-height:1.3;
+            ">
+              Keep your website growth intelligence active
+            </h1>
+
+            <p style="
+              margin:18px 0 0;
+              color:#465563;
+              font-size:15px;
+              line-height:1.7;
+            ">
+              Hi ${escapeTrialReminderHtml(firstName)},
+            </p>
+
+            <p style="
+              margin:10px 0 0;
+              color:#465563;
+              font-size:15px;
+              line-height:1.7;
+            ">
+              Your Crawler Que free trial ends on
+              <strong style="color:#0B1929;">
+                ${escapeTrialReminderHtml(formattedTrialEnd)}
+              </strong>.
+              Choose a plan now to continue running complete website audits,
+              accessing AI visibility insights, and generating professional
+              growth reports.
+            </p>
+
+            <div style="
+              margin:26px 0 0;
+              padding:20px;
+              border:1px solid #dfe6eb;
+              border-radius:12px;
+              background:#f8fafb;
+            ">
+              <table style="
+                width:100%;
+                border-collapse:collapse;
+              ">
+                <tr>
+                  <td style="vertical-align:top;">
+                    <div style="
+                      color:#0B1929;
+                      font-size:18px;
+                      font-weight:700;
+                    ">
+                      Starter
+                    </div>
+
+                    <div style="
+                      margin-top:4px;
+                      color:#00A987;
+                      font-size:20px;
+                      font-weight:700;
+                    ">
+                      $30/month
+                    </div>
+                  </td>
+
+                  <td style="
+                    text-align:right;
+                    color:#465563;
+                    font-size:14px;
+                    line-height:1.7;
+                  ">
+                    7 full audits<br />
+                    All 8 audit modules<br />
+                    Branded PDF export<br />
+                    1 user seat
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="
+              margin:14px 0 0;
+              padding:20px;
+              border:2px solid #00D4AA;
+              border-radius:12px;
+              background:#f1fffb;
+            ">
+              <div style="
+                display:inline-block;
+                margin-bottom:12px;
+                padding:5px 10px;
+                border-radius:20px;
+                background:#00D4AA;
+                color:#071526;
+                font-size:11px;
+                font-weight:700;
+                letter-spacing:0.06em;
+                text-transform:uppercase;
+              ">
+                Most popular
+              </div>
+
+              <table style="
+                width:100%;
+                border-collapse:collapse;
+              ">
+                <tr>
+                  <td style="vertical-align:top;">
+                    <div style="
+                      color:#0B1929;
+                      font-size:18px;
+                      font-weight:700;
+                    ">
+                      Agency
+                    </div>
+
+                    <div style="
+                      margin-top:4px;
+                      color:#00A987;
+                      font-size:20px;
+                      font-weight:700;
+                    ">
+                      $99/month
+                    </div>
+                  </td>
+
+                  <td style="
+                    text-align:right;
+                    color:#465563;
+                    font-size:14px;
+                    line-height:1.7;
+                  ">
+                    40 full audits<br />
+                    White-label PDF reports<br />
+                    Comparison reports<br />
+                    3 user seats
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="
+              margin:14px 0 0;
+              padding:20px;
+              border:1px solid #dfe6eb;
+              border-radius:12px;
+              background:#f8fafb;
+            ">
+              <table style="
+                width:100%;
+                border-collapse:collapse;
+              ">
+                <tr>
+                  <td style="vertical-align:top;">
+                    <div style="
+                      color:#0B1929;
+                      font-size:18px;
+                      font-weight:700;
+                    ">
+                      Enterprise
+                    </div>
+
+                    <div style="
+                      margin-top:4px;
+                      color:#00A987;
+                      font-size:20px;
+                      font-weight:700;
+                    ">
+                      $299/month
+                    </div>
+                  </td>
+
+                  <td style="
+                    text-align:right;
+                    color:#465563;
+                    font-size:14px;
+                    line-height:1.7;
+                  ">
+                    150 full audits<br />
+                    White-label PDF reports<br />
+                    Unlimited report history<br />
+                    10 user seats
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="
+              margin-top:28px;
+              text-align:center;
+            ">
+              <a
+                href="${escapeTrialReminderHtml(upgradeUrl)}"
+                style="
+                  display:inline-block;
+                  padding:14px 28px;
+                  background:#00D4AA;
+                  color:#071526;
+                  border-radius:8px;
+                  font-size:15px;
+                  font-weight:700;
+                  text-decoration:none;
+                "
+              >
+                Choose your plan
+              </a>
+            </div>
+
+            <p style="
+              margin:24px 0 0;
+              color:#6b7884;
+              font-size:13px;
+              line-height:1.7;
+              text-align:center;
+            ">
+              Upgrade before your trial expires to keep using
+              Crawler Que's complete website growth intelligence tools.
+            </p>
+
+            <p style="
+              margin:26px 0 0;
+              padding-top:20px;
+              border-top:1px solid #e3e8ec;
+              color:#6b7884;
+              font-size:13px;
+              line-height:1.7;
+            ">
+              Questions about plans or billing? Contact
+              <a
+                href="mailto:info@crawlerque.com"
+                style="color:#087f70;"
+              >
+                info@crawlerque.com
+              </a>.
+            </p>
+          </div>
+        </div>
+      </div>
+    `,
+  });
+}

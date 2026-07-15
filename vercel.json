@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/reset-audits",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/trial-expiry-reminders",
+      "schedule": "0 * * * *"
     }
   ]
 }
