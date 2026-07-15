@@ -183,7 +183,7 @@ export async function sendSubscriptionEmail({
     kind === "trial"
       ? `Your Crawler Que ${escapeEmailHtml(
           planName
-        )} trial is now active. You can start running website audits from your dashboard.`
+        )} plan is now active. You can start running website audits from your dashboard.`
       : kind === "purchase"
         ? `Your payment was successful and your ${escapeEmailHtml(
             planName
