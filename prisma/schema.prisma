@@ -30,12 +30,12 @@ model Package {
   allowWhiteLabel        Boolean @default(false)
   allowComparisonReports Boolean @default(false)
 
-  historyDays     Int     @default(30)
-  seatLimit       Int     @default(1)
-  prioritySupport Boolean @default(false)
-  stripePriceId            String?
-  stripePriceIdAnnual      String?
-  stripeProductId String?
+  historyDays         Int     @default(30)
+  seatLimit           Int     @default(1)
+  prioritySupport     Boolean @default(false)
+  stripePriceId       String?
+  stripePriceIdAnnual String?
+  stripeProductId     String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -44,40 +44,40 @@ model Package {
 }
 
 model User {
-  id                 String    @id @default(cuid())
+  id                 String   @id @default(cuid())
   name               String?
-  email              String    @unique
-  passwordHash       String    @default("")
-  role               String    @default("user")
-  status             String    @default("active")
-  mustChangePassword Boolean   @default(false)
-  packageName        String    @default("Free")
-  auditsUsed         Int       @default(0)
-  auditsResetAt      DateTime  @default(now())
-  monthlyAudits      Int       @default(3)
-  allowPdf           Boolean   @default(false)
+  email              String   @unique
+  passwordHash       String   @default("")
+  role               String   @default("user")
+  status             String   @default("active")
+  mustChangePassword Boolean  @default(false)
+  packageName        String   @default("Free")
+  auditsUsed         Int      @default(0)
+  auditsResetAt      DateTime @default(now())
+  monthlyAudits      Int      @default(3)
+  allowPdf           Boolean  @default(false)
   agencyName         String?
   companyName        String?
   brandLogoUrl       String?
-  brandColor         String?   @default("#C5FF3D")
+  brandColor         String?  @default("#C5FF3D")
   pdfFooterText      String?
-  whiteLabelEnabled  Boolean   @default(false)
-  allowAi            Boolean   @default(false)
-  allowTraffic       Boolean   @default(false)
-  allowKeywords      Boolean   @default(false)
-  allowBacklinks     Boolean   @default(false)
-  allowLocalSeo      Boolean   @default(false)
-  allowWhiteLabel    Boolean   @default(false)
+  whiteLabelEnabled  Boolean  @default(false)
+  allowAi            Boolean  @default(false)
+  allowTraffic       Boolean  @default(false)
+  allowKeywords      Boolean  @default(false)
+  allowBacklinks     Boolean  @default(false)
+  allowLocalSeo      Boolean  @default(false)
+  allowWhiteLabel    Boolean  @default(false)
 
-  stripeCustomerId       String?   @unique
-  stripeSubscriptionId   String?   @unique
-  stripePriceId            String?
-  stripePriceIdAnnual      String?
-  stripeStatus           String?   @default("inactive")
-  stripeCurrentPeriodEnd DateTime?
-  stripeCancelAtPeriodEnd Boolean  @default(false)
-  trialEndsAt              DateTime?
-  trialAuditsUsed          Int       @default(0)
+  stripeCustomerId        String?   @unique
+  stripeSubscriptionId    String?   @unique
+  stripePriceId           String?
+  stripePriceIdAnnual     String?
+  stripeStatus            String?   @default("inactive")
+  stripeCurrentPeriodEnd  DateTime?
+  stripeCancelAtPeriodEnd Boolean   @default(false)
+  trialEndsAt             DateTime?
+  trialAuditsUsed         Int       @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -87,6 +87,7 @@ model User {
   resetTokens  PasswordResetToken[]
   auditReports AuditReport[]
   auditJobs    AuditJob[]
+  blogPosts    BlogPost[]           @relation("BlogPostCreator")
 }
 
 model PasswordResetToken {
@@ -171,4 +172,45 @@ model AuditJob {
   @@index([domain])
   @@index([status])
   @@index([createdAt])
+}
+
+enum BlogStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+model BlogPost {
+  id              String  @id @default(cuid())
+  slug            String  @unique
+  title           String
+  metaTitle       String
+  metaDescription String  @db.Text
+  primaryKeyword  String?
+  excerpt         String  @db.Text
+  category        String
+  authorName      String  @default("Crawler Que")
+
+  status      BlogStatus @default(DRAFT)
+  publishedAt DateTime?
+  readingTime String     @default("4 min read")
+
+  heroImage String
+  heroAlt   String
+
+  images Json @default("[]")
+  blocks Json @default("[]")
+
+  createdById String?
+  createdBy   User?   @relation("BlogPostCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([publishedAt])
+  @@index([category])
+  @@index([createdById])
+  @@index([status, publishedAt])
 }
