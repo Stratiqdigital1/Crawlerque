@@ -85,12 +85,21 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <a
-            href="/dashboard"
-            className="rounded-xl border border-[#222] bg-[#111] px-5 py-3 text-sm font-semibold text-[#CCCCCC]"
-          >
-            Dashboard
-          </a>
+<div className="flex items-center gap-3">
+  <a
+    href="/admin/blogs"
+    className="rounded-xl border border-[var(--cq-signal)]/30 bg-[var(--cq-signal)]/10 px-5 py-3 text-sm font-semibold text-[var(--cq-signal)] transition hover:bg-[var(--cq-signal)] hover:text-[var(--cq-on-signal)]"
+  >
+    Blog Management
+  </a>
+
+  <a
+    href="/dashboard"
+    className="rounded-xl border border-[var(--cq-line)] bg-[var(--cq-surface)] px-5 py-3 text-sm font-semibold text-[var(--cq-text-2)] transition hover:border-[var(--cq-signal)]/40 hover:text-white"
+  >
+    Dashboard
+  </a>
+</div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">

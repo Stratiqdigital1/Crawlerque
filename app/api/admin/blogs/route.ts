@@ -68,33 +68,26 @@ export async function GET(request: Request) {
           createdAt: "desc",
         },
       ],
-      select: {
-        id: true,
-        slug: true,
-        title: true,
-        metaTitle: true,
-        metaDescription: true,
-        primaryKeyword: true,
-        excerpt: true,
-        category: true,
-        authorName: true,
-        status: true,
-        publishedAt: true,
-        readingTime: true,
-        heroImage: true,
-        heroAlt: true,
-        images: true,
-        blocks: true,
-        createdAt: true,
-        updatedAt: true,
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+select: {
+  id: true,
+  slug: true,
+  title: true,
+  category: true,
+  authorName: true,
+  status: true,
+  publishedAt: true,
+  readingTime: true,
+  heroImage: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+    },
+  },
+},
     });
 
     return NextResponse.json({
