@@ -194,12 +194,16 @@ export default function BlogEditor({
     mode === "edit"
   );
 
-  const [saving, setSaving] = useState(false);
-  const [slugManuallyEdited, setSlugManuallyEdited] =
-    useState(mode === "edit");
+const [saving, setSaving] = useState(false);
 
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+const [uploadingImageKey, setUploadingImageKey] =
+  useState<string | null>(null);
+
+const [slugManuallyEdited, setSlugManuallyEdited] =
+  useState(mode === "edit");
+
+const [error, setError] = useState("");
+const [success, setSuccess] = useState("");
 
   useEffect(() => {
     if (mode !== "edit" || !postId) {
@@ -307,6 +311,109 @@ export default function BlogEditor({
       ),
     }));
   };
+
+  type ImageUploadTarget =
+  | {
+      kind: "hero";
+    }
+  | {
+      kind: "block";
+      index: number;
+    };
+
+const uploadBlogImage = async (
+  file: File,
+  target: ImageUploadTarget
+) => {
+  const allowedTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/avif",
+  ];
+
+  if (!allowedTypes.includes(file.type)) {
+    setError(
+      "Only JPG, PNG, WebP and AVIF images are allowed."
+    );
+    return;
+  }
+
+  if (file.size > 4 * 1024 * 1024) {
+    setError("Image size cannot exceed 4 MB.");
+    return;
+  }
+
+  const uploadKey =
+    target.kind === "hero"
+      ? "hero"
+      : `block-${target.index}`;
+
+  setUploadingImageKey(uploadKey);
+  setError("");
+
+  try {
+    const uploadFormData = new FormData();
+    uploadFormData.append("file", file);
+
+    const response = await fetch(
+      "/api/admin/blog-images",
+      {
+        method: "POST",
+        body: uploadFormData,
+      }
+    );
+
+    const json = await response.json();
+
+    if (
+      !response.ok ||
+      !json?.success ||
+      !json?.url
+    ) {
+      throw new Error(
+        json?.error || "Failed to upload image."
+      );
+    }
+
+    if (target.kind === "hero") {
+      setForm((current) => ({
+        ...current,
+        heroImage: json.url,
+        heroAlt:
+          current.heroAlt ||
+          current.title ||
+          "Crawler Que blog image",
+      }));
+    } else {
+      setForm((current) => ({
+        ...current,
+        blocks: current.blocks.map(
+          (currentBlock, blockIndex) => {
+            if (
+              blockIndex !== target.index ||
+              currentBlock.type !== "image"
+            ) {
+              return currentBlock;
+            }
+
+            return {
+              ...currentBlock,
+              src: json.url,
+            };
+          }
+        ),
+      }));
+    }
+  } catch (uploadError: any) {
+    setError(
+      uploadError?.message ||
+        "Failed to upload image."
+    );
+  } finally {
+    setUploadingImageKey(null);
+  }
+};
 
   const addBlock = (
     type:
@@ -853,26 +960,59 @@ export default function BlogEditor({
               title="Hero image"
             >
               <div className="grid gap-5">
-                <Field label="Hero Image URL *">
-                  <input
-                    type="text"
-                    value={form.heroImage}
-                    onChange={(event) =>
-                      updateField(
-                        "heroImage",
-                        event.target.value
-                      )
-                    }
-                    placeholder="/blog/article-image.png"
-                    className="cq-input"
-                  />
+<Field label="Hero Image *">
+  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+    <input
+      type="text"
+      value={form.heroImage}
+      onChange={(event) =>
+        updateField(
+          "heroImage",
+          event.target.value
+        )
+      }
+      placeholder="Upload an image or paste an image URL"
+      className="cq-input"
+    />
 
-                  <p className="mt-2 text-xs text-[var(--cq-text-3)]">
-                    Existing images can use
-                    /blog/filename.png. Direct upload
-                    will be added in the next step.
-                  </p>
-                </Field>
+    <label
+      className={`cq-btn cq-btn--primary min-w-[150px] !py-3 ${
+        uploadingImageKey === "hero"
+          ? "pointer-events-none opacity-50"
+          : ""
+      }`}
+    >
+      <input
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/avif"
+        className="hidden"
+        disabled={uploadingImageKey === "hero"}
+        onChange={(event) => {
+          const file =
+            event.currentTarget.files?.[0];
+
+          event.currentTarget.value = "";
+
+          if (file) {
+            void uploadBlogImage(file, {
+              kind: "hero",
+            });
+          }
+        }}
+      />
+
+      {uploadingImageKey === "hero"
+        ? "Uploading..."
+        : "Upload Image"}
+    </label>
+  </div>
+
+  <p className="mt-2 text-xs text-[var(--cq-text-3)]">
+    JPG, PNG, WebP or AVIF. Maximum file size:
+    4 MB. Existing images can still use
+    /blog/filename.png.
+  </p>
+</Field>
 
                 <Field label="Hero Image ALT Text *">
                   <input
@@ -944,29 +1084,33 @@ export default function BlogEditor({
               <div className="space-y-4">
                 {form.blocks.map(
                   (block, index) => (
-                    <ContentBlockEditor
-                      key={`${block.type}-${index}`}
-                      block={block}
-                      index={index}
-                      totalBlocks={
-                        form.blocks.length
-                      }
-                      onChange={(nextBlock) =>
-                        updateBlock(
-                          index,
-                          nextBlock
-                        )
-                      }
-                      onMoveUp={() =>
-                        moveBlock(index, "up")
-                      }
-                      onMoveDown={() =>
-                        moveBlock(index, "down")
-                      }
-                      onRemove={() =>
-                        removeBlock(index)
-                      }
-                    />
+<ContentBlockEditor
+  key={`${block.type}-${index}`}
+  block={block}
+  index={index}
+  totalBlocks={form.blocks.length}
+  uploading={
+    uploadingImageKey === `block-${index}`
+  }
+  onUpload={(file) =>
+    uploadBlogImage(file, {
+      kind: "block",
+      index,
+    })
+  }
+  onChange={(nextBlock) =>
+    updateBlock(index, nextBlock)
+  }
+  onMoveUp={() =>
+    moveBlock(index, "up")
+  }
+  onMoveDown={() =>
+    moveBlock(index, "down")
+  }
+  onRemove={() =>
+    removeBlock(index)
+  }
+/>
                   )
                 )}
 
@@ -1072,6 +1216,8 @@ function ContentBlockEditor({
   block,
   index,
   totalBlocks,
+  uploading,
+  onUpload,
   onChange,
   onMoveUp,
   onMoveDown,
@@ -1080,6 +1226,8 @@ function ContentBlockEditor({
   block: BlogBlock;
   index: number;
   totalBlocks: number;
+  uploading: boolean;
+  onUpload: (file: File) => Promise<void>;
   onChange: (block: BlogBlock) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -1182,43 +1330,78 @@ function ContentBlockEditor({
         </div>
       )}
 
-      {block.type === "image" && (
-        <div className="grid gap-4">
-          <input
-            type="text"
-            value={block.src}
-            onChange={(event) =>
-              onChange({
-                ...block,
-                src: event.target.value,
-              })
-            }
-            placeholder="/blog/support-image.png"
-            className="cq-input"
-          />
+{block.type === "image" && (
+  <div className="grid gap-4">
+    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+      <input
+        type="text"
+        value={block.src}
+        onChange={(event) =>
+          onChange({
+            ...block,
+            src: event.target.value,
+          })
+        }
+        placeholder="Upload an image or paste image URL"
+        className="cq-input"
+      />
 
-          <input
-            type="text"
-            value={block.alt}
-            onChange={(event) =>
-              onChange({
-                ...block,
-                alt: event.target.value,
-              })
-            }
-            placeholder="Image ALT text"
-            className="cq-input"
-          />
+      <label
+        className={`cq-btn cq-btn--primary min-w-[150px] !py-3 ${
+          uploading
+            ? "pointer-events-none opacity-50"
+            : ""
+        }`}
+      >
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/avif"
+          className="hidden"
+          disabled={uploading}
+          onChange={(event) => {
+            const file =
+              event.currentTarget.files?.[0];
 
-          {block.src && (
-            <img
-              src={block.src}
-              alt={block.alt}
-              className="max-h-72 w-full rounded-xl border border-[var(--cq-line)] object-cover"
-            />
-          )}
-        </div>
-      )}
+            event.currentTarget.value = "";
+
+            if (file) {
+              void onUpload(file);
+            }
+          }}
+        />
+
+        {uploading
+          ? "Uploading..."
+          : "Upload Image"}
+      </label>
+    </div>
+
+    <input
+      type="text"
+      value={block.alt}
+      onChange={(event) =>
+        onChange({
+          ...block,
+          alt: event.target.value,
+        })
+      }
+      placeholder="Image ALT text"
+      className="cq-input"
+    />
+
+    <p className="text-xs text-[var(--cq-text-3)]">
+      JPG, PNG, WebP or AVIF. Maximum 4 MB.
+    </p>
+
+    {block.src && (
+      <img
+        src={block.src}
+        alt={block.alt}
+        className="max-h-72 w-full rounded-xl border border-[var(--cq-line)] object-cover"
+      />
+    )}
+  </div>
+)}
 
       {block.type === "table" && (
         <div>
