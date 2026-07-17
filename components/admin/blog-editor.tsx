@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type KeyboardEvent,
 } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -1341,6 +1342,21 @@ const insertParagraphLink = () => {
   });
 };
 
+const handleParagraphKeyDown = (
+  event: KeyboardEvent<HTMLTextAreaElement>
+) => {
+  const isLinkShortcut =
+    (event.ctrlKey || event.metaKey) &&
+    event.key.toLowerCase() === "k";
+
+  if (!isLinkShortcut) {
+    return;
+  }
+
+  event.preventDefault();
+  insertParagraphLink();
+};
+
   return (
     <div className="rounded-xl border border-[var(--cq-line)] bg-[var(--cq-ink)] p-4 md:p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -1388,24 +1404,26 @@ const insertParagraphLink = () => {
         + Insert Link
       </button>
 
-      <p className="text-xs text-[var(--cq-text-3)]">
-        Select the text, then click Insert Link.
-      </p>
+<p className="text-xs text-[var(--cq-text-3)]">
+  Select text and press Ctrl + K, or click
+  Insert Link.
+</p>
     </div>
 
-    <textarea
-      ref={paragraphTextareaRef}
-      value={block.text}
-      onChange={(event) =>
-        onChange({
-          type: "paragraph",
-          text: event.target.value,
-        })
-      }
-      rows={7}
-      placeholder="Write the paragraph content..."
-      className="cq-input resize-y"
-    />
+<textarea
+  ref={paragraphTextareaRef}
+  value={block.text}
+  onChange={(event) =>
+    onChange({
+      type: "paragraph",
+      text: event.target.value,
+    })
+  }
+  onKeyDown={handleParagraphKeyDown}
+  rows={7}
+  placeholder="Write the paragraph content..."
+  className="cq-input resize-y"
+/>
 
     <p className="mt-2 text-xs leading-5 text-[var(--cq-text-3)]">
       You can also add a link manually:
