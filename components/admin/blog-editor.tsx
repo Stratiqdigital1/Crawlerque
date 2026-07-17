@@ -1,7 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
+import {
+  BlogRichText,
+} from "@/components/blog-rich-text";
 
 type BlogStatus =
   | "DRAFT"
@@ -1239,6 +1247,100 @@ function ContentBlockEditor({
       : block.type.charAt(0).toUpperCase() +
         block.type.slice(1);
 
+        const paragraphTextareaRef =
+  useRef<HTMLTextAreaElement>(null);
+
+const insertParagraphLink = () => {
+  if (block.type !== "paragraph") {
+    return;
+  }
+
+  const textarea =
+    paragraphTextareaRef.current;
+
+  const selectionStart =
+    textarea?.selectionStart ??
+    block.text.length;
+
+  const selectionEnd =
+    textarea?.selectionEnd ??
+    selectionStart;
+
+  const selectedText = block.text
+    .slice(selectionStart, selectionEnd)
+    .trim();
+
+  const enteredLinkText =
+    selectedText ||
+    window.prompt(
+      "Enter the visible link text:"
+    );
+
+  if (!enteredLinkText?.trim()) {
+    return;
+  }
+
+  const enteredUrl = window.prompt(
+    "Link URL enter karo:",
+    "https://"
+  );
+
+  if (!enteredUrl?.trim()) {
+    return;
+  }
+
+  const url = enteredUrl.trim();
+
+  const safeUrl =
+    /^(https?:\/\/|mailto:|tel:)/i.test(
+      url
+    ) ||
+    (
+      url.startsWith("/") &&
+      !url.startsWith("//")
+    ) ||
+    url.startsWith("#");
+
+  if (!safeUrl) {
+    window.alert(
+      "Enter a valid URL, for example: https://example.com or /pricing"
+    );
+
+    return;
+  }
+
+  const cleanLinkText =
+    enteredLinkText
+      .trim()
+      .replace(/[\[\]]/g, "");
+
+  const markdownLink =
+    `[${cleanLinkText}](${url})`;
+
+  const nextText =
+    block.text.slice(0, selectionStart) +
+    markdownLink +
+    block.text.slice(selectionEnd);
+
+  onChange({
+    type: "paragraph",
+    text: nextText,
+  });
+
+  requestAnimationFrame(() => {
+    const nextCursorPosition =
+      selectionStart +
+      markdownLink.length;
+
+    textarea?.focus();
+
+    textarea?.setSelectionRange(
+      nextCursorPosition,
+      nextCursorPosition
+    );
+  });
+};
+
   return (
     <div className="rounded-xl border border-[var(--cq-line)] bg-[var(--cq-ink)] p-4 md:p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -1275,20 +1377,43 @@ function ContentBlockEditor({
         </div>
       </div>
 
-      {block.type === "paragraph" && (
-        <textarea
-          value={block.text}
-          onChange={(event) =>
-            onChange({
-              type: "paragraph",
-              text: event.target.value,
-            })
-          }
-          rows={7}
-          placeholder="Write the paragraph content..."
-          className="cq-input resize-y"
-        />
-      )}
+{block.type === "paragraph" && (
+  <div>
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <button
+        type="button"
+        onClick={insertParagraphLink}
+        className="rounded-lg border border-[var(--cq-signal)]/25 bg-[var(--cq-signal)]/10 px-4 py-2 text-xs font-semibold text-[var(--cq-signal)] transition hover:bg-[var(--cq-signal)] hover:text-[var(--cq-on-signal)]"
+      >
+        + Insert Link
+      </button>
+
+      <p className="text-xs text-[var(--cq-text-3)]">
+        Select the text, then click Insert Link.
+      </p>
+    </div>
+
+    <textarea
+      ref={paragraphTextareaRef}
+      value={block.text}
+      onChange={(event) =>
+        onChange({
+          type: "paragraph",
+          text: event.target.value,
+        })
+      }
+      rows={7}
+      placeholder="Write the paragraph content..."
+      className="cq-input resize-y"
+    />
+
+    <p className="mt-2 text-xs leading-5 text-[var(--cq-text-3)]">
+      You can also add a link manually:
+      {" "}
+      [Crawler Que Pricing](/#pricing)
+    </p>
+  </div>
+)}
 
       {block.type === "heading" && (
         <div className="grid gap-3 md:grid-cols-[140px_1fr]">
@@ -1505,13 +1630,17 @@ function LivePreview({
           {form.blocks.map((block, index) => {
             if (block.type === "paragraph") {
               return (
-                <p
-                  key={index}
-                  className="mt-4 text-sm leading-7 text-[var(--cq-text-2)]"
-                >
-                  {block.text ||
-                    "Paragraph content will appear here."}
-                </p>
+<p
+  key={index}
+  className="mt-4 text-sm leading-7 text-[var(--cq-text-2)]"
+>
+  <BlogRichText
+    text={
+      block.text ||
+      "Paragraph content will appear here."
+    }
+  />
+</p>
               );
             }
 

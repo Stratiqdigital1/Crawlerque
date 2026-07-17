@@ -3,6 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
+  BlogRichText,
+} from "@/components/blog-rich-text";
+import {
   getPublishedBlogPost,
 } from "@/lib/blog-data";
 import type {
@@ -147,13 +150,13 @@ function BlogContentBlock({
     );
   }
 
-  if (block.type === "paragraph") {
-    return (
-      <p className="mt-5 text-lg leading-8 text-[var(--cq-text-2)]">
-        {block.text}
-      </p>
-    );
-  }
+if (block.type === "paragraph") {
+  return (
+    <p className="mt-5 text-lg leading-8 text-[var(--cq-text-2)]">
+      <BlogRichText text={block.text} />
+    </p>
+  );
+}
 
   if (block.type === "image") {
     return (
