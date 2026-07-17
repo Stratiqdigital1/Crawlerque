@@ -8,15 +8,9 @@ import {
   type KeyboardEvent,
 } from "react";
 import { useRouter } from "next/navigation";
-import {
-  BlogRichText,
-} from "@/components/blog-rich-text";
+import { BlogRichText } from "@/components/blog-rich-text";
 
-type BlogStatus =
-  | "DRAFT"
-  | "SCHEDULED"
-  | "PUBLISHED"
-  | "ARCHIVED";
+type BlogStatus = "DRAFT" | "SCHEDULED" | "PUBLISHED" | "ARCHIVED";
 
 type BlogBlock =
   | {
@@ -36,6 +30,14 @@ type BlogBlock =
   | {
       type: "table";
       rows: string[][];
+    }
+  | {
+      type: "faq";
+      title: string;
+      items: {
+        question: string;
+        answer: string;
+      }[];
     };
 
 type BlogFormState = {
@@ -106,37 +108,26 @@ function toDateTimeLocal(value: string | null) {
   }
 
   const offset = date.getTimezoneOffset();
-  const localDate = new Date(
-    date.getTime() - offset * 60 * 1000
-  );
+  const localDate = new Date(date.getTime() - offset * 60 * 1000);
 
   return localDate.toISOString().slice(0, 16);
 }
 
 function tableRowsToText(rows: string[][]) {
-  return rows
-    .map((row) => row.join(" | "))
-    .join("\n");
+  return rows.map((row) => row.join(" | ")).join("\n");
 }
 
 function tableTextToRows(value: string) {
   return value
     .split("\n")
-    .map((row) =>
-      row.split("|").map((cell) => cell.trim())
-    )
-    .filter((row) =>
-      row.some((cell) => cell.length > 0)
-    );
+    .map((row) => row.split("|").map((cell) => cell.trim()))
+    .filter((row) => row.some((cell) => cell.length > 0));
 }
 
 function calculateReadingTime(blocks: BlogBlock[]) {
   const text = blocks
     .map((block) => {
-      if (
-        block.type === "paragraph" ||
-        block.type === "heading"
-      ) {
+      if (block.type === "paragraph" || block.type === "heading") {
         return block.text;
       }
 
@@ -144,19 +135,20 @@ function calculateReadingTime(blocks: BlogBlock[]) {
         return block.alt;
       }
 
+      if (block.type === "faq") {
+        return [
+          block.title,
+          ...block.items.flatMap((item) => [item.question, item.answer]),
+        ].join(" ");
+      }
+
       return block.rows.flat().join(" ");
     })
     .join(" ");
 
-  const wordCount = text
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean).length;
+  const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
 
-  const minutes = Math.max(
-    1,
-    Math.ceil(wordCount / 220)
-  );
+  const minutes = Math.max(1, Math.ceil(wordCount / 220));
 
   return `${minutes} min read`;
 }
@@ -171,13 +163,8 @@ function normalizeBlocks(value: unknown): BlogBlock[] {
     ];
   }
 
-  const blocks = value.filter(
-    (item): item is BlogBlock =>
-      Boolean(
-        item &&
-          typeof item === "object" &&
-          "type" in item
-      )
+  const blocks = value.filter((item): item is BlogBlock =>
+    Boolean(item && typeof item === "object" && "type" in item),
   );
 
   return blocks.length
@@ -190,29 +177,23 @@ function normalizeBlocks(value: unknown): BlogBlock[] {
       ];
 }
 
-export default function BlogEditor({
-  mode,
-  postId,
-}: BlogEditorProps) {
+export default function BlogEditor({ mode, postId }: BlogEditorProps) {
   const router = useRouter();
 
-  const [form, setForm] =
-    useState<BlogFormState>(initialForm);
+  const [form, setForm] = useState<BlogFormState>(initialForm);
 
-  const [loading, setLoading] = useState(
-    mode === "edit"
+  const [loading, setLoading] = useState(mode === "edit");
+
+  const [saving, setSaving] = useState(false);
+
+  const [uploadingImageKey, setUploadingImageKey] = useState<string | null>(
+    null,
   );
 
-const [saving, setSaving] = useState(false);
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(mode === "edit");
 
-const [uploadingImageKey, setUploadingImageKey] =
-  useState<string | null>(null);
-
-const [slugManuallyEdited, setSlugManuallyEdited] =
-  useState(mode === "edit");
-
-const [error, setError] = useState("");
-const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     if (mode !== "edit" || !postId) {
@@ -224,19 +205,14 @@ const [success, setSuccess] = useState("");
       setError("");
 
       try {
-        const response = await fetch(
-          `/api/admin/blogs/${postId}`,
-          {
-            cache: "no-store",
-          }
-        );
+        const response = await fetch(`/api/admin/blogs/${postId}`, {
+          cache: "no-store",
+        });
 
         const json = await response.json();
 
         if (!response.ok || !json?.success) {
-          throw new Error(
-            json?.error || "Failed to load blog."
-          );
+          throw new Error(json?.error || "Failed to load blog.");
         }
 
         const post = json.post;
@@ -245,29 +221,20 @@ const [success, setSuccess] = useState("");
           title: post.title || "",
           slug: post.slug || "",
           metaTitle: post.metaTitle || "",
-          metaDescription:
-            post.metaDescription || "",
-          primaryKeyword:
-            post.primaryKeyword || "",
+          metaDescription: post.metaDescription || "",
+          primaryKeyword: post.primaryKeyword || "",
           excerpt: post.excerpt || "",
           category: post.category || "",
-          authorName:
-            post.authorName || "Crawler Que",
+          authorName: post.authorName || "Crawler Que",
           status: post.status || "DRAFT",
-          publishedAt: toDateTimeLocal(
-            post.publishedAt
-          ),
-          readingTime:
-            post.readingTime || "4 min read",
+          publishedAt: toDateTimeLocal(post.publishedAt),
+          readingTime: post.readingTime || "4 min read",
           heroImage: post.heroImage || "",
           heroAlt: post.heroAlt || "",
           blocks: normalizeBlocks(post.blocks),
         });
       } catch (loadError: any) {
-        setError(
-          loadError?.message ||
-            "Failed to load blog."
-        );
+        setError(loadError?.message || "Failed to load blog.");
       } finally {
         setLoading(false);
       }
@@ -278,7 +245,7 @@ const [success, setSuccess] = useState("");
 
   const updateField = <K extends keyof BlogFormState>(
     field: K,
-    value: BlogFormState[K]
+    value: BlogFormState[K],
   ) => {
     setForm((current) => ({
       ...current,
@@ -290,119 +257,85 @@ const [success, setSuccess] = useState("");
     setForm((current) => ({
       ...current,
       title: value,
-      slug: slugManuallyEdited
-        ? current.slug
-        : generateSlug(value),
+      slug: slugManuallyEdited ? current.slug : generateSlug(value),
       metaTitle:
-        current.metaTitle === current.title ||
-        !current.metaTitle
+        current.metaTitle === current.title || !current.metaTitle
           ? value
           : current.metaTitle,
       heroAlt:
-        current.heroAlt === current.title ||
-        !current.heroAlt
+        current.heroAlt === current.title || !current.heroAlt
           ? value
           : current.heroAlt,
     }));
   };
 
-  const updateBlock = (
-    index: number,
-    block: BlogBlock
-  ) => {
+  const updateBlock = (index: number, block: BlogBlock) => {
     setForm((current) => ({
       ...current,
-      blocks: current.blocks.map(
-        (currentBlock, blockIndex) =>
-          blockIndex === index
-            ? block
-            : currentBlock
+      blocks: current.blocks.map((currentBlock, blockIndex) =>
+        blockIndex === index ? block : currentBlock,
       ),
     }));
   };
 
   type ImageUploadTarget =
-  | {
-      kind: "hero";
+    | {
+        kind: "hero";
+      }
+    | {
+        kind: "block";
+        index: number;
+      };
+
+  const uploadBlogImage = async (file: File, target: ImageUploadTarget) => {
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/avif",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      setError("Only JPG, PNG, WebP and AVIF images are allowed.");
+      return;
     }
-  | {
-      kind: "block";
-      index: number;
-    };
 
-const uploadBlogImage = async (
-  file: File,
-  target: ImageUploadTarget
-) => {
-  const allowedTypes = [
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "image/avif",
-  ];
+    if (file.size > 4 * 1024 * 1024) {
+      setError("Image size cannot exceed 4 MB.");
+      return;
+    }
 
-  if (!allowedTypes.includes(file.type)) {
-    setError(
-      "Only JPG, PNG, WebP and AVIF images are allowed."
-    );
-    return;
-  }
+    const uploadKey = target.kind === "hero" ? "hero" : `block-${target.index}`;
 
-  if (file.size > 4 * 1024 * 1024) {
-    setError("Image size cannot exceed 4 MB.");
-    return;
-  }
+    setUploadingImageKey(uploadKey);
+    setError("");
 
-  const uploadKey =
-    target.kind === "hero"
-      ? "hero"
-      : `block-${target.index}`;
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
 
-  setUploadingImageKey(uploadKey);
-  setError("");
-
-  try {
-    const uploadFormData = new FormData();
-    uploadFormData.append("file", file);
-
-    const response = await fetch(
-      "/api/admin/blog-images",
-      {
+      const response = await fetch("/api/admin/blog-images", {
         method: "POST",
         body: uploadFormData,
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json?.success || !json?.url) {
+        throw new Error(json?.error || "Failed to upload image.");
       }
-    );
 
-    const json = await response.json();
-
-    if (
-      !response.ok ||
-      !json?.success ||
-      !json?.url
-    ) {
-      throw new Error(
-        json?.error || "Failed to upload image."
-      );
-    }
-
-    if (target.kind === "hero") {
-      setForm((current) => ({
-        ...current,
-        heroImage: json.url,
-        heroAlt:
-          current.heroAlt ||
-          current.title ||
-          "Crawler Que blog image",
-      }));
-    } else {
-      setForm((current) => ({
-        ...current,
-        blocks: current.blocks.map(
-          (currentBlock, blockIndex) => {
-            if (
-              blockIndex !== target.index ||
-              currentBlock.type !== "image"
-            ) {
+      if (target.kind === "hero") {
+        setForm((current) => ({
+          ...current,
+          heroImage: json.url,
+          heroAlt: current.heroAlt || current.title || "Crawler Que blog image",
+        }));
+      } else {
+        setForm((current) => ({
+          ...current,
+          blocks: current.blocks.map((currentBlock, blockIndex) => {
+            if (blockIndex !== target.index || currentBlock.type !== "image") {
               return currentBlock;
             }
 
@@ -410,27 +343,18 @@ const uploadBlogImage = async (
               ...currentBlock,
               src: json.url,
             };
-          }
-        ),
-      }));
+          }),
+        }));
+      }
+    } catch (uploadError: any) {
+      setError(uploadError?.message || "Failed to upload image.");
+    } finally {
+      setUploadingImageKey(null);
     }
-  } catch (uploadError: any) {
-    setError(
-      uploadError?.message ||
-        "Failed to upload image."
-    );
-  } finally {
-    setUploadingImageKey(null);
-  }
-};
+  };
 
   const addBlock = (
-    type:
-      | "paragraph"
-      | "heading2"
-      | "heading3"
-      | "image"
-      | "table"
+    type: "paragraph" | "heading2" | "heading3" | "image" | "table" | "faq",
   ) => {
     let newBlock: BlogBlock;
 
@@ -457,12 +381,23 @@ const uploadBlogImage = async (
         src: "",
         alt: "",
       };
-    } else {
+    } else if (type === "table") {
       newBlock = {
         type: "table",
         rows: [
           ["Column 1", "Column 2"],
           ["Value 1", "Value 2"],
+        ],
+      };
+    } else {
+      newBlock = {
+        type: "faq",
+        title: "Frequently Asked Questions",
+        items: [
+          {
+            question: "",
+            answer: "",
+          },
         ],
       };
     }
@@ -474,9 +409,7 @@ const uploadBlogImage = async (
   };
 
   const removeBlock = (index: number) => {
-    const confirmed = window.confirm(
-      "Remove this content block?"
-    );
+    const confirmed = window.confirm("Remove this content block?");
 
     if (!confirmed) {
       return;
@@ -484,33 +417,21 @@ const uploadBlogImage = async (
 
     setForm((current) => ({
       ...current,
-      blocks: current.blocks.filter(
-        (_, blockIndex) => blockIndex !== index
-      ),
+      blocks: current.blocks.filter((_, blockIndex) => blockIndex !== index),
     }));
   };
 
-  const moveBlock = (
-    index: number,
-    direction: "up" | "down"
-  ) => {
+  const moveBlock = (index: number, direction: "up" | "down") => {
     setForm((current) => {
       const nextBlocks = [...current.blocks];
 
-      const targetIndex =
-        direction === "up" ? index - 1 : index + 1;
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
 
-      if (
-        targetIndex < 0 ||
-        targetIndex >= nextBlocks.length
-      ) {
+      if (targetIndex < 0 || targetIndex >= nextBlocks.length) {
         return current;
       }
 
-      [
-        nextBlocks[index],
-        nextBlocks[targetIndex],
-      ] = [
+      [nextBlocks[index], nextBlocks[targetIndex]] = [
         nextBlocks[targetIndex],
         nextBlocks[index],
       ];
@@ -531,17 +452,12 @@ const uploadBlogImage = async (
     if (form.heroImage.trim()) {
       images.push({
         src: form.heroImage.trim(),
-        alt:
-          form.heroAlt.trim() ||
-          form.title.trim(),
+        alt: form.heroAlt.trim() || form.title.trim(),
       });
     }
 
     form.blocks.forEach((block) => {
-      if (
-        block.type === "image" &&
-        block.src.trim()
-      ) {
+      if (block.type === "image" && block.src.trim()) {
         images.push({
           src: block.src.trim(),
           alt: block.alt.trim(),
@@ -551,34 +467,21 @@ const uploadBlogImage = async (
 
     return images.filter(
       (image, index, allImages) =>
-        allImages.findIndex(
-          (item) => item.src === image.src
-        ) === index
+        allImages.findIndex((item) => item.src === image.src) === index,
     );
-  }, [
-    form.blocks,
-    form.heroAlt,
-    form.heroImage,
-    form.title,
-  ]);
+  }, [form.blocks, form.heroAlt, form.heroImage, form.title]);
 
-  const savePost = async (
-    statusOverride?: BlogStatus
-  ) => {
+  const savePost = async (statusOverride?: BlogStatus) => {
     setSaving(true);
     setError("");
     setSuccess("");
 
     try {
-      const finalStatus =
-        statusOverride || form.status;
+      const finalStatus = statusOverride || form.status;
 
-      const publishedAt =
-        form.publishedAt.trim()
-          ? new Date(
-              form.publishedAt
-            ).toISOString()
-          : null;
+      const publishedAt = form.publishedAt.trim()
+        ? new Date(form.publishedAt).toISOString()
+        : null;
 
       const payload = {
         ...form,
@@ -588,13 +491,10 @@ const uploadBlogImage = async (
       };
 
       const endpoint =
-        mode === "edit"
-          ? `/api/admin/blogs/${postId}`
-          : "/api/admin/blogs";
+        mode === "edit" ? `/api/admin/blogs/${postId}` : "/api/admin/blogs";
 
       const response = await fetch(endpoint, {
-        method:
-          mode === "edit" ? "PATCH" : "POST",
+        method: mode === "edit" ? "PATCH" : "POST",
         headers: {
           "Content-Type": "application/json",
         },
@@ -604,24 +504,19 @@ const uploadBlogImage = async (
       const json = await response.json();
 
       if (!response.ok || !json?.success) {
-        throw new Error(
-          json?.error || "Failed to save blog."
-        );
+        throw new Error(json?.error || "Failed to save blog.");
       }
 
       setSuccess(
         mode === "edit"
           ? "Blog updated successfully."
-          : "Blog created successfully."
+          : "Blog created successfully.",
       );
 
       router.push("/admin/blogs");
       router.refresh();
     } catch (saveError: any) {
-      setError(
-        saveError?.message ||
-          "Failed to save blog."
-      );
+      setError(saveError?.message || "Failed to save blog.");
     } finally {
       setSaving(false);
     }
@@ -649,28 +544,20 @@ const uploadBlogImage = async (
             />
 
             <div>
-              <p className="cq-eyebrow cq-eyebrow--signal">
-                Blog Management
-              </p>
+              <p className="cq-eyebrow cq-eyebrow--signal">Blog Management</p>
 
               <h1 className="mt-1 text-3xl font-extrabold">
-                {mode === "edit"
-                  ? "Edit Blog"
-                  : "Add New Blog"}
+                {mode === "edit" ? "Edit Blog" : "Add New Blog"}
               </h1>
 
               <p className="mt-2 text-sm text-[var(--cq-text-2)]">
-                Manage content, publishing and SEO
-                settings from one editor.
+                Manage content, publishing and SEO settings from one editor.
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <a
-              href="/admin/blogs"
-              className="cq-btn cq-btn--ghost !py-2.5"
-            >
+            <a href="/admin/blogs" className="cq-btn cq-btn--ghost !py-2.5">
               Cancel
             </a>
 
@@ -680,9 +567,7 @@ const uploadBlogImage = async (
               onClick={() => savePost("DRAFT")}
               className="cq-btn cq-btn--ghost !py-2.5"
             >
-              {saving
-                ? "Saving..."
-                : "Save Draft"}
+              {saving ? "Saving..." : "Save Draft"}
             </button>
 
             <button
@@ -714,23 +599,13 @@ const uploadBlogImage = async (
 
         <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_430px]">
           <div className="space-y-7">
-            <EditorSection
-              eyebrow="Article Details"
-              title="Blog information"
-            >
+            <EditorSection eyebrow="Article Details" title="Blog information">
               <div className="grid gap-5 md:grid-cols-2">
-                <Field
-                  label="Blog Title *"
-                  className="md:col-span-2"
-                >
+                <Field label="Blog Title *" className="md:col-span-2">
                   <input
                     type="text"
                     value={form.title}
-                    onChange={(event) =>
-                      handleTitleChange(
-                        event.target.value
-                      )
-                    }
+                    onChange={(event) => handleTitleChange(event.target.value)}
                     placeholder="Enter the main blog title"
                     className="cq-input"
                   />
@@ -748,12 +623,7 @@ const uploadBlogImage = async (
                       onChange={(event) => {
                         setSlugManuallyEdited(true);
 
-                        updateField(
-                          "slug",
-                          generateSlug(
-                            event.target.value
-                          )
-                        );
+                        updateField("slug", generateSlug(event.target.value));
                       }}
                       className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm text-white outline-none"
                     />
@@ -765,10 +635,7 @@ const uploadBlogImage = async (
                     type="text"
                     value={form.category}
                     onChange={(event) =>
-                      updateField(
-                        "category",
-                        event.target.value
-                      )
+                      updateField("category", event.target.value)
                     }
                     placeholder="SEO, AI Visibility, GEO"
                     className="cq-input"
@@ -780,10 +647,7 @@ const uploadBlogImage = async (
                     type="text"
                     value={form.authorName}
                     onChange={(event) =>
-                      updateField(
-                        "authorName",
-                        event.target.value
-                      )
+                      updateField("authorName", event.target.value)
                     }
                     className="cq-input"
                   />
@@ -795,10 +659,7 @@ const uploadBlogImage = async (
                       type="text"
                       value={form.readingTime}
                       onChange={(event) =>
-                        updateField(
-                          "readingTime",
-                          event.target.value
-                        )
+                        updateField("readingTime", event.target.value)
                       }
                       className="cq-input"
                     />
@@ -808,9 +669,7 @@ const uploadBlogImage = async (
                       onClick={() =>
                         updateField(
                           "readingTime",
-                          calculateReadingTime(
-                            form.blocks
-                          )
+                          calculateReadingTime(form.blocks),
                         )
                       }
                       className="rounded-lg border border-[var(--cq-line)] px-4 text-xs font-semibold text-[var(--cq-signal)] transition hover:border-[var(--cq-signal)]"
@@ -820,17 +679,11 @@ const uploadBlogImage = async (
                   </div>
                 </Field>
 
-                <Field
-                  label="Excerpt *"
-                  className="md:col-span-2"
-                >
+                <Field label="Excerpt *" className="md:col-span-2">
                   <textarea
                     value={form.excerpt}
                     onChange={(event) =>
-                      updateField(
-                        "excerpt",
-                        event.target.value
-                      )
+                      updateField("excerpt", event.target.value)
                     }
                     rows={4}
                     maxLength={5000}
@@ -846,20 +699,14 @@ const uploadBlogImage = async (
               </div>
             </EditorSection>
 
-            <EditorSection
-              eyebrow="Search Optimisation"
-              title="SEO metadata"
-            >
+            <EditorSection eyebrow="Search Optimisation" title="SEO metadata">
               <div className="grid gap-5">
                 <Field label="SEO Title *">
                   <input
                     type="text"
                     value={form.metaTitle}
                     onChange={(event) =>
-                      updateField(
-                        "metaTitle",
-                        event.target.value
-                      )
+                      updateField("metaTitle", event.target.value)
                     }
                     maxLength={250}
                     className="cq-input"
@@ -875,10 +722,7 @@ const uploadBlogImage = async (
                   <textarea
                     value={form.metaDescription}
                     onChange={(event) =>
-                      updateField(
-                        "metaDescription",
-                        event.target.value
-                      )
+                      updateField("metaDescription", event.target.value)
                     }
                     rows={4}
                     maxLength={1000}
@@ -886,9 +730,7 @@ const uploadBlogImage = async (
                   />
 
                   <CharacterCount
-                    current={
-                      form.metaDescription.length
-                    }
+                    current={form.metaDescription.length}
                     recommended="Recommended: 140–160 characters"
                   />
                 </Field>
@@ -898,10 +740,7 @@ const uploadBlogImage = async (
                     type="text"
                     value={form.primaryKeyword}
                     onChange={(event) =>
-                      updateField(
-                        "primaryKeyword",
-                        event.target.value
-                      )
+                      updateField("primaryKeyword", event.target.value)
                     }
                     placeholder="Example: technical SEO audit tool"
                     className="cq-input"
@@ -910,35 +749,20 @@ const uploadBlogImage = async (
               </div>
             </EditorSection>
 
-            <EditorSection
-              eyebrow="Publishing"
-              title="Status and schedule"
-            >
+            <EditorSection eyebrow="Publishing" title="Status and schedule">
               <div className="grid gap-5 md:grid-cols-2">
                 <Field label="Blog Status">
                   <select
                     value={form.status}
                     onChange={(event) =>
-                      updateField(
-                        "status",
-                        event.target
-                          .value as BlogStatus
-                      )
+                      updateField("status", event.target.value as BlogStatus)
                     }
                     className="cq-input"
                   >
-                    <option value="DRAFT">
-                      Draft
-                    </option>
-                    <option value="PUBLISHED">
-                      Published
-                    </option>
-                    <option value="SCHEDULED">
-                      Scheduled
-                    </option>
-                    <option value="ARCHIVED">
-                      Archived
-                    </option>
+                    <option value="DRAFT">Draft</option>
+                    <option value="PUBLISHED">Published</option>
+                    <option value="SCHEDULED">Scheduled</option>
+                    <option value="ARCHIVED">Archived</option>
                   </select>
                 </Field>
 
@@ -947,91 +771,76 @@ const uploadBlogImage = async (
                     type="datetime-local"
                     value={form.publishedAt}
                     onChange={(event) =>
-                      updateField(
-                        "publishedAt",
-                        event.target.value
-                      )
+                      updateField("publishedAt", event.target.value)
                     }
                     className="cq-input"
                   />
 
                   <p className="mt-2 text-xs text-[var(--cq-text-3)]">
-                    Required for scheduled blogs.
-                    Published blogs can leave it empty
-                    to use the current time.
+                    Required for scheduled blogs. Published blogs can leave it
+                    empty to use the current time.
                   </p>
                 </Field>
               </div>
             </EditorSection>
 
-            <EditorSection
-              eyebrow="Featured Image"
-              title="Hero image"
-            >
+            <EditorSection eyebrow="Featured Image" title="Hero image">
               <div className="grid gap-5">
-<Field label="Hero Image *">
-  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-    <input
-      type="text"
-      value={form.heroImage}
-      onChange={(event) =>
-        updateField(
-          "heroImage",
-          event.target.value
-        )
-      }
-      placeholder="Upload an image or paste an image URL"
-      className="cq-input"
-    />
+                <Field label="Hero Image *">
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <input
+                      type="text"
+                      value={form.heroImage}
+                      onChange={(event) =>
+                        updateField("heroImage", event.target.value)
+                      }
+                      placeholder="Upload an image or paste an image URL"
+                      className="cq-input"
+                    />
 
-    <label
-      className={`cq-btn cq-btn--primary min-w-[150px] !py-3 ${
-        uploadingImageKey === "hero"
-          ? "pointer-events-none opacity-50"
-          : ""
-      }`}
-    >
-      <input
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/avif"
-        className="hidden"
-        disabled={uploadingImageKey === "hero"}
-        onChange={(event) => {
-          const file =
-            event.currentTarget.files?.[0];
+                    <label
+                      className={`cq-btn cq-btn--primary min-w-[150px] !py-3 ${
+                        uploadingImageKey === "hero"
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }`}
+                    >
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/avif"
+                        className="hidden"
+                        disabled={uploadingImageKey === "hero"}
+                        onChange={(event) => {
+                          const file = event.currentTarget.files?.[0];
 
-          event.currentTarget.value = "";
+                          event.currentTarget.value = "";
 
-          if (file) {
-            void uploadBlogImage(file, {
-              kind: "hero",
-            });
-          }
-        }}
-      />
+                          if (file) {
+                            void uploadBlogImage(file, {
+                              kind: "hero",
+                            });
+                          }
+                        }}
+                      />
 
-      {uploadingImageKey === "hero"
-        ? "Uploading..."
-        : "Upload Image"}
-    </label>
-  </div>
+                      {uploadingImageKey === "hero"
+                        ? "Uploading..."
+                        : "Upload Image"}
+                    </label>
+                  </div>
 
-  <p className="mt-2 text-xs text-[var(--cq-text-3)]">
-    JPG, PNG, WebP or AVIF. Maximum file size:
-    4 MB. Existing images can still use
-    /blog/filename.png.
-  </p>
-</Field>
+                  <p className="mt-2 text-xs text-[var(--cq-text-3)]">
+                    JPG, PNG, WebP or AVIF. Maximum file size: 4 MB. Existing
+                    images can still use /blog/filename.png.
+                  </p>
+                </Field>
 
                 <Field label="Hero Image ALT Text *">
                   <input
                     type="text"
                     value={form.heroAlt}
                     onChange={(event) =>
-                      updateField(
-                        "heroAlt",
-                        event.target.value
-                      )
+                      updateField("heroAlt", event.target.value)
                     }
                     className="cq-input"
                   />
@@ -1049,84 +858,64 @@ const uploadBlogImage = async (
               </div>
             </EditorSection>
 
-            <EditorSection
-              eyebrow="Article Builder"
-              title="Content blocks"
-            >
+            <EditorSection eyebrow="Article Builder" title="Content blocks">
               <div className="mb-6 flex flex-wrap gap-2">
                 <AddBlockButton
                   label="+ Paragraph"
-                  onClick={() =>
-                    addBlock("paragraph")
-                  }
+                  onClick={() => addBlock("paragraph")}
                 />
 
                 <AddBlockButton
                   label="+ H2 Heading"
-                  onClick={() =>
-                    addBlock("heading2")
-                  }
+                  onClick={() => addBlock("heading2")}
                 />
 
                 <AddBlockButton
                   label="+ H3 Heading"
-                  onClick={() =>
-                    addBlock("heading3")
-                  }
+                  onClick={() => addBlock("heading3")}
                 />
 
                 <AddBlockButton
                   label="+ Image"
-                  onClick={() =>
-                    addBlock("image")
-                  }
+                  onClick={() => addBlock("image")}
                 />
 
                 <AddBlockButton
                   label="+ Table"
-                  onClick={() =>
-                    addBlock("table")
-                  }
+                  onClick={() => addBlock("table")}
+                />
+
+                <AddBlockButton
+                  label="+ FAQ Section"
+                  onClick={() => addBlock("faq")}
                 />
               </div>
 
               <div className="space-y-4">
-                {form.blocks.map(
-                  (block, index) => (
-<ContentBlockEditor
-  key={`${block.type}-${index}`}
-  block={block}
-  index={index}
-  totalBlocks={form.blocks.length}
-  uploading={
-    uploadingImageKey === `block-${index}`
-  }
-  onUpload={(file) =>
-    uploadBlogImage(file, {
-      kind: "block",
-      index,
-    })
-  }
-  onChange={(nextBlock) =>
-    updateBlock(index, nextBlock)
-  }
-  onMoveUp={() =>
-    moveBlock(index, "up")
-  }
-  onMoveDown={() =>
-    moveBlock(index, "down")
-  }
-  onRemove={() =>
-    removeBlock(index)
-  }
-/>
-                  )
-                )}
+                {form.blocks.map((block, index) => (
+                  <ContentBlockEditor
+                    key={`${block.type}-${index}`}
+                    block={block}
+                    index={index}
+                    totalBlocks={form.blocks.length}
+                    uploading={uploadingImageKey === `block-${index}`}
+                    onUpload={(file) =>
+                      uploadBlogImage(file, {
+                        kind: "block",
+                        index,
+                      })
+                    }
+                    onChange={(nextBlock) => updateBlock(index, nextBlock)}
+                    onMoveUp={() => moveBlock(index, "up")}
+                    onMoveDown={() => moveBlock(index, "down")}
+                    onRemove={() => removeBlock(index)}
+                  />
+                ))}
 
                 {form.blocks.length === 0 && (
                   <div className="rounded-xl border border-dashed border-[var(--cq-line)] bg-[var(--cq-ink)] p-10 text-center text-sm text-[var(--cq-text-2)]">
-                    Add a paragraph, heading,
-                    image or table to start writing.
+                    Add a paragraph, heading, image, table or FAQ section to
+                    start writing.
                   </div>
                 )}
               </div>
@@ -1154,13 +943,9 @@ function EditorSection({
   return (
     <section className="rounded-2xl border border-[var(--cq-line)] bg-[var(--cq-surface)] p-5 md:p-7">
       <div className="mb-6 border-b border-[var(--cq-line)] pb-5">
-        <p className="cq-eyebrow cq-eyebrow--signal">
-          {eyebrow}
-        </p>
+        <p className="cq-eyebrow cq-eyebrow--signal">{eyebrow}</p>
 
-        <h2 className="mt-2 text-2xl font-extrabold">
-          {title}
-        </h2>
+        <h2 className="mt-2 text-2xl font-extrabold">{title}</h2>
       </div>
 
       {children}
@@ -1245,117 +1030,89 @@ function ContentBlockEditor({
   const blockLabel =
     block.type === "heading"
       ? `H${block.level} Heading`
-      : block.type.charAt(0).toUpperCase() +
-        block.type.slice(1);
+      : block.type === "faq"
+        ? "FAQ Section"
+        : block.type.charAt(0).toUpperCase() + block.type.slice(1);
 
-        const paragraphTextareaRef =
-  useRef<HTMLTextAreaElement>(null);
+  const paragraphTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-const insertParagraphLink = () => {
-  if (block.type !== "paragraph") {
-    return;
-  }
+  const insertParagraphLink = () => {
+    if (block.type !== "paragraph") {
+      return;
+    }
 
-  const textarea =
-    paragraphTextareaRef.current;
+    const textarea = paragraphTextareaRef.current;
 
-  const selectionStart =
-    textarea?.selectionStart ??
-    block.text.length;
+    const selectionStart = textarea?.selectionStart ?? block.text.length;
 
-  const selectionEnd =
-    textarea?.selectionEnd ??
-    selectionStart;
+    const selectionEnd = textarea?.selectionEnd ?? selectionStart;
 
-  const selectedText = block.text
-    .slice(selectionStart, selectionEnd)
-    .trim();
+    const selectedText = block.text.slice(selectionStart, selectionEnd).trim();
 
-  const enteredLinkText =
-    selectedText ||
-    window.prompt(
-      "Enter the visible link text:"
-    );
+    const enteredLinkText =
+      selectedText || window.prompt("Enter the visible link text:");
 
-  if (!enteredLinkText?.trim()) {
-    return;
-  }
+    if (!enteredLinkText?.trim()) {
+      return;
+    }
 
-  const enteredUrl = window.prompt(
-    "Link URL enter karo:",
-    "https://"
-  );
+    const enteredUrl = window.prompt("Link URL enter karo:", "https://");
 
-  if (!enteredUrl?.trim()) {
-    return;
-  }
+    if (!enteredUrl?.trim()) {
+      return;
+    }
 
-  const url = enteredUrl.trim();
+    const url = enteredUrl.trim();
 
-  const safeUrl =
-    /^(https?:\/\/|mailto:|tel:)/i.test(
-      url
-    ) ||
-    (
-      url.startsWith("/") &&
-      !url.startsWith("//")
-    ) ||
-    url.startsWith("#");
+    const safeUrl =
+      /^(https?:\/\/|mailto:|tel:)/i.test(url) ||
+      (url.startsWith("/") && !url.startsWith("//")) ||
+      url.startsWith("#");
 
-  if (!safeUrl) {
-    window.alert(
-      "Enter a valid URL, for example: https://example.com or /pricing"
-    );
+    if (!safeUrl) {
+      window.alert(
+        "Enter a valid URL, for example: https://example.com or /pricing",
+      );
 
-    return;
-  }
+      return;
+    }
 
-  const cleanLinkText =
-    enteredLinkText
-      .trim()
-      .replace(/[\[\]]/g, "");
+    const cleanLinkText = enteredLinkText.trim().replace(/[\[\]]/g, "");
 
-  const markdownLink =
-    `[${cleanLinkText}](${url})`;
+    const markdownLink = `[${cleanLinkText}](${url})`;
 
-  const nextText =
-    block.text.slice(0, selectionStart) +
-    markdownLink +
-    block.text.slice(selectionEnd);
+    const nextText =
+      block.text.slice(0, selectionStart) +
+      markdownLink +
+      block.text.slice(selectionEnd);
 
-  onChange({
-    type: "paragraph",
-    text: nextText,
-  });
+    onChange({
+      type: "paragraph",
+      text: nextText,
+    });
 
-  requestAnimationFrame(() => {
-    const nextCursorPosition =
-      selectionStart +
-      markdownLink.length;
+    requestAnimationFrame(() => {
+      const nextCursorPosition = selectionStart + markdownLink.length;
 
-    textarea?.focus();
+      textarea?.focus();
 
-    textarea?.setSelectionRange(
-      nextCursorPosition,
-      nextCursorPosition
-    );
-  });
-};
+      textarea?.setSelectionRange(nextCursorPosition, nextCursorPosition);
+    });
+  };
 
-const handleParagraphKeyDown = (
-  event: KeyboardEvent<HTMLTextAreaElement>
-) => {
-  const isLinkShortcut =
-    (event.ctrlKey || event.metaKey) &&
-    event.key.toLowerCase() === "k";
+  const handleParagraphKeyDown = (
+    event: KeyboardEvent<HTMLTextAreaElement>,
+  ) => {
+    const isLinkShortcut =
+      (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k";
 
-  if (!isLinkShortcut) {
-    return;
-  }
+    if (!isLinkShortcut) {
+      return;
+    }
 
-  event.preventDefault();
-  insertParagraphLink();
-};
+    event.preventDefault();
+    insertParagraphLink();
+  };
 
   return (
     <div className="rounded-xl border border-[var(--cq-line)] bg-[var(--cq-ink)] p-4 md:p-5">
@@ -1365,9 +1122,7 @@ const handleParagraphKeyDown = (
             Block {index + 1}
           </span>
 
-          <p className="mt-1 text-sm font-bold text-white">
-            {blockLabel}
-          </p>
+          <p className="mt-1 text-sm font-bold text-white">{blockLabel}</p>
         </div>
 
         <div className="flex gap-2">
@@ -1393,45 +1148,42 @@ const handleParagraphKeyDown = (
         </div>
       </div>
 
-{block.type === "paragraph" && (
-  <div>
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-      <button
-        type="button"
-        onClick={insertParagraphLink}
-        className="rounded-lg border border-[var(--cq-signal)]/25 bg-[var(--cq-signal)]/10 px-4 py-2 text-xs font-semibold text-[var(--cq-signal)] transition hover:bg-[var(--cq-signal)] hover:text-[var(--cq-on-signal)]"
-      >
-        + Insert Link
-      </button>
+      {block.type === "paragraph" && (
+        <div>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={insertParagraphLink}
+              className="rounded-lg border border-[var(--cq-signal)]/25 bg-[var(--cq-signal)]/10 px-4 py-2 text-xs font-semibold text-[var(--cq-signal)] transition hover:bg-[var(--cq-signal)] hover:text-[var(--cq-on-signal)]"
+            >
+              + Insert Link
+            </button>
 
-<p className="text-xs text-[var(--cq-text-3)]">
-  Select text and press Ctrl + K, or click
-  Insert Link.
-</p>
-    </div>
+            <p className="text-xs text-[var(--cq-text-3)]">
+              Select text and press Ctrl + K, or click Insert Link.
+            </p>
+          </div>
 
-<textarea
-  ref={paragraphTextareaRef}
-  value={block.text}
-  onChange={(event) =>
-    onChange({
-      type: "paragraph",
-      text: event.target.value,
-    })
-  }
-  onKeyDown={handleParagraphKeyDown}
-  rows={7}
-  placeholder="Write the paragraph content..."
-  className="cq-input resize-y"
-/>
+          <textarea
+            ref={paragraphTextareaRef}
+            value={block.text}
+            onChange={(event) =>
+              onChange({
+                type: "paragraph",
+                text: event.target.value,
+              })
+            }
+            onKeyDown={handleParagraphKeyDown}
+            rows={7}
+            placeholder="Write the paragraph content..."
+            className="cq-input resize-y"
+          />
 
-    <p className="mt-2 text-xs leading-5 text-[var(--cq-text-3)]">
-      You can also add a link manually:
-      {" "}
-      [Crawler Que Pricing](/#pricing)
-    </p>
-  </div>
-)}
+          <p className="mt-2 text-xs leading-5 text-[var(--cq-text-3)]">
+            You can also add a link manually: [Crawler Que Pricing](/#pricing)
+          </p>
+        </div>
+      )}
 
       {block.type === "heading" && (
         <div className="grid gap-3 md:grid-cols-[140px_1fr]">
@@ -1440,22 +1192,15 @@ const handleParagraphKeyDown = (
             onChange={(event) =>
               onChange({
                 type: "heading",
-                level:
-                  Number(event.target.value) === 3
-                    ? 3
-                    : 2,
+                level: Number(event.target.value) === 3 ? 3 : 2,
                 text: block.text,
               })
             }
             className="cq-input"
           >
-            <option value="2">
-              H2 Heading
-            </option>
+            <option value="2">H2 Heading</option>
 
-            <option value="3">
-              H3 Heading
-            </option>
+            <option value="3">H3 Heading</option>
           </select>
 
           <input
@@ -1473,78 +1218,195 @@ const handleParagraphKeyDown = (
         </div>
       )}
 
-{block.type === "image" && (
-  <div className="grid gap-4">
-    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-      <input
-        type="text"
-        value={block.src}
-        onChange={(event) =>
-          onChange({
-            ...block,
-            src: event.target.value,
-          })
-        }
-        placeholder="Upload an image or paste image URL"
-        className="cq-input"
-      />
+      {block.type === "image" && (
+        <div className="grid gap-4">
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <input
+              type="text"
+              value={block.src}
+              onChange={(event) =>
+                onChange({
+                  ...block,
+                  src: event.target.value,
+                })
+              }
+              placeholder="Upload an image or paste image URL"
+              className="cq-input"
+            />
 
-      <label
-        className={`cq-btn cq-btn--primary min-w-[150px] !py-3 ${
-          uploading
-            ? "pointer-events-none opacity-50"
-            : ""
-        }`}
-      >
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/avif"
-          className="hidden"
-          disabled={uploading}
-          onChange={(event) => {
-            const file =
-              event.currentTarget.files?.[0];
+            <label
+              className={`cq-btn cq-btn--primary min-w-[150px] !py-3 ${
+                uploading ? "pointer-events-none opacity-50" : ""
+              }`}
+            >
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/avif"
+                className="hidden"
+                disabled={uploading}
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
 
-            event.currentTarget.value = "";
+                  event.currentTarget.value = "";
 
-            if (file) {
-              void onUpload(file);
+                  if (file) {
+                    void onUpload(file);
+                  }
+                }}
+              />
+
+              {uploading ? "Uploading..." : "Upload Image"}
+            </label>
+          </div>
+
+          <input
+            type="text"
+            value={block.alt}
+            onChange={(event) =>
+              onChange({
+                ...block,
+                alt: event.target.value,
+              })
             }
-          }}
-        />
+            placeholder="Image ALT text"
+            className="cq-input"
+          />
 
-        {uploading
-          ? "Uploading..."
-          : "Upload Image"}
-      </label>
-    </div>
+          <p className="text-xs text-[var(--cq-text-3)]">
+            JPG, PNG, WebP or AVIF. Maximum 4 MB.
+          </p>
 
-    <input
-      type="text"
-      value={block.alt}
-      onChange={(event) =>
-        onChange({
-          ...block,
-          alt: event.target.value,
-        })
-      }
-      placeholder="Image ALT text"
-      className="cq-input"
-    />
+          {block.src && (
+            <img
+              src={block.src}
+              alt={block.alt}
+              className="max-h-72 w-full rounded-xl border border-[var(--cq-line)] object-cover"
+            />
+          )}
+        </div>
+      )}
 
-    <p className="text-xs text-[var(--cq-text-3)]">
-      JPG, PNG, WebP or AVIF. Maximum 4 MB.
-    </p>
+      {block.type === "faq" && (
+        <div className="grid gap-4">
+          <Field label="FAQ Section Title">
+            <input
+              type="text"
+              value={block.title}
+              onChange={(event) =>
+                onChange({
+                  ...block,
+                  title: event.target.value,
+                })
+              }
+              placeholder="Frequently Asked Questions"
+              className="cq-input"
+            />
+          </Field>
 
-    {block.src && (
-      <img
-        src={block.src}
-        alt={block.alt}
-        className="max-h-72 w-full rounded-xl border border-[var(--cq-line)] object-cover"
-      />
-    )}
-  </div>
-)}
+          <div className="space-y-4">
+            {block.items.map((item, itemIndex) => (
+              <div
+                key={itemIndex}
+                className="rounded-xl border border-[var(--cq-line)] bg-[var(--cq-surface)] p-4"
+              >
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <p className="text-sm font-bold text-white">
+                    Question {itemIndex + 1}
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onChange({
+                        ...block,
+                        items: block.items.filter(
+                          (_, currentIndex) => currentIndex !== itemIndex,
+                        ),
+                      })
+                    }
+                    className="rounded-lg border border-red-400/20 bg-red-400/10 px-3 py-2 text-xs font-bold text-red-300 transition hover:bg-red-400 hover:text-white"
+                  >
+                    Remove Question
+                  </button>
+                </div>
+
+                <div className="grid gap-3">
+                  <input
+                    type="text"
+                    value={item.question}
+                    onChange={(event) =>
+                      onChange({
+                        ...block,
+                        items: block.items.map((currentItem, currentIndex) =>
+                          currentIndex === itemIndex
+                            ? {
+                                ...currentItem,
+                                question: event.target.value,
+                              }
+                            : currentItem,
+                        ),
+                      })
+                    }
+                    placeholder="Enter the FAQ question"
+                    className="cq-input"
+                  />
+
+                  <textarea
+                    value={item.answer}
+                    onChange={(event) =>
+                      onChange({
+                        ...block,
+                        items: block.items.map((currentItem, currentIndex) =>
+                          currentIndex === itemIndex
+                            ? {
+                                ...currentItem,
+                                answer: event.target.value,
+                              }
+                            : currentItem,
+                        ),
+                      })
+                    }
+                    rows={5}
+                    placeholder="Enter the FAQ answer"
+                    className="cq-input resize-y"
+                  />
+
+                  <p className="text-xs leading-5 text-[var(--cq-text-3)]">
+                    Links can be added manually using [link
+                    text](https://example.com).
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              onChange({
+                ...block,
+                items: [
+                  ...block.items,
+                  {
+                    question: "",
+                    answer: "",
+                  },
+                ],
+              })
+            }
+            className="rounded-lg border border-[var(--cq-signal)]/25 bg-[var(--cq-signal)]/10 px-4 py-3 text-sm font-semibold text-[var(--cq-signal)] transition hover:bg-[var(--cq-signal)] hover:text-[var(--cq-on-signal)]"
+          >
+            + Add Another Question
+          </button>
+
+          {block.items.length === 0 && (
+            <p className="rounded-lg border border-dashed border-[var(--cq-line)] p-4 text-sm text-[var(--cq-text-3)]">
+              This FAQ section has no questions. Click Add Another Question to
+              continue.
+            </p>
+          )}
+        </div>
+      )}
 
       {block.type === "table" && (
         <div>
@@ -1553,9 +1415,7 @@ const handleParagraphKeyDown = (
             onChange={(event) =>
               onChange({
                 type: "table",
-                rows: tableTextToRows(
-                  event.target.value
-                ),
+                rows: tableTextToRows(event.target.value),
               })
             }
             rows={8}
@@ -1563,8 +1423,7 @@ const handleParagraphKeyDown = (
           />
 
           <p className="mt-2 text-xs leading-5 text-[var(--cq-text-3)]">
-            Har line ek table row hai. Columns ko
-            vertical bar se separate karo:
+            Har line ek table row hai. Columns ko vertical bar se separate karo:
             Heading 1 | Heading 2
           </p>
         </div>
@@ -1594,17 +1453,11 @@ function SmallActionButton({
   );
 }
 
-function LivePreview({
-  form,
-}: {
-  form: BlogFormState;
-}) {
+function LivePreview({ form }: { form: BlogFormState }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-[var(--cq-line)] bg-[var(--cq-surface)]">
       <div className="border-b border-[var(--cq-line)] p-5">
-        <p className="cq-eyebrow cq-eyebrow--signal">
-          Live Preview
-        </p>
+        <p className="cq-eyebrow cq-eyebrow--signal">Live Preview</p>
 
         <p className="mt-2 text-sm text-[var(--cq-text-2)]">
           Approximate public blog appearance
@@ -1621,9 +1474,7 @@ function LivePreview({
         </h1>
 
         <div className="mt-4 flex flex-wrap gap-2 text-xs text-[var(--cq-text-3)]">
-          <span>
-            {form.authorName || "Crawler Que"}
-          </span>
+          <span>{form.authorName || "Crawler Que"}</span>
           <span>•</span>
           <span>{form.readingTime}</span>
           <span>•</span>
@@ -1648,17 +1499,14 @@ function LivePreview({
           {form.blocks.map((block, index) => {
             if (block.type === "paragraph") {
               return (
-<p
-  key={index}
-  className="mt-4 text-sm leading-7 text-[var(--cq-text-2)]"
->
-  <BlogRichText
-    text={
-      block.text ||
-      "Paragraph content will appear here."
-    }
-  />
-</p>
+                <p
+                  key={index}
+                  className="mt-4 text-sm leading-7 text-[var(--cq-text-2)]"
+                >
+                  <BlogRichText
+                    text={block.text || "Paragraph content will appear here."}
+                  />
+                </p>
               );
             }
 
@@ -1671,10 +1519,7 @@ function LivePreview({
                   {block.text || "H2 heading"}
                 </h2>
               ) : (
-                <h3
-                  key={index}
-                  className="mt-6 text-xl font-bold text-white"
-                >
+                <h3 key={index} className="mt-6 text-xl font-bold text-white">
                   {block.text || "H3 heading"}
                 </h3>
               );
@@ -1691,6 +1536,38 @@ function LivePreview({
               ) : null;
             }
 
+            if (block.type === "faq") {
+              return (
+                <section
+                  key={index}
+                  className="mt-8 rounded-2xl border border-[var(--cq-line)] bg-[var(--cq-ink)] p-5"
+                >
+                  <h2 className="text-2xl font-extrabold text-white">
+                    {block.title || "Frequently Asked Questions"}
+                  </h2>
+
+                  <div className="mt-4 space-y-3">
+                    {block.items.map((item, itemIndex) => (
+                      <details
+                        key={itemIndex}
+                        className="rounded-xl border border-[var(--cq-line)] bg-[var(--cq-surface)] p-4"
+                      >
+                        <summary className="cursor-pointer text-sm font-bold text-white">
+                          {item.question || `Question ${itemIndex + 1}`}
+                        </summary>
+
+                        <p className="mt-3 text-sm leading-7 text-[var(--cq-text-2)]">
+                          <BlogRichText
+                            text={item.answer || "FAQ answer will appear here."}
+                          />
+                        </p>
+                      </details>
+                    ))}
+                  </div>
+                </section>
+              );
+            }
+
             return (
               <div
                 key={index}
@@ -1698,29 +1575,22 @@ function LivePreview({
               >
                 <table className="w-full min-w-[350px] text-left text-xs">
                   <tbody>
-                    {block.rows.map(
-                      (row, rowIndex) => (
-                        <tr
-                          key={rowIndex}
-                          className={
-                            rowIndex === 0
-                              ? "bg-white/10 text-white"
-                              : "border-t border-[var(--cq-line)] text-[var(--cq-text-2)]"
-                          }
-                        >
-                          {row.map(
-                            (cell, cellIndex) => (
-                              <td
-                                key={cellIndex}
-                                className="p-3"
-                              >
-                                {cell}
-                              </td>
-                            )
-                          )}
-                        </tr>
-                      )
-                    )}
+                    {block.rows.map((row, rowIndex) => (
+                      <tr
+                        key={rowIndex}
+                        className={
+                          rowIndex === 0
+                            ? "bg-white/10 text-white"
+                            : "border-t border-[var(--cq-line)] text-[var(--cq-text-2)]"
+                        }
+                      >
+                        {row.map((cell, cellIndex) => (
+                          <td key={cellIndex} className="p-3">
+                            {cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

@@ -1,19 +1,13 @@
 import "server-only";
 
-import {
-  BlogStatus,
-} from "@prisma/client";
+import { BlogStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import type {
-  BlogBlock,
-  BlogPost,
-} from "@/lib/blogs";
+import type { BlogBlock, BlogPost } from "@/lib/blogs";
 
-export type PublicBlogPost =
-  BlogPost & {
-    authorName?: string;
-    updatedAt?: string;
-  };
+export type PublicBlogPost = BlogPost & {
+  authorName?: string;
+  updatedAt?: string;
+};
 
 type DatabaseBlogPost = {
   slug: string;
@@ -58,34 +52,21 @@ const PUBLIC_STATUSES: BlogStatus[] = [
   BlogStatus.SCHEDULED,
 ];
 
-function normalizeImages(
-  value: unknown
-): BlogPost["images"] {
+function normalizeImages(value: unknown): BlogPost["images"] {
   if (!Array.isArray(value)) {
     return [];
   }
 
   return value.flatMap((item) => {
-    if (
-      !item ||
-      typeof item !== "object"
-    ) {
+    if (!item || typeof item !== "object") {
       return [];
     }
 
-    const image =
-      item as Record<
-        string,
-        unknown
-      >;
+    const image = item as Record<string, unknown>;
 
-    const src = String(
-      image.src || ""
-    ).trim();
+    const src = String(image.src || "").trim();
 
-    const alt = String(
-      image.alt || ""
-    ).trim();
+    const alt = String(image.alt || "").trim();
 
     if (!src) {
       return [];
@@ -100,38 +81,24 @@ function normalizeImages(
   });
 }
 
-function normalizeBlocks(
-  value: unknown
-): BlogBlock[] {
+function normalizeBlocks(value: unknown): BlogBlock[] {
   if (!Array.isArray(value)) {
     return [];
   }
 
-  const normalizedBlocks:
-    BlogBlock[] = [];
+  const normalizedBlocks: BlogBlock[] = [];
 
   for (const item of value) {
-    if (
-      !item ||
-      typeof item !== "object"
-    ) {
+    if (!item || typeof item !== "object") {
       continue;
     }
 
-    const block =
-      item as Record<
-        string,
-        unknown
-      >;
+    const block = item as Record<string, unknown>;
 
-    const type = String(
-      block.type || ""
-    );
+    const type = String(block.type || "");
 
     if (type === "paragraph") {
-      const text = String(
-        block.text || ""
-      ).trim();
+      const text = String(block.text || "").trim();
 
       if (text) {
         normalizedBlocks.push({
@@ -144,17 +111,12 @@ function normalizeBlocks(
     }
 
     if (type === "heading") {
-      const text = String(
-        block.text || ""
-      ).trim();
+      const text = String(block.text || "").trim();
 
       if (text) {
         normalizedBlocks.push({
           type: "heading",
-          level:
-            Number(block.level) === 3
-              ? 3
-              : 2,
+          level: Number(block.level) === 3 ? 3 : 2,
           text,
         });
       }
@@ -163,13 +125,9 @@ function normalizeBlocks(
     }
 
     if (type === "image") {
-      const src = String(
-        block.src || ""
-      ).trim();
+      const src = String(block.src || "").trim();
 
-      const alt = String(
-        block.alt || ""
-      ).trim();
+      const alt = String(block.alt || "").trim();
 
       if (src) {
         normalizedBlocks.push({
@@ -182,25 +140,50 @@ function normalizeBlocks(
       continue;
     }
 
-    if (
-      type === "table" &&
-      Array.isArray(block.rows)
-    ) {
+    if (type === "faq" && Array.isArray(block.items)) {
+      const title =
+        String(block.title || "Frequently Asked Questions").trim() ||
+        "Frequently Asked Questions";
+
+      const items = block.items.flatMap((faqItem) => {
+        if (!faqItem || typeof faqItem !== "object") {
+          return [];
+        }
+
+        const faq = faqItem as Record<string, unknown>;
+
+        const question = String(faq.question || "").trim();
+
+        const answer = String(faq.answer || "").trim();
+
+        if (!question || !answer) {
+          return [];
+        }
+
+        return [
+          {
+            question,
+            answer,
+          },
+        ];
+      });
+
+      if (items.length > 0) {
+        normalizedBlocks.push({
+          type: "faq",
+          title,
+          items,
+        });
+      }
+
+      continue;
+    }
+
+    if (type === "table" && Array.isArray(block.rows)) {
       const rows = block.rows
-        .filter((row) =>
-          Array.isArray(row)
-        )
-        .map((row) =>
-          (
-            row as unknown[]
-          ).map((cell) =>
-            String(cell ?? "")
-          )
-        )
-        .filter(
-          (row) =>
-            row.length > 0
-        );
+        .filter((row) => Array.isArray(row))
+        .map((row) => (row as unknown[]).map((cell) => String(cell ?? "")))
+        .filter((row) => row.length > 0);
 
       if (rows.length > 0) {
         normalizedBlocks.push({
@@ -214,124 +197,92 @@ function normalizeBlocks(
   return normalizedBlocks;
 }
 
-function databasePostToPublicPost(
-  post: DatabaseBlogPost
-): PublicBlogPost {
+function databasePostToPublicPost(post: DatabaseBlogPost): PublicBlogPost {
   return {
     slug: post.slug,
     title: post.title,
     metaTitle: post.metaTitle,
-    metaDescription:
-      post.metaDescription,
-    primaryKeyword:
-      post.primaryKeyword || "",
+    metaDescription: post.metaDescription,
+    primaryKeyword: post.primaryKeyword || "",
     excerpt: post.excerpt,
     category: post.category,
-    publishedAt:
-      post.publishedAt
-        ? post.publishedAt
-            .toISOString()
-            .slice(0, 10)
-        : "",
-    readingTime:
-      post.readingTime,
+    publishedAt: post.publishedAt
+      ? post.publishedAt.toISOString().slice(0, 10)
+      : "",
+    readingTime: post.readingTime,
     heroImage: post.heroImage,
     heroAlt: post.heroAlt,
-    images: normalizeImages(
-      post.images
-    ),
-    blocks: normalizeBlocks(
-      post.blocks
-    ),
-    authorName:
-      post.authorName ||
-      "Crawler Que",
-    updatedAt:
-      post.updatedAt.toISOString(),
+    images: normalizeImages(post.images),
+    blocks: normalizeBlocks(post.blocks),
+    authorName: post.authorName || "Crawler Que",
+    updatedAt: post.updatedAt.toISOString(),
   };
 }
 
-export async function getPublishedBlogPosts(): Promise<
-  PublicBlogPost[]
-> {
+export async function getPublishedBlogPosts(): Promise<PublicBlogPost[]> {
   const now = new Date();
 
   try {
-    const posts =
-      await prisma.blogPost.findMany({
-        where: {
-          status: {
-            in: PUBLIC_STATUSES,
-          },
-          publishedAt: {
-            lte: now,
-          },
+    const posts = await prisma.blogPost.findMany({
+      where: {
+        status: {
+          in: PUBLIC_STATUSES,
         },
-        select: publicBlogSelect,
-        orderBy: [
-          {
-            publishedAt: "desc",
-          },
-          {
-            updatedAt: "desc",
-          },
-        ],
-      });
+        publishedAt: {
+          lte: now,
+        },
+      },
+      select: publicBlogSelect,
+      orderBy: [
+        {
+          publishedAt: "desc",
+        },
+        {
+          updatedAt: "desc",
+        },
+      ],
+    });
 
-    return posts.map(
-      databasePostToPublicPost
-    );
+    return posts.map(databasePostToPublicPost);
   } catch (error) {
-    console.error(
-      "Published blog list failed:",
-      error
-    );
+    console.error("Published blog list failed:", error);
 
     return [];
   }
 }
 
 export async function getPublishedBlogPost(
-  slug: string
-): Promise<
-  PublicBlogPost | null
-> {
-  const normalizedSlug =
-    String(slug || "")
-      .trim()
-      .toLowerCase();
+  slug: string,
+): Promise<PublicBlogPost | null> {
+  const normalizedSlug = String(slug || "")
+    .trim()
+    .toLowerCase();
 
   if (!normalizedSlug) {
     return null;
   }
 
   try {
-    const post =
-      await prisma.blogPost.findFirst({
-        where: {
-          slug: normalizedSlug,
-          status: {
-            in: PUBLIC_STATUSES,
-          },
-          publishedAt: {
-            lte: new Date(),
-          },
+    const post = await prisma.blogPost.findFirst({
+      where: {
+        slug: normalizedSlug,
+        status: {
+          in: PUBLIC_STATUSES,
         },
-        select: publicBlogSelect,
-      });
+        publishedAt: {
+          lte: new Date(),
+        },
+      },
+      select: publicBlogSelect,
+    });
 
     if (!post) {
       return null;
     }
 
-    return databasePostToPublicPost(
-      post
-    );
+    return databasePostToPublicPost(post);
   } catch (error) {
-    console.error(
-      "Published blog lookup failed:",
-      error
-    );
+    console.error("Published blog lookup failed:", error);
 
     return null;
   }
