@@ -19,6 +19,7 @@ export default function AdminPage() {
   const [creating,       setCreating]       = useState(false);
   const [createError,    setCreateError]    = useState("");
   const [createSuccess,  setCreateSuccess]  = useState("");
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/stats")
@@ -71,6 +72,29 @@ export default function AdminPage() {
     }
   };
 
+  const handleLogout = async () => {
+  if (loggingOut) return;
+
+  setLoggingOut(true);
+
+  try {
+    const response = await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "same-origin",
+    });
+
+    if (!response.ok) {
+      throw new Error("Logout failed.");
+    }
+
+    window.location.replace("/login");
+  } catch (error) {
+    console.error("Admin logout failed:", error);
+    alert("Logout failed. Please try again.");
+    setLoggingOut(false);
+  }
+};
+
   return (
     <main className="si-dashboard min-h-screen p-8 text-[var(--cq-text)]">
       <div className="mx-auto max-w-7xl">
@@ -85,7 +109,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-<div className="flex items-center gap-3">
+<div className="flex flex-wrap items-center justify-end gap-3">
   <a
     href="/admin/blogs"
     className="rounded-xl border border-[var(--cq-signal)]/30 bg-[var(--cq-signal)]/10 px-5 py-3 text-sm font-semibold text-[var(--cq-signal)] transition hover:bg-[var(--cq-signal)] hover:text-[var(--cq-on-signal)]"
@@ -99,6 +123,32 @@ export default function AdminPage() {
   >
     Dashboard
   </a>
+
+  <button
+    type="button"
+    onClick={handleLogout}
+    disabled={loggingOut}
+    className="inline-flex items-center gap-2 rounded-xl border border-red-400/25 bg-red-400/10 px-5 py-3 text-sm font-semibold text-red-300 transition hover:border-red-400/50 hover:bg-red-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+
+    {loggingOut ? "Logging out..." : "Log Out"}
+  </button>
 </div>
         </div>
 
