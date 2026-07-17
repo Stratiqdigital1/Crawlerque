@@ -1,87 +1,199 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { verifySessionToken } from "@/lib/auth";
-import { withSecurityHeaders } from "@/lib/security-headers";
+import {
+  verifySessionToken,
+} from "@/lib/auth";
+import {
+  withSecurityHeaders,
+} from "@/lib/security-headers";
+import {
+  getPromoAccessForSession,
+  PROMO_REPORT_TYPES,
+} from "@/lib/promo-access";
 
-async function getUserFromCookie() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("stratiq_session")?.value;
+async function getSessionFromCookie() {
+  const cookieStore =
+    await cookies();
 
-  if (!token) return null;
+  const token = cookieStore.get(
+    "stratiq_session"
+  )?.value;
+
+  if (!token) {
+    return null;
+  }
 
   try {
-    const payload: any = await verifySessionToken(token);
+    const payload: any =
+      await verifySessionToken(token);
 
-    if (!payload?.userId) return null;
+    if (!payload?.userId) {
+      return null;
+    }
 
     return {
-      id: String(payload.userId),
-      role: String(payload.role || "user"),
+      id: String(
+        payload.userId
+      ),
+      role: String(
+        payload.role || "user"
+      ),
+      promoAccessId:
+        payload.promoAccessId
+          ? String(
+              payload.promoAccessId
+            )
+          : null,
     };
   } catch {
     return null;
   }
 }
 
-function extractDomainFromUrl(input: string) {
+function extractDomainFromUrl(
+  input: string
+) {
   try {
-    const withProtocol = /^https?:\/\//i.test(input)
-      ? input
-      : `https://${input}`;
+    const withProtocol =
+      /^https?:\/\//i.test(input)
+        ? input
+        : `https://${input}`;
 
-    return new URL(withProtocol).hostname.replace(/^www\./, "");
+    return new URL(
+      withProtocol
+    ).hostname.replace(
+      /^www\./,
+      ""
+    );
   } catch {
-    return input.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0];
+    return input
+      .replace(/^https?:\/\//, "")
+      .replace(/^www\./, "")
+      .split("/")[0];
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(
+  req: Request
+) {
   try {
-    const user = await getUserFromCookie();
+    const session =
+      await getSessionFromCookie();
 
-    if (!user) {
+    if (!session) {
       return withSecurityHeaders(
         NextResponse.json(
-          { success: false, error: "Unauthorized" },
-          { status: 401 }
+          {
+            success: false,
+            error: "Unauthorized",
+          },
+          {
+            status: 401,
+          }
+        )
+      );
+    }
+
+    const promoAccess =
+      session.promoAccessId
+        ? await getPromoAccessForSession({
+            userId: session.id,
+            promoAccessId:
+              session.promoAccessId,
+          })
+        : null;
+
+    if (
+      session.promoAccessId &&
+      !promoAccess
+    ) {
+      return withSecurityHeaders(
+        NextResponse.json(
+          {
+            success: false,
+            error:
+              "Promotional access is unavailable.",
+          },
+          {
+            status: 403,
+          }
+        )
+      );
+    }
+
+    if (
+      promoAccess &&
+      promoAccess.auditsUsed >=
+        promoAccess.auditLimit
+    ) {
+      return withSecurityHeaders(
+        NextResponse.json(
+          {
+            success: false,
+            error:
+              "This promotional link has used all available audits.",
+          },
+          {
+            status: 429,
+          }
         )
       );
     }
 
     const body = await req.json();
-    const url = String(body?.url || "");
-    const reportTypes = Array.isArray(body?.reportTypes)
-      ? body.reportTypes
-      : [];
+
+    const url = String(
+      body?.url || ""
+    );
+
+    const reportTypes =
+      promoAccess
+        ? [...PROMO_REPORT_TYPES]
+        : Array.isArray(
+              body?.reportTypes
+            )
+          ? body.reportTypes
+          : [];
 
     if (!url) {
       return withSecurityHeaders(
         NextResponse.json(
-          { success: false, error: "URL is required." },
-          { status: 400 }
+          {
+            success: false,
+            error:
+              "URL is required.",
+          },
+          {
+            status: 400,
+          }
         )
       );
     }
 
-    const job = await prisma.auditJob.create({
-      data: {
-        userId: user.id,
-        domain: extractDomainFromUrl(url),
-        url,
-        reportTypes,
-        status: "pending",
-        progress: 1,
-        currentModule: "Audit queued",
-        moduleStatus: {},
-      },
-      select: {
-        id: true,
-        status: true,
-        progress: true,
-        currentModule: true,
-      },
-    });
+    const job =
+      await prisma.auditJob.create({
+        data: {
+          userId: session.id,
+          domain:
+            extractDomainFromUrl(
+              url
+            ),
+          url,
+          reportTypes,
+          status: "pending",
+          progress: 1,
+          currentModule:
+            "Audit queued",
+          moduleStatus: {},
+        },
+        select: {
+          id: true,
+          status: true,
+          progress: true,
+          currentModule: true,
+        },
+      });
 
     return withSecurityHeaders(
       NextResponse.json({
@@ -91,12 +203,21 @@ export async function POST(req: Request) {
       })
     );
   } catch (error) {
-    console.error("Audit job start failed:", error);
+    console.error(
+      "Audit job start failed:",
+      error
+    );
 
     return withSecurityHeaders(
       NextResponse.json(
-        { success: false, error: "Failed to start audit job." },
-        { status: 500 }
+        {
+          success: false,
+          error:
+            "Failed to start audit job.",
+        },
+        {
+          status: 500,
+        }
       )
     );
   }

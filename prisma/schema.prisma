@@ -84,10 +84,12 @@ model User {
   packageId String?
   package   Package? @relation(fields: [packageId], references: [id])
 
-  resetTokens  PasswordResetToken[]
-  auditReports AuditReport[]
-  auditJobs    AuditJob[]
-  blogPosts    BlogPost[]           @relation("BlogPostCreator")
+  resetTokens          PasswordResetToken[]
+  auditReports         AuditReport[]
+  auditJobs            AuditJob[]
+  blogPosts            BlogPost[]           @relation("BlogPostCreator")
+  promoAccess          PromoAccess?         @relation("PromoAccessUser")
+  createdPromoAccesses PromoAccess[]        @relation("PromoAccessCreator")
 }
 
 model PasswordResetToken {
@@ -171,6 +173,38 @@ model AuditJob {
   @@index([userId])
   @@index([domain])
   @@index([status])
+  @@index([createdAt])
+}
+
+enum PromoAccessStatus {
+  ACTIVE
+  PAUSED
+}
+
+model PromoAccess {
+  id             String            @id @default(cuid())
+  label          String
+  tokenHash      String            @unique
+  tokenEncrypted String            @db.Text
+  tokenPrefix    String
+  auditLimit     Int               @default(3)
+  auditsUsed     Int               @default(0)
+  status         PromoAccessStatus @default(ACTIVE)
+  expiresAt      DateTime?
+  lastUsedAt     DateTime?
+
+  userId String @unique
+  user   User   @relation("PromoAccessUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  createdById String?
+  createdBy   User?   @relation("PromoAccessCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([expiresAt])
+  @@index([createdById])
   @@index([createdAt])
 }
 

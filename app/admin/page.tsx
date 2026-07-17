@@ -111,6 +111,13 @@ export default function AdminPage() {
 
 <div className="flex flex-wrap items-center justify-end gap-3">
   <a
+    href="/admin/promo-links"
+    className="rounded-xl border border-[var(--cq-signal)]/30 bg-[var(--cq-signal)]/10 px-5 py-3 text-sm font-semibold text-[var(--cq-signal)] transition hover:bg-[var(--cq-signal)] hover:text-[var(--cq-on-signal)]"
+  >
+    Promo Access Links
+  </a>
+
+  <a
     href="/admin/blogs"
     className="rounded-xl border border-[var(--cq-signal)]/30 bg-[var(--cq-signal)]/10 px-5 py-3 text-sm font-semibold text-[var(--cq-signal)] transition hover:bg-[var(--cq-signal)] hover:text-[var(--cq-on-signal)]"
   >
@@ -495,7 +502,9 @@ export default function AdminPage() {
                     </td>
 
                     <td className="py-5 text-sm text-[#CCC]">
-                      {report.user?.email || "Unknown"}
+                      {report.user?.stripeStatus === "promo"
+                        ? `Promo: ${report.user?.name || "Access Link"}`
+                        : report.user?.email || "Unknown"}
                     </td>
 
                     <td className="py-5">

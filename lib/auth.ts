@@ -14,11 +14,18 @@ export async function createSessionToken(user: {
   id: string;
   email: string;
   role: string;
+  promoAccessId?: string;
 }) {
   return new SignJWT({
     userId: user.id,
     email: user.email,
     role: user.role,
+    ...(user.promoAccessId
+      ? {
+          promoAccessId: user.promoAccessId,
+          accessType: "promo",
+        }
+      : {}),
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()

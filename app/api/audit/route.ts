@@ -6,6 +6,10 @@ import { verifySessionToken } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { hasAuditLimit, canUseModule } from "@/lib/permissions";
 import { getLocationCode } from "@/lib/dataforseo-config";
+import {
+  getPromoAccessForSession,
+  PROMO_REPORT_TYPES,
+} from "@/lib/promo-access";
 
 async function updateAuditJob(
   jobId: string,
@@ -274,6 +278,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   let auditJob: any = null;
+  let promoCreditReserved = false;
+  let reservedPromoAccessId: string | null = null;
 
   try {
     const body = await req.json();
@@ -330,6 +336,35 @@ const clientIp = getClientIp(req);
         })
       : null;
 
+    const isPromoSession = Boolean(
+      session?.promoAccessId
+    );
+
+    const promoAccess =
+      isPromoSession
+        ? await getPromoAccessForSession(
+            session
+          )
+        : null;
+
+    if (
+      isPromoSession &&
+      !promoAccess
+    ) {
+      return withSecurityHeaders(
+        NextResponse.json(
+          {
+            success: false,
+            error:
+              "Promotional access is unavailable.",
+          },
+          {
+            status: 403,
+          }
+        )
+      );
+    }
+
     if (!user && !isFreeAudit) {
       return withSecurityHeaders(
   NextResponse.json(
@@ -340,7 +375,7 @@ const clientIp = getClientIp(req);
     }
 
 // Auto-reset if 30 days have passed since last reset (belt-and-suspenders alongside cron)
-if (user && user.auditsResetAt) {
+if (user && user.auditsResetAt && !promoAccess) {
   const daysSinceReset =
     (Date.now() - new Date(user.auditsResetAt).getTime()) /
     (1000 * 60 * 60 * 24);
@@ -354,7 +389,7 @@ if (user && user.auditsResetAt) {
   }
 }
 
-if (!isFreeAudit && user && !hasAuditLimit(user)) {
+if (!isFreeAudit && user && !promoAccess && !hasAuditLimit(user)) {
   return withSecurityHeaders(
     NextResponse.json(
       { success: false, error: "Monthly audit limit reached." },
@@ -364,11 +399,28 @@ if (!isFreeAudit && user && !hasAuditLimit(user)) {
 }
 
 const dailyAuditLimit =
-  user?.role === "admin" ? 999 : Math.max(1, Math.ceil((user?.package?.monthlyAudits || 5) / 30));
+  promoAccess || user?.role === "admin"
+    ? 999
+    : Math.max(
+        1,
+        Math.ceil(
+          (user?.package?.monthlyAudits ||
+            user?.monthlyAudits ||
+            5) / 30
+        )
+      );
 
-const todayAuditCount = user ? await getTodayAuditCount(user.id) : 0;
+const todayAuditCount =
+  user && !promoAccess
+    ? await getTodayAuditCount(user.id)
+    : 0;
 
-if (!isFreeAudit && user && todayAuditCount >= dailyAuditLimit) {
+if (
+  !isFreeAudit &&
+  user &&
+  !promoAccess &&
+  todayAuditCount >= dailyAuditLimit
+) {
   return withSecurityHeaders(
   NextResponse.json(
     {
@@ -380,13 +432,18 @@ if (!isFreeAudit && user && todayAuditCount >= dailyAuditLimit) {
 );
 }
 
-        const allowAi = user ? canUseModule(user, "ai") : false;
-    const allowTraffic = user ? canUseModule(user, "traffic") : false;
-    const allowKeywords = user ? canUseModule(user, "keywords") : false;
-    const allowBacklinks = user ? canUseModule(user, "backlinks") : false;
-    const allowLocalSeo = user ? canUseModule(user, "localSeo") : false;
+        const allowAi = promoAccess ? true : user ? canUseModule(user, "ai") : false;
+    const allowTraffic = promoAccess ? true : user ? canUseModule(user, "traffic") : false;
+    const allowKeywords = promoAccess ? true : user ? canUseModule(user, "keywords") : false;
+    const allowBacklinks = promoAccess ? true : user ? canUseModule(user, "backlinks") : false;
+    const allowLocalSeo = promoAccess ? true : user ? canUseModule(user, "localSeo") : false;
     const isFreeUser =
-  isFreeAudit || (!user?.packageId && user?.role !== "admin");
+  isFreeAudit ||
+  (
+    !promoAccess &&
+    !user?.packageId &&
+    user?.role !== "admin"
+  );
     const allowedReportTypes = new Set<string>(["seo", "technical"]);
 
 if (allowTraffic) {
@@ -427,6 +484,13 @@ if (user?.role === "admin") {
   ].forEach((type) => allowedReportTypes.add(type));
 }
 
+if (promoAccess) {
+  PROMO_REPORT_TYPES.forEach(
+    (type) =>
+      allowedReportTypes.add(type)
+  );
+}
+
 
     const inputUrl = body?.url || body?.domain;
     if (!inputUrl) {
@@ -443,11 +507,14 @@ if (user?.role === "admin") {
   ? [body.reportType]
   : ["seo", "technical"];
 
-const reportTypes = isFreeUser
-  ? ["seo", "technical"]
-  : requestedReportTypes.filter((type: string) =>
-      allowedReportTypes.has(type)
-    );
+const reportTypes = promoAccess
+  ? [...PROMO_REPORT_TYPES]
+  : isFreeUser
+    ? ["seo", "technical"]
+    : requestedReportTypes.filter(
+        (type: string) =>
+          allowedReportTypes.has(type)
+      );
 
 if (reportTypes.length === 0) {
   return withSecurityHeaders(
@@ -477,9 +544,17 @@ const domain = extractDomain(url);
 const locationCode = getLocationCode(domain);
 const origin = new URL(req.url).origin;
 
-const cachedAudit = user && !isFreeAudit && user.role !== "admin"
-  ? await getCachedAuditReport(user.id, domain, reportTypes)
-  : null;
+const cachedAudit =
+  user &&
+  !isFreeAudit &&
+  !promoAccess &&
+  user.role !== "admin"
+    ? await getCachedAuditReport(
+        user.id,
+        domain,
+        reportTypes
+      )
+    : null;
 
 if (cachedAudit) {
 
@@ -564,6 +639,56 @@ if (incomingAuditJobId) {
       moduleStatus: {},
     },
   });
+}
+
+if (
+  promoAccess &&
+  !isFreeAudit
+) {
+  const reservation =
+    await prisma.promoAccess.updateMany({
+      where: {
+        id: promoAccess.id,
+        status: "ACTIVE",
+        auditsUsed: {
+          lt: promoAccess.auditLimit,
+        },
+      },
+      data: {
+        auditsUsed: {
+          increment: 1,
+        },
+        lastUsedAt: new Date(),
+      },
+    });
+
+  if (reservation.count !== 1) {
+    await updateAuditJob(auditJob.id, {
+      status: "failed",
+      progress: 100,
+      currentModule: "Audit limit reached",
+      error:
+        "This promotional link has used all available audits.",
+      failedAt: new Date(),
+    });
+
+    return withSecurityHeaders(
+      NextResponse.json(
+        {
+          success: false,
+          error:
+            "This promotional link has used all available audits.",
+        },
+        {
+          status: 429,
+        }
+      )
+    );
+  }
+
+  promoCreditReserved = true;
+  reservedPromoAccessId =
+    promoAccess.id;
 }
 
 await updateAuditJob(auditJob.id, {
@@ -1543,17 +1668,64 @@ estimatedTraffic: Number(
     }
     }
 
-if (user && !isFreeAudit && user.role !== "admin") {
+if (
+  user &&
+  !isFreeAudit &&
+  user.role !== "admin"
+) {
   try {
-    await prisma.user.update({
-      where: { id: user.id },
-      data:
-        user.stripeStatus === "trialing"
-          ? { trialAuditsUsed: { increment: 1 } }
-          : { auditsUsed: { increment: 1 } },
-    });
+    if (promoAccess) {
+      await prisma.user.update({
+        where: {
+          id: user.id,
+        },
+        data: {
+          auditsUsed: {
+            increment: 1,
+          },
+        },
+      });
+
+      /*
+       * Promo usage was reserved before the
+       * expensive APIs ran. Mark it as consumed
+       * so the catch block does not release it.
+       */
+      promoCreditReserved = false;
+    } else {
+      await prisma.user.update({
+        where: {
+          id: user.id,
+        },
+        data:
+          user.stripeStatus ===
+          "trialing"
+            ? {
+                trialAuditsUsed: {
+                  increment: 1,
+                },
+              }
+            : {
+                auditsUsed: {
+                  increment: 1,
+                },
+              },
+      });
+    }
   } catch (error) {
-    console.error("Audit usage increment failed:", error);
+    console.error(
+      "Audit usage increment failed:",
+      error
+    );
+
+    /*
+     * The completed promotional audit still
+     * consumes its already-reserved credit even
+     * when the mirror User counter fails.
+     */
+    if (promoAccess) {
+      promoCreditReserved = false;
+    }
   }
 }
 
@@ -1573,13 +1745,24 @@ if (user && !isFreeAudit && user.role !== "admin") {
       await prisma.auditLog.create({
         data: {
           userId: user?.id || null,
-          email: user?.email || null,
+          email:
+            promoAccess?.label ||
+            user?.email ||
+            null,
           ip: clientIp,
           domain,
-          auditMode: isFreeAudit ? "free" : "paid",
+          auditMode: promoAccess
+            ? "promo"
+            : isFreeAudit
+              ? "free"
+              : "paid",
           reportTypes,
           status: "success",
-          message: isFreeAudit ? "Free audit completed" : "Paid audit completed",
+          message: promoAccess
+            ? "Promotional full audit completed"
+            : isFreeAudit
+              ? "Free audit completed"
+              : "Paid audit completed",
         },
       });
     } catch (logError) {
@@ -1601,6 +1784,32 @@ if (user && !isFreeAudit && user.role !== "admin") {
     );
 } catch (error) {
   console.error("Audit API failed:", error);
+
+  if (
+    promoCreditReserved &&
+    reservedPromoAccessId
+  ) {
+    try {
+      await prisma.promoAccess.updateMany({
+        where: {
+          id: reservedPromoAccessId,
+          auditsUsed: {
+            gt: 0,
+          },
+        },
+        data: {
+          auditsUsed: {
+            decrement: 1,
+          },
+        },
+      });
+    } catch (releaseError) {
+      console.error(
+        "Promo audit credit release failed:",
+        releaseError
+      );
+    }
+  }
 
   const errorMessage =
     error instanceof Error

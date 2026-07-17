@@ -22,6 +22,20 @@ import {
   Users,
 } from "lucide-react";
 
+const PROMO_REPORT_TYPES = [
+  "seo",
+  "technical",
+  "traffic",
+  "keywords",
+  "competitors",
+  "ai",
+  "backlinks",
+  "recommendations",
+  "localSeo",
+  "content",
+  "serp",
+];
+
 export default function WebsiteAuditDashboardPage() {
   const [url, setUrl] = useState("");
   const [data, setData] = useState<any>(null);
@@ -199,7 +213,21 @@ const runAudit = async () => {
   const currentUser = userJson?.user;
 
   if (
+    currentUser?.isPromoAccess &&
+    Number(
+      currentUser?.promoAccess
+        ?.auditsRemaining || 0
+    ) <= 0
+  ) {
+    setError(
+      "This promotional link has used all available audits."
+    );
+    return;
+  }
+
+  if (
     currentUser?.role !== "admin" &&
+    !currentUser?.isPromoAccess &&
     currentUser?.auditsUsed >= currentUser?.package?.monthlyAudits
   ) {
     setError(
@@ -209,6 +237,11 @@ const runAudit = async () => {
 );
     return;
   }
+
+const effectiveReportTypes =
+  currentUser?.isPromoAccess
+    ? [...PROMO_REPORT_TYPES]
+    : selectedReportTypes;
 
 setLoading(true);
 setError("");
@@ -233,7 +266,7 @@ try {
         },
 body: JSON.stringify({
           url: normalizedUrl,
-          reportTypes: selectedReportTypes,
+          reportTypes: effectiveReportTypes,
         }),
       });
 
@@ -261,7 +294,7 @@ if (!startRes.ok || !startJson?.success) {
         },
 body: JSON.stringify({
   url: normalizedUrl,
-  reportTypes: selectedReportTypes,
+  reportTypes: effectiveReportTypes,
   auditJobId: startedJobId,
   customPrompts: customPrompts.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 5),
 }),
@@ -280,12 +313,12 @@ if (!res.ok || json?.success === false) {
 
 let report = {
   ...(json?.report || json),
-  reportTypes: selectedReportTypes,
+  reportTypes: effectiveReportTypes,
 };
 
 if (
-  selectedReportTypes.includes("ai") ||
-  selectedReportTypes.includes("recommendations")
+  effectiveReportTypes.includes("ai") ||
+  effectiveReportTypes.includes("recommendations")
 ) {
 try {
   const recRes = await fetch("/api/dataforseo/ai-recommendations", {
@@ -363,6 +396,7 @@ if (report?.onPage?.taskId) {
 }
 
 await loadReportHistory();
+await loadCurrentUser();
 
 if (progressInterval) {
   window.clearInterval(progressInterval);
@@ -465,6 +499,12 @@ const loadCurrentUser = async () => {
     }
 
     setCurrentUser(json.user);
+
+    if (json.user?.isPromoAccess) {
+      setSelectedReportTypes([
+        ...PROMO_REPORT_TYPES,
+      ]);
+    }
   } catch (error) {
     window.location.href = "/login";
   }
@@ -1863,8 +1903,8 @@ const isLargeSiteWarning =
   ["content", "Content Quality", Brain, true],
   ["localSeo", "Local SEO", Globe, currentUser?.role === "admin" || currentUser?.package?.allowLocalSeo],
   ["history", "History", BarChart3, true],
-["billing", "Subscription", BarChart3, true],
-["account", "Account Settings", Brain, true],
+["billing", "Subscription", BarChart3, !currentUser?.isPromoAccess],
+["account", "Account Settings", Brain, !currentUser?.isPromoAccess],
   ["serp", "SERP Rankings", BarChart3, currentUser?.role === "admin" || currentUser?.package?.allowKeywords],
 ]
   .filter((item: any) => item[3] && shouldShowSection(item[0]))
@@ -1947,13 +1987,15 @@ const isLargeSiteWarning =
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setActiveTab("billing")}
-        className="rounded-xl bg-[#C5FF3D] px-4 py-2 text-sm font-bold text-black hover:opacity-90"
-      >
-        View Plans
-      </button>
+      {!currentUser?.isPromoAccess && (
+        <button
+          type="button"
+          onClick={() => setActiveTab("billing")}
+          className="rounded-xl bg-[#C5FF3D] px-4 py-2 text-sm font-bold text-black hover:opacity-90"
+        >
+          View Plans
+        </button>
+      )}
     </div>
   </div>
 )}
@@ -2000,17 +2042,19 @@ const isLargeSiteWarning =
       Report Modules
     </p>
 
-    <button
-      type="button"
-      onClick={() =>
-        setSelectedReportTypes(
-          reportOptions.map(([value]) => value)
-        )
-      }
-      className="text-xs font-semibold text-[#C5FF3D] hover:text-white"
-    >
-      Select All
-    </button>
+    {!currentUser?.isPromoAccess && (
+      <button
+        type="button"
+        onClick={() =>
+          setSelectedReportTypes(
+            reportOptions.map(([value]) => value)
+          )
+        }
+        className="text-xs font-semibold text-[#C5FF3D] hover:text-white"
+      >
+        Select All
+      </button>
+    )}
   </div>
 
   <div className="flex flex-wrap gap-2">
@@ -2021,7 +2065,10 @@ const isLargeSiteWarning =
         <button
           key={value}
           type="button"
-          disabled={loading}
+          disabled={
+            loading ||
+            currentUser?.isPromoAccess
+          }
           onClick={() => {
             toggleReportType(value);
             setActiveTab("overview");
@@ -2037,6 +2084,13 @@ const isLargeSiteWarning =
       );
     })}
 </div>
+
+  {currentUser?.isPromoAccess && (
+    <p className="mt-3 text-xs leading-5 text-[#C5FF3D]">
+      Promotional full access is active. All
+      audit modules are included automatically.
+    </p>
+  )}
 </div>
 
 {selectedReportTypes.includes("ai") && (

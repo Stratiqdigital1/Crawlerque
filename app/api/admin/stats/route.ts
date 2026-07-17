@@ -33,7 +33,20 @@ export async function GET() {
   )
 );
     }
-    const totalUsers = await prisma.user.count();
+    const totalUsers = await prisma.user.count({
+      where: {
+        OR: [
+          {
+            stripeStatus: null,
+          },
+          {
+            stripeStatus: {
+              not: "promo",
+            },
+          },
+        ],
+      },
+    });
 
     const totalReports =
       await prisma.auditReport.count();
@@ -71,6 +84,18 @@ const packageRows = await prisma.package.findMany({
 });
 
 const users = await prisma.user.findMany({
+      where: {
+        OR: [
+          {
+            stripeStatus: null,
+          },
+          {
+            stripeStatus: {
+              not: "promo",
+            },
+          },
+        ],
+      },
       include: {
         package: true,
       },
