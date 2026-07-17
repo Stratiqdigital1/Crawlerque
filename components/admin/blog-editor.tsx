@@ -124,6 +124,44 @@ function tableTextToRows(value: string) {
     .filter((row) => row.some((cell) => cell.length > 0));
 }
 
+function stripMarkdownLinks(value: string) {
+  return value.replace(
+    /\[([^\]]+)\]\(([^)\s]+)\)/g,
+    "$1"
+  );
+}
+
+function buildFaqSchema(blocks: BlogBlock[]) {
+  const faqItems = blocks.flatMap((block) =>
+    block.type === "faq"
+      ? block.items.filter(
+          (item) =>
+            item.question.trim() &&
+            item.answer.trim()
+        )
+      : []
+  );
+
+  if (faqItems.length === 0) {
+    return null;
+  }
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqItems.map((item) => ({
+      "@type": "Question",
+      name: item.question.trim(),
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: stripMarkdownLinks(
+          item.answer.trim()
+        ),
+      },
+    })),
+  };
+}
+
 function calculateReadingTime(blocks: BlogBlock[]) {
   const text = blocks
     .map((block) => {
@@ -470,6 +508,14 @@ export default function BlogEditor({ mode, postId }: BlogEditorProps) {
         allImages.findIndex((item) => item.src === image.src) === index,
     );
   }, [form.blocks, form.heroAlt, form.heroImage, form.title]);
+
+  const faqSchemaPreview = useMemo(
+    () => buildFaqSchema(form.blocks),
+    [form.blocks]
+  );
+
+  const faqSchemaQuestionCount =
+    faqSchemaPreview?.mainEntity.length || 0;
 
   const savePost = async (statusOverride?: BlogStatus) => {
     setSaving(true);
@@ -920,6 +966,62 @@ export default function BlogEditor({ mode, postId }: BlogEditorProps) {
                 )}
               </div>
             </EditorSection>
+
+            <EditorSection
+              eyebrow="Structured Data"
+              title="FAQPage schema"
+            >
+              <div className="rounded-2xl border border-[var(--cq-line)] bg-[var(--cq-ink)] p-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-base font-bold text-white">
+                      Automatic FAQ structured data
+                    </p>
+
+                    <p className="mt-2 text-sm leading-6 text-[var(--cq-text-2)]">
+                      The published article automatically receives FAQPage
+                      JSON-LD when at least one complete question and answer is
+                      available.
+                    </p>
+                  </div>
+
+                  <span
+                    className={`inline-flex w-fit rounded-full px-3 py-1.5 text-xs font-bold ${
+                      faqSchemaPreview
+                        ? "bg-emerald-400/10 text-emerald-300"
+                        : "bg-amber-400/10 text-amber-300"
+                    }`}
+                  >
+                    {faqSchemaPreview
+                      ? `Active · ${faqSchemaQuestionCount} question${
+                          faqSchemaQuestionCount === 1 ? "" : "s"
+                        }`
+                      : "Waiting for complete FAQs"}
+                  </span>
+                </div>
+
+                {faqSchemaPreview ? (
+                  <details className="mt-5 rounded-xl border border-[var(--cq-line)] bg-[var(--cq-surface)] p-4">
+                    <summary className="cursor-pointer text-sm font-bold text-[var(--cq-signal)]">
+                      View generated FAQPage JSON-LD
+                    </summary>
+
+                    <pre className="mt-4 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-black/20 p-4 text-xs leading-6 text-[var(--cq-text-2)]">
+                      {JSON.stringify(
+                        faqSchemaPreview,
+                        null,
+                        2
+                      )}
+                    </pre>
+                  </details>
+                ) : (
+                  <p className="mt-5 rounded-xl border border-dashed border-[var(--cq-line)] p-4 text-sm text-[var(--cq-text-3)]">
+                    Add an FAQ section and complete both the question and answer
+                    fields. The schema will then activate automatically.
+                  </p>
+                )}
+              </div>
+            </EditorSection>
           </div>
 
           <aside className="xl:sticky xl:top-8 xl:self-start">
@@ -1288,6 +1390,24 @@ function ContentBlockEditor({
 
       {block.type === "faq" && (
         <div className="grid gap-4">
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-emerald-300">
+                  FAQPage Schema
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-[var(--cq-text-2)]">
+                  Enabled automatically for complete question-and-answer pairs.
+                </p>
+              </div>
+
+              <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-300">
+                Auto enabled
+              </span>
+            </div>
+          </div>
+
           <Field label="FAQ Section Title">
             <input
               type="text"
