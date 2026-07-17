@@ -16,12 +16,8 @@ import {
 
 export const runtime = "nodejs";
 
-function getOrigin(request: Request) {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    new URL(request.url).origin
-  );
+function getOrigin(_request: Request) {
+  return "https://crawlerque.com";
 }
 
 function parseExpiry(value: unknown) {
