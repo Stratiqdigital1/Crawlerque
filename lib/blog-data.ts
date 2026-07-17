@@ -1,18 +1,19 @@
 import "server-only";
 
-import { BlogStatus } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
 import {
-  blogPosts,
-  getBlogPost,
-  type BlogBlock,
-  type BlogPost,
+  BlogStatus,
+} from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import type {
+  BlogBlock,
+  BlogPost,
 } from "@/lib/blogs";
 
-export type PublicBlogPost = BlogPost & {
-  authorName?: string;
-  updatedAt?: string;
-};
+export type PublicBlogPost =
+  BlogPost & {
+    authorName?: string;
+    updatedAt?: string;
+  };
 
 type DatabaseBlogPost = {
   slug: string;
@@ -33,7 +34,7 @@ type DatabaseBlogPost = {
   updatedAt: Date;
 };
 
-const databaseBlogSelect = {
+const publicBlogSelect = {
   slug: true,
   title: true,
   metaTitle: true,
@@ -52,6 +53,11 @@ const databaseBlogSelect = {
   updatedAt: true,
 } as const;
 
+const PUBLIC_STATUSES: BlogStatus[] = [
+  BlogStatus.PUBLISHED,
+  BlogStatus.SCHEDULED,
+];
+
 function normalizeImages(
   value: unknown
 ): BlogPost["images"] {
@@ -67,9 +73,19 @@ function normalizeImages(
       return [];
     }
 
-    const image = item as Record<string, unknown>;
-    const src = String(image.src || "").trim();
-    const alt = String(image.alt || "").trim();
+    const image =
+      item as Record<
+        string,
+        unknown
+      >;
+
+    const src = String(
+      image.src || ""
+    ).trim();
+
+    const alt = String(
+      image.alt || ""
+    ).trim();
 
     if (!src) {
       return [];
@@ -91,7 +107,8 @@ function normalizeBlocks(
     return [];
   }
 
-  const blocks: BlogBlock[] = [];
+  const normalizedBlocks:
+    BlogBlock[] = [];
 
   for (const item of value) {
     if (
@@ -101,14 +118,23 @@ function normalizeBlocks(
       continue;
     }
 
-    const block = item as Record<string, unknown>;
-    const type = String(block.type || "");
+    const block =
+      item as Record<
+        string,
+        unknown
+      >;
+
+    const type = String(
+      block.type || ""
+    );
 
     if (type === "paragraph") {
-      const text = String(block.text || "").trim();
+      const text = String(
+        block.text || ""
+      ).trim();
 
       if (text) {
-        blocks.push({
+        normalizedBlocks.push({
           type: "paragraph",
           text,
         });
@@ -118,13 +144,17 @@ function normalizeBlocks(
     }
 
     if (type === "heading") {
-      const text = String(block.text || "").trim();
+      const text = String(
+        block.text || ""
+      ).trim();
 
       if (text) {
-        blocks.push({
+        normalizedBlocks.push({
           type: "heading",
           level:
-            Number(block.level) === 3 ? 3 : 2,
+            Number(block.level) === 3
+              ? 3
+              : 2,
           text,
         });
       }
@@ -133,11 +163,16 @@ function normalizeBlocks(
     }
 
     if (type === "image") {
-      const src = String(block.src || "").trim();
-      const alt = String(block.alt || "").trim();
+      const src = String(
+        block.src || ""
+      ).trim();
+
+      const alt = String(
+        block.alt || ""
+      ).trim();
 
       if (src) {
-        blocks.push({
+        normalizedBlocks.push({
           type: "image",
           src,
           alt,
@@ -152,16 +187,23 @@ function normalizeBlocks(
       Array.isArray(block.rows)
     ) {
       const rows = block.rows
-        .filter((row) => Array.isArray(row))
+        .filter((row) =>
+          Array.isArray(row)
+        )
         .map((row) =>
-          (row as unknown[]).map((cell) =>
+          (
+            row as unknown[]
+          ).map((cell) =>
             String(cell ?? "")
           )
         )
-        .filter((row) => row.length > 0);
+        .filter(
+          (row) =>
+            row.length > 0
+        );
 
       if (rows.length > 0) {
-        blocks.push({
+        normalizedBlocks.push({
           type: "table",
           rows,
         });
@@ -169,7 +211,7 @@ function normalizeBlocks(
     }
   }
 
-  return blocks;
+  return normalizedBlocks;
 }
 
 function databasePostToPublicPost(
@@ -179,69 +221,34 @@ function databasePostToPublicPost(
     slug: post.slug,
     title: post.title,
     metaTitle: post.metaTitle,
-    metaDescription: post.metaDescription,
+    metaDescription:
+      post.metaDescription,
     primaryKeyword:
       post.primaryKeyword || "",
     excerpt: post.excerpt,
     category: post.category,
-    publishedAt: post.publishedAt
-      ? post.publishedAt
-          .toISOString()
-          .slice(0, 10)
-      : "",
-    readingTime: post.readingTime,
+    publishedAt:
+      post.publishedAt
+        ? post.publishedAt
+            .toISOString()
+            .slice(0, 10)
+        : "",
+    readingTime:
+      post.readingTime,
     heroImage: post.heroImage,
     heroAlt: post.heroAlt,
-    images: normalizeImages(post.images),
-    blocks: normalizeBlocks(post.blocks),
+    images: normalizeImages(
+      post.images
+    ),
+    blocks: normalizeBlocks(
+      post.blocks
+    ),
     authorName:
-      post.authorName || "Crawler Que",
-    updatedAt: post.updatedAt.toISOString(),
+      post.authorName ||
+      "Crawler Que",
+    updatedAt:
+      post.updatedAt.toISOString(),
   };
-}
-
-function isDatabasePostPublic(
-  post: Pick<
-    DatabaseBlogPost,
-    "status" | "publishedAt"
-  >,
-  now: Date
-) {
-  return (
-    post.status === BlogStatus.PUBLISHED &&
-    post.publishedAt instanceof Date &&
-    post.publishedAt.getTime() <= now.getTime()
-  );
-}
-
-function isStaticPostPublic(
-  post: BlogPost,
-  now: Date
-) {
-  const publishDate = new Date(
-    `${post.publishedAt}T00:00:00Z`
-  );
-
-  return (
-    !Number.isNaN(publishDate.getTime()) &&
-    publishDate.getTime() <= now.getTime()
-  );
-}
-
-function sortNewestFirst(
-  posts: PublicBlogPost[]
-) {
-  return [...posts].sort((a, b) => {
-    const dateA = new Date(
-      `${a.publishedAt}T00:00:00Z`
-    ).getTime();
-
-    const dateB = new Date(
-      `${b.publishedAt}T00:00:00Z`
-    ).getTime();
-
-    return dateB - dateA;
-  });
 }
 
 export async function getPublishedBlogPosts(): Promise<
@@ -249,20 +256,18 @@ export async function getPublishedBlogPosts(): Promise<
 > {
   const now = new Date();
 
-  const availableStaticPosts =
-    blogPosts.filter((post) =>
-      isStaticPostPublic(post, now)
-    );
-
   try {
-    /*
-     * All database records are loaded deliberately.
-     * A database Draft/Archived post with the same slug
-     * must hide its old static version.
-     */
-    const databasePosts =
+    const posts =
       await prisma.blogPost.findMany({
-        select: databaseBlogSelect,
+        where: {
+          status: {
+            in: PUBLIC_STATUSES,
+          },
+          publishedAt: {
+            lte: now,
+          },
+        },
+        select: publicBlogSelect,
         orderBy: [
           {
             publishedAt: "desc",
@@ -273,98 +278,61 @@ export async function getPublishedBlogPosts(): Promise<
         ],
       });
 
-    const databaseSlugs = new Set(
-      databasePosts.map((post) => post.slug)
+    return posts.map(
+      databasePostToPublicPost
     );
-
-    const publishedDatabasePosts =
-      databasePosts
-        .filter((post) =>
-          isDatabasePostPublic(post, now)
-        )
-        .map((post) =>
-          databasePostToPublicPost(post)
-        );
-
-    const staticFallbackPosts =
-      availableStaticPosts.filter(
-        (post) =>
-          !databaseSlugs.has(post.slug)
-      );
-
-    return sortNewestFirst([
-      ...publishedDatabasePosts,
-      ...staticFallbackPosts,
-    ]);
   } catch (error) {
     console.error(
-      "Public blog database load failed. Using static fallback:",
+      "Published blog list failed:",
       error
     );
 
-    return sortNewestFirst(
-      availableStaticPosts
-    );
+    return [];
   }
 }
 
 export async function getPublishedBlogPost(
   slug: string
-): Promise<PublicBlogPost | null> {
-  const normalizedSlug = String(slug || "")
-    .trim()
-    .toLowerCase();
+): Promise<
+  PublicBlogPost | null
+> {
+  const normalizedSlug =
+    String(slug || "")
+      .trim()
+      .toLowerCase();
 
   if (!normalizedSlug) {
     return null;
   }
 
-  const now = new Date();
-
   try {
-    const databasePost =
-      await prisma.blogPost.findUnique({
+    const post =
+      await prisma.blogPost.findFirst({
         where: {
           slug: normalizedSlug,
+          status: {
+            in: PUBLIC_STATUSES,
+          },
+          publishedAt: {
+            lte: new Date(),
+          },
         },
-        select: databaseBlogSelect,
+        select: publicBlogSelect,
       });
 
-    /*
-     * A database record overrides the static post,
-     * including when the database record is Draft,
-     * Scheduled, or Archived.
-     */
-    if (databasePost) {
-      if (
-        !isDatabasePostPublic(
-          databasePost,
-          now
-        )
-      ) {
-        return null;
-      }
-
-      return databasePostToPublicPost(
-        databasePost
-      );
+    if (!post) {
+      return null;
     }
+
+    return databasePostToPublicPost(
+      post
+    );
   } catch (error) {
     console.error(
-      "Public database blog lookup failed. Using static fallback:",
+      "Published blog lookup failed:",
       error
     );
-  }
 
-  const staticPost =
-    getBlogPost(normalizedSlug);
-
-  if (
-    !staticPost ||
-    !isStaticPostPublic(staticPost, now)
-  ) {
     return null;
   }
-
-  return staticPost;
 }

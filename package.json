@@ -2,10 +2,11 @@
   "name": "ai-website-audit",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "seed": "tsx prisma/seed.ts",
-    "build": "prisma generate && next build",
+"scripts": {
+  "dev": "next dev",
+  "seed": "tsx prisma/seed.ts",
+  "import:blogs": "tsx scripts/import-static-blogs.ts",
+  "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "system-check": "node scripts/system-check.mjs"
