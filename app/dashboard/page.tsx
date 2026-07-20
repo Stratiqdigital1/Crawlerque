@@ -21,6 +21,9 @@ import {
   Search,
   Users,
 } from "lucide-react";
+import {
+  trackAnalyticsEvent,
+} from "@/lib/client-analytics";
 
 const PROMO_REPORT_TYPES = [
   "seo",
@@ -284,6 +287,19 @@ if (!startRes.ok || !startJson?.success) {
       const startedJobId = startJson.auditJobId;
       setAuditJobId(startedJobId);
 
+      trackAnalyticsEvent("audit_started", {
+        account_type: currentUser?.trial?.isTrialing
+          ? "trial"
+          : currentUser?.isPromoAccess
+            ? "promo"
+            : "paid",
+        plan_name:
+          currentUser?.package?.name ||
+          currentUser?.packageName ||
+          "unknown",
+        module_count: effectiveReportTypes.length,
+      });
+
       const progressInterval = pollAuditJobStatus(startedJobId);
 
       const res = await fetch("/api/audit", {
@@ -391,6 +407,20 @@ monthlyTraffic:
 
 setData(report);
 
+trackAnalyticsEvent("audit_completed", {
+  account_type: currentUser?.trial?.isTrialing
+    ? "trial"
+    : currentUser?.isPromoAccess
+      ? "promo"
+      : "paid",
+  plan_name:
+    currentUser?.package?.name ||
+    currentUser?.packageName ||
+    "unknown",
+  module_count: effectiveReportTypes.length,
+  cached_result: Boolean(json?.cached),
+});
+
 if (report?.onPage?.taskId) {
   pollOnPage(report.onPage.taskId);
 }
@@ -413,6 +443,19 @@ setAuditCurrentModule("Completed");
     : "Something went wrong while running the audit. Please try again.";
   setError(errMsg);
   setAuditCurrentModule("Failed");
+
+  trackAnalyticsEvent("audit_failed", {
+    account_type: currentUser?.trial?.isTrialing
+      ? "trial"
+      : currentUser?.isPromoAccess
+        ? "promo"
+        : "paid",
+    plan_name:
+      currentUser?.package?.name ||
+      currentUser?.packageName ||
+      "unknown",
+    module_count: effectiveReportTypes.length,
+  });
 }
 
 clearInterval(timer);
@@ -541,6 +584,18 @@ setSelectedReportTypes(
   fullReport?.reportTypes || json.report?.reportTypes || selectedReportTypes
 );
 setActiveTab("overview");
+
+trackAnalyticsEvent("report_opened", {
+  account_type: currentUser?.trial?.isTrialing
+    ? "trial"
+    : currentUser?.isPromoAccess
+      ? "promo"
+      : "paid",
+  plan_name:
+    currentUser?.package?.name ||
+    currentUser?.packageName ||
+    "unknown",
+});
   } catch (error: any) {
     console.error("Saved report load failed:", error);
     setError(error?.message || "Failed to load saved report.");
@@ -1821,6 +1876,21 @@ tbl(["Priority","Focus","Timeline","Actions"],[
   //  SAVE
   // ════════════════════════════════════════════════════════════════════
   const safeDomain=String(domain).replace(/[^a-z0-9.-]/gi,"-");
+
+  trackAnalyticsEvent("pdf_exported", {
+    account_type: pdfUser?.trial?.isTrialing
+      ? "trial"
+      : pdfUser?.isPromoAccess
+        ? "promo"
+        : "paid",
+    plan_name:
+      pdfUser?.package?.name ||
+      pdfUser?.packageName ||
+      "unknown",
+    module_count: selectedModules.length,
+    white_label: canWL,
+  });
+
   doc.save(`Crawler-Que-Growth-Intelligence-${safeDomain}.pdf`);
 };
 const totalMentions =

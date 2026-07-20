@@ -7,6 +7,9 @@ import {
 import {
   getPromoAccessForSession,
 } from "@/lib/promo-access";
+import {
+  getAnalyticsUserId,
+} from "@/lib/analytics-user-id";
 
 export async function GET() {
   try {
@@ -196,6 +199,9 @@ export async function GET() {
           trial: {
             isTrialing: false,
           },
+          analytics: {
+            enabled: false,
+          },
           package: {
             id: "promo-access",
             name:
@@ -273,6 +279,37 @@ export async function GET() {
       user.packageName === "Trial" &&
       user.stripeStatus === "canceled";
 
+    const normalizedPackageName =
+      packageName.trim().toLowerCase();
+
+    const normalizedStripeStatus = String(
+      user.stripeStatus || ""
+    ).toLowerCase();
+
+    const isTrackableCustomer =
+      user.role !== "admin" &&
+      ["active", "trialing"].includes(
+        normalizedStripeStatus
+      ) &&
+      Boolean(normalizedPackageName) &&
+      ![
+        "free",
+        "promotional full access",
+      ].includes(normalizedPackageName);
+
+    const analytics = isTrackableCustomer
+      ? {
+          enabled: true,
+          userId: getAnalyticsUserId(user.id),
+          accountType: isTrialing
+            ? ("trial" as const)
+            : ("paid" as const),
+          planName: packageName,
+        }
+      : {
+          enabled: false,
+        };
+
     const TRIAL_AUDIT_LIMIT = 3;
 
     const trialInfo =
@@ -340,6 +377,7 @@ export async function GET() {
               )
             : usagePercent,
         trial: trialInfo,
+        analytics,
         canUseWhiteLabel,
         whiteLabelEnabled:
           canUseWhiteLabel &&
