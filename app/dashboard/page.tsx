@@ -2166,7 +2166,7 @@ const isLargeSiteWarning =
 {selectedReportTypes.includes("ai") && (
   <div className="rounded-2xl border border-[#222] bg-[#111] p-4">
     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#8A8A8A]">
-      Custom AI Prompts (optional) — ek line par ek, max 5
+      Custom AI Prompts (optional) — One per line, maximum 5.
     </p>
     <textarea
       value={customPrompts}
