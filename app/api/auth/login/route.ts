@@ -41,24 +41,35 @@ export async function POST(req: Request) {
     // Cookie must be set directly on the NextResponse object in App Router.
     // Setting it via cookieStore after the response is built does NOT work —
     // the Set-Cookie header never reaches the browser.
-    const response = NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-      },
-    });
+const response = withSecurityHeaders(
+  NextResponse.json({
+    success: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    },
+  })
+);
 
-    response.cookies.set("stratiq_session", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
-    });
+// Set the cookie on the final response object.
+// This prevents security-header wrapping from removing Set-Cookie.
+response.cookies.set(
+  "stratiq_session",
+  token,
+  {
+    httpOnly: true,
+    secure:
+      process.env.NODE_ENV ===
+      "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge:
+      60 * 60 * 24 * 7,
+  }
+);
 
-    return withSecurityHeaders(response);
+return response;
   } catch (error) {
     console.error("Login error:", error);
     return withSecurityHeaders(

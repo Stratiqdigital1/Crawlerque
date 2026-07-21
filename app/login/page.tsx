@@ -12,24 +12,61 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+const res = await fetch("/api/auth/login", {
+  method: "POST",
+  credentials: "same-origin",
+  cache: "no-store",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    email,
+    password,
+  }),
+});
 
       const json = await res.json();
 
-      if (!json?.success) {
-        setError(json?.error || "Login failed. Check your email and password.");
-        return;
-      }
+if (!json?.success) {
+  setError(
+    json?.error ||
+      "Login failed. Check your email and password."
+  );
+  return;
+}
 
-      if (json?.user?.role === "admin") {
-        window.location.assign("/admin");
-      } else {
-        window.location.assign("/dashboard");
-      }
+// Confirm that the browser received the
+// secure session cookie before redirecting.
+const sessionRes = await fetch(
+  "/api/user/me",
+  {
+    method: "GET",
+    credentials: "same-origin",
+    cache: "no-store",
+  }
+);
+
+const sessionJson =
+  await sessionRes.json();
+
+if (
+  !sessionRes.ok ||
+  !sessionJson?.success ||
+  !sessionJson?.user
+) {
+  setError(
+    "Login was accepted, but the secure session could not be created. Please try again."
+  );
+  return;
+}
+
+if (json?.user?.role === "admin") {
+  window.location.replace("/admin");
+} else {
+  window.location.replace(
+    "/dashboard"
+  );
+}
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
