@@ -203,16 +203,48 @@ export function Section({ children, alt = false }: { children: React.ReactNode; 
   );
 }
 
-export function CtaBand({ title = "Run your first audit free.", sub = "No signup needed. See what Crawler Que finds on any site in under two minutes." }) {
+export function CtaBand({
+  title = "Start your 7-day trial.",
+  sub = "Get 3 full audits with access to all 12 growth modules. A card is required, and you can cancel during the trial.",
+}: {
+  title?: string;
+  sub?: string;
+}) {
   return (
     <section className="px-5 py-20 text-center md:px-8">
       <div className="mx-auto max-w-2xl">
-        <h2 className="text-[clamp(1.8rem,4vw,2.6rem)] font-extrabold leading-tight">{title}</h2>
-        <p className="mx-auto mt-4 max-w-md text-[16px] leading-relaxed text-[var(--cq-text-2)]">{sub}</p>
+        <p className="cq-eyebrow cq-eyebrow--signal">
+          Complete website growth intelligence
+        </p>
+
+        <h2 className="mt-4 text-[clamp(1.8rem,4vw,2.6rem)] font-extrabold leading-tight">
+          {title}
+        </h2>
+
+        <p className="mx-auto mt-4 max-w-lg text-[16px] leading-relaxed text-[var(--cq-text-2)]">
+          {sub}
+        </p>
+
         <div className="mt-8 flex flex-wrap justify-center gap-4">
-          <a href="/" className="cq-btn cq-btn--primary !px-8 !py-4">Run a free audit →</a>
-          <a href="/#pricing" className="cq-btn cq-btn--ghost !px-8 !py-4">See plans</a>
+          <a
+            href="/#pricing"
+            className="cq-btn cq-btn--primary !px-8 !py-4"
+          >
+            Start Your 7-Day Trial →
+          </a>
+
+          <a
+            href="/sample-report"
+            className="cq-btn cq-btn--ghost !px-8 !py-4"
+          >
+            View sample report
+          </a>
         </div>
+
+        <p className="mt-4 text-xs text-[var(--cq-text-3)]">
+          3 full audits · All 12 modules ·
+          Card required · Cancel during trial
+        </p>
       </div>
     </section>
   );

@@ -18,6 +18,8 @@ const BLOCKS: [string, string][] = [
   ["Contact", "Questions about billing or this policy: info@crawlerque.com."],
 ];
 
+
+
 export default function ReturnPolicyPage() {
   return (
     <main className="min-h-screen bg-[var(--cq-ink)] text-[var(--cq-text)]">

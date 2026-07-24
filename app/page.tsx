@@ -501,14 +501,20 @@ function HeroDashboardPreview() {
 function ModuleExplorer({ module, open, onToggle }) {
   const Icon = module.Icon;
   const visual = MODULE_VISUALS[module.id] || MODULE_VISUALS["seo-intelligence"];
-  const [hovered, setHovered] = useState(false);
-  const previewVisible = hovered && !open;
+const [hovered, setHovered] = useState(false);
 
-  const handleBlur = (event) => {
-    if (!event.currentTarget.contains(event.relatedTarget)) {
-      setHovered(false);
-    }
-  };
+const previewVisible =
+  hovered && !open;
+
+const handlePointerEnter = (event) => {
+  if (event.pointerType === "mouse") {
+    setHovered(true);
+  }
+};
+
+const handlePointerLeave = () => {
+  setHovered(false);
+};
 
   return (
     <article
@@ -521,16 +527,17 @@ function ModuleExplorer({ module, open, onToggle }) {
         "--module-accent": visual.accent,
         "--module-glow": visual.glow,
       }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onFocusCapture={() => setHovered(true)}
-      onBlurCapture={handleBlur}
-      data-module-id={module.id}
-      data-open={open ? "true" : "false"}
+onPointerEnter={handlePointerEnter}
+onPointerLeave={handlePointerLeave}
+data-module-id={module.id}
+data-open={open ? "true" : "false"}
     >
       <button
         type="button"
-        onClick={onToggle}
+        onClick={() => {
+  setHovered(false);
+  onToggle();
+}}
         aria-expanded={open}
         aria-controls={`module-details-${module.id}`}
         className="w-full p-4 text-left md:p-5"
@@ -561,7 +568,14 @@ function ModuleExplorer({ module, open, onToggle }) {
         )}
       </button>
 
-      <div className={`grid transition-[grid-template-rows,opacity] duration-350 ${previewVisible ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+      <div
+  aria-hidden={!previewVisible}
+  className={`grid transition-[grid-template-rows,opacity] duration-[350ms] ease-out ${
+    previewVisible
+      ? "grid-rows-[1fr] opacity-100"
+      : "pointer-events-none grid-rows-[0fr] opacity-0"
+  }`}
+>
         <div className="overflow-hidden">
           <div className="mx-4 mb-4 grid gap-4 rounded-xl border border-white/8 bg-[#071625]/88 p-4 md:mx-5 md:grid-cols-[1fr_150px]">
             <div>
@@ -590,12 +604,15 @@ function ModuleExplorer({ module, open, onToggle }) {
         </div>
       </div>
 
-      <div
-        id={`module-details-${module.id}`}
-        className={`grid transition-[grid-template-rows,opacity] duration-500 ${
-          open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-        }`}
-      >
+<div
+  id={`module-details-${module.id}`}
+  aria-hidden={!open}
+  className={`grid transition-[grid-template-rows,opacity] duration-500 ease-out ${
+    open
+      ? "grid-rows-[1fr] opacity-100"
+      : "pointer-events-none grid-rows-[0fr] opacity-0"
+  }`}
+>
         <div className="overflow-hidden">
           <div className="border-t border-white/8 bg-[#071625]/92 px-4 pb-5 pt-5 md:px-5">
             <div className="grid gap-5 lg:grid-cols-[1fr_.72fr]">
@@ -633,7 +650,7 @@ export default function HomePage() {
   const [billing, setBilling] = useState("monthly");
   const [checkoutLoading, setCheckoutLoading] = useState(null);
   const [checkoutError, setCheckoutError] = useState("");
-  const [openModule, setOpenModule] = useState("seo-intelligence");
+  const [openModule, setOpenModule] = useState("");
   const [activeScreenshot, setActiveScreenshot] = useState(0);
   const [paused, setPaused] = useState(false);
   const modulesSectionRef = useRef(null);
@@ -643,34 +660,58 @@ export default function HomePage() {
     [activeScreenshot]
   );
 
-  useEffect(() => {
-    const closeOpenModule = (event) => {
-      if (!openModule) return;
+useEffect(() => {
+  const closeOpenModule = (event) => {
+    if (!openModule) return;
 
-      const target = event.target;
-      const openCard = document.querySelector(
-        `[data-module-id="${openModule}"]`
+    const target = event.target;
+
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const clickedModuleCard = target.closest(
+      "[data-module-id]"
+    );
+
+    const clickedModuleId =
+      clickedModuleCard?.getAttribute(
+        "data-module-id"
       );
 
-      if (openCard && !openCard.contains(target)) {
-        setOpenModule("");
-      }
-    };
+    if (clickedModuleId !== openModule) {
+      setOpenModule("");
+    }
+  };
 
-    const closeWithEscape = (event) => {
-      if (event.key === "Escape") {
-        setOpenModule("");
-      }
-    };
+  const closeWithEscape = (event) => {
+    if (event.key === "Escape") {
+      setOpenModule("");
+    }
+  };
 
-    document.addEventListener("pointerdown", closeOpenModule);
-    document.addEventListener("keydown", closeWithEscape);
+  document.addEventListener(
+    "pointerdown",
+    closeOpenModule
+  );
 
-    return () => {
-      document.removeEventListener("pointerdown", closeOpenModule);
-      document.removeEventListener("keydown", closeWithEscape);
-    };
-  }, [openModule]);
+  document.addEventListener(
+    "keydown",
+    closeWithEscape
+  );
+
+  return () => {
+    document.removeEventListener(
+      "pointerdown",
+      closeOpenModule
+    );
+
+    document.removeEventListener(
+      "keydown",
+      closeWithEscape
+    );
+  };
+}, [openModule]);
 
   useEffect(() => {
     if (paused || SCREENSHOTS.length <= 1) return;
@@ -811,9 +852,22 @@ export default function HomePage() {
       <section ref={modulesSectionRef} id="modules" className="cq-reference-modules border-b border-white/6 px-5 py-14 md:px-8 md:py-16">
         <div className="mx-auto max-w-7xl">
           <div className="flex flex-wrap items-end justify-between gap-5">
-            <div>
-              <h2 className="text-[clamp(1.9rem,4vw,2.75rem)] font-extrabold leading-tight text-white">The 12 Growth Modules</h2>
-            </div>
+<div className="max-w-3xl">
+  <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-cyan-300">
+    The 12 Growth Modules
+  </p>
+
+  <h2 className="mt-3 text-[clamp(2rem,4vw,3.5rem)] font-extrabold leading-[1.05] tracking-[-0.04em] text-white">
+    Explore what every module audits.
+  </h2>
+
+  <p className="mt-4 max-w-2xl text-[15px] leading-7 text-slate-400">
+    Hover over a module for a quick preview.
+    Click it to reveal the complete checks,
+    outputs, and value delivered by that
+    intelligence layer.
+  </p>
+</div>
             <div className="flex items-center gap-3 text-[12px] text-slate-400">
               Hover for a preview · Click for full details
               <span className="text-cyan-300">→</span>

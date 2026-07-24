@@ -38,7 +38,7 @@ export default function SampleReportPage() {
             <p className="cq-eyebrow cq-eyebrow--signal">Download</p>
             <h2 className="mt-2 text-xl font-extrabold">Full sample PDF</h2>
             <p className="mt-2 text-[15px] leading-relaxed text-[var(--cq-text-2)]">
-              18 pages. Real data from a live audit, with client details anonymised.
+              A complete client-ready report generated from live audit data, with identifying details anonymised.
             </p>
             <a href="/sample-report.pdf" className="cq-btn cq-btn--primary mt-5 w-full" download>
               Download sample report (PDF)
@@ -49,7 +49,7 @@ export default function SampleReportPage() {
           </div>
         </div>
       </Section>
-      <CtaBand title="Want this report for your own site?" sub="Run a free audit now — no signup — and see your scores in under two minutes." />
+      <CtaBand title="Want this report for your own site?" sub="Start a 7-day trial and run 3 complete audits with access to all 12 growth modules." />
       <SiteFooter />
     </main>
   );

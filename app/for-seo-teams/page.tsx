@@ -18,7 +18,7 @@ export default function ForSeoTeamsPage() {
         { t: "AI search is a blind spot", d: "Traffic is shifting to AI answers and most teams have zero measurement of where they stand." },
       ]}
       features={[
-        { t: "Eight modules, one run", d: "SEO foundation, Core Web Vitals, traffic modelling, keywords, competitors, backlinks, content quality, and AI visibility — one URL, one report." },
+        { t: "12 growth modules, one workflow", d: "SEO foundation, Core Web Vitals, traffic modelling, keywords, competitors, backlinks, content quality, and AI visibility — one URL, one report." },
         { t: "Executive-ready exports", d: "Score gauges, benchmarks, and a prioritised roadmap that survives being forwarded to a VP." },
         { t: "Honest confidence labels", d: "Traffic estimates carry confidence tiers based on ranked keyword depth. We never dress up thin data as certainty." },
         { t: "Saved history & re-runs", d: "Every audit is stored. Re-run monthly and show movement, not snapshots." },
