@@ -108,6 +108,13 @@ model AuditReport {
   domain           String
   normalizedDomain String?
 
+  auditJobId   String?   @unique
+  inputHash    String?
+  status       String    @default("processing")
+  renderReady  Boolean   @default(false)
+  moduleStatus Json?
+  completedAt  DateTime?
+
   reportTypes Json?
   reportData  Json
 
@@ -130,6 +137,7 @@ model AuditReport {
   @@index([domain])
   @@index([createdAt])
   @@index([userId, normalizedDomain, createdAt])
+  @@index([status, renderReady])
 }
 
 model AuditLog {
@@ -148,25 +156,30 @@ model AuditLog {
 }
 
 model AuditJob {
-  id             String    @id @default(cuid())
-  userId         String?
-  domain         String
-  url            String
-  reportTypes    Json?
-  status         String    @default("pending")
-  progress       Int       @default(0)
-  currentModule  String?
-  moduleStatus   Json?
-  error          String?
-  resultReportId String?
-  resultData     Json?
-  retryCount     Int       @default(0)
-  maxRetries     Int       @default(2)
-  startedAt      DateTime?
-  completedAt    DateTime?
-  failedAt       DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  userId           String?
+  domain           String
+  normalizedDomain String?
+  url              String
+  inputHash        String?
+  technicalTaskId  String?
+  renderReady      Boolean   @default(false)
+  usageCounted     Boolean   @default(false)
+  reportTypes      Json?
+  status           String    @default("pending")
+  progress         Int       @default(0)
+  currentModule    String?
+  moduleStatus     Json?
+  error            String?
+  resultReportId   String?
+  resultData       Json?
+  retryCount       Int       @default(0)
+  maxRetries       Int       @default(2)
+  startedAt        DateTime?
+  completedAt      DateTime?
+  failedAt         DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -174,6 +187,8 @@ model AuditJob {
   @@index([domain])
   @@index([status])
   @@index([createdAt])
+  @@index([userId, normalizedDomain, createdAt])
+  @@index([inputHash])
 }
 
 enum PromoAccessStatus {

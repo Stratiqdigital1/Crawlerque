@@ -1,6 +1,11 @@
-"use client";
+﻿"use client";
 
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import Link from "next/link";
 import jsPDF from "jspdf";
 import {
   normalizeAuditData,
@@ -39,8 +44,25 @@ const PROMO_REPORT_TYPES = [
   "serp",
 ];
 
+type OnPagePollIdentity = {
+  taskId: string;
+  auditJobId: string;
+  inputHash: string;
+  normalizedDomain: string;
+};
+
 export default function WebsiteAuditDashboardPage() {
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(() => {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  const params = new URLSearchParams(
+    window.location.search
+  );
+
+  return params.get("url") || "";
+});
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 const [auditSeconds, setAuditSeconds] = useState(0);
@@ -56,83 +78,307 @@ const [error, setError] = useState("");
   "seo",
   "technical",
 ]);
-useEffect(() => {
-  if (typeof window === "undefined") return;
-
-  const params = new URLSearchParams(window.location.search);
-  const freeMode = params.get("free");
-  const urlFromHome = params.get("url");
-  const reportId = params.get("reportId");
-
-  if (freeMode === "true") {
-    setSelectedReportTypes(["seo", "technical"]);
-  }
-
-  if (urlFromHome) {
-    setUrl(urlFromHome);
-  }
-
-  if (reportId) {
-    loadSavedReport(reportId);
-  }
-}, []);
 
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [compareA, setCompareA] = useState<any>(null);
 const [compareB, setCompareB] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
-const pollOnPage = async (taskId: string) => {
-  if (!taskId) return;
+  const activeAuditJobIdRef =
+  useRef<string | null>(null);
 
-  for (let attempt = 1; attempt <= 20; attempt++) {
-    await new Promise((resolve) => setTimeout(resolve, 15000));
+const activeAuditIdentityRef =
+  useRef<OnPagePollIdentity | null>(
+    null
+  );
+const pollOnPage = async (
+  identity: OnPagePollIdentity
+) => {
+  const {
+    taskId,
+    auditJobId: pollingAuditJobId,
+    inputHash,
+    normalizedDomain,
+  } = identity;
+
+  if (
+    !taskId ||
+    !pollingAuditJobId ||
+    !inputHash ||
+    !normalizedDomain
+  ) {
+    return;
+  }
+
+  for (
+    let attempt = 1;
+    attempt <= 20;
+    attempt++
+  ) {
+    /*
+     * Stop silently when another audit has
+     * replaced this audit in the dashboard.
+     */
+    if (
+      activeAuditJobIdRef.current !==
+        pollingAuditJobId ||
+      activeAuditIdentityRef.current
+        ?.inputHash !== inputHash
+    ) {
+      return;
+    }
+
+    await new Promise((resolve) =>
+      setTimeout(resolve, 15000)
+    );
 
     try {
+      const params =
+        new URLSearchParams({
+          taskId,
+          auditJobId:
+            pollingAuditJobId,
+          inputHash,
+          normalizedDomain,
+
+          finalAttempt:
+            attempt === 20
+              ? "true"
+              : "false",
+        });
+
       const res = await fetch(
-        `/api/dataforseo/onpage/status?taskId=${taskId}`,
+        `/api/dataforseo/onpage/status?${params.toString()}`,
         {
           cache: "no-store",
         }
       );
 
-      const json = await res.json();
-      const onPage = json?.onPage;
-
-      if (onPage) {
-  setData((prev: any) => {
-    const updatedReport = {
-      ...prev,
-      onPage,
-      moduleStatus: {
-        ...prev?.moduleStatus,
-        onPage:
-          onPage?.pages?.length > 0
-            ? "available"
-            : "pending_or_not_available",
-      },
-      unifiedOverview: {
-        ...prev?.unifiedOverview,
-        keyMetrics: {
-          ...prev?.unifiedOverview?.keyMetrics,
-          pagesCrawled: onPage?.crawledPages ?? prev?.unifiedOverview?.keyMetrics?.pagesCrawled,
-        },
-      },
-    };
-
-    loadReportHistory();
-
-    return updatedReport;
-  });
-}
+      const json =
+        await res.json();
 
       if (
-        onPage?.pages?.length > 0 ||
-        onPage?.crawlStatus === "completed"
+        !res.ok ||
+        !json?.success
       ) {
+        throw new Error(
+          json?.error ||
+            "Technical crawl status could not be loaded."
+        );
+      }
+
+      /*
+       * Recheck identity after the network
+       * request. The user may have started
+       * another audit while this was loading.
+       */
+      if (
+        activeAuditJobIdRef.current !==
+          pollingAuditJobId ||
+        activeAuditIdentityRef.current
+          ?.inputHash !== inputHash
+      ) {
+        return;
+      }
+
+      const onPage =
+        json?.onPage;
+
+      const technicalState =
+        String(
+          json?.technicalState ||
+            onPage?.crawlStatus ||
+            "running"
+        );
+
+      /*
+       * Backend has finalized the canonical
+       * saved report. Replace the dashboard
+       * only when the audit identity matches.
+       */
+      if (
+        json?.finalized === true &&
+        json?.report
+      ) {
+        setData((previous: any) => {
+          if (
+            !previous ||
+            previous?.auditJobId !==
+              pollingAuditJobId ||
+            previous?.inputHash !==
+              inputHash ||
+            previous
+              ?.normalizedDomain !==
+              normalizedDomain
+          ) {
+            return previous;
+          }
+
+          return {
+            ...json.report,
+
+            reportTypes:
+              json.report
+                ?.reportTypes ||
+              previous?.reportTypes ||
+              [],
+
+            renderReady: true,
+          };
+        });
+
+        setAuditProgress(100);
+
+        setAuditCurrentModule(
+          technicalState ===
+            "completed"
+            ? "Completed"
+            : `Completed with technical crawl ${technicalState}`
+        );
+
+        setAuditModuleStatus(
+          json?.report
+            ?.moduleStatus || {}
+        );
+
+        activeAuditIdentityRef.current =
+          null;
+
+        activeAuditJobIdRef.current =
+          null;
+
+        await loadReportHistory();
+        await loadCurrentUser();
+
+        trackAnalyticsEvent(
+          "audit_completed",
+          {
+            account_type:
+              currentUser?.trial
+                ?.isTrialing
+                ? "trial"
+                : currentUser
+                      ?.isPromoAccess
+                  ? "promo"
+                  : "paid",
+
+            plan_name:
+              currentUser?.package
+                ?.name ||
+              currentUser
+                ?.packageName ||
+              "unknown",
+
+            module_count:
+              Array.isArray(
+                json?.report
+                  ?.reportTypes
+              )
+                ? json.report
+                    .reportTypes
+                    .length
+                : 0,
+
+            technical_state:
+              technicalState,
+          }
+        );
+
         break;
       }
-    } catch (error) {
-      console.error("OnPage polling failed:", error);
+
+      /*
+       * Crawl is still running. Show partial
+       * technical data but keep PDF locked.
+       */
+      if (onPage) {
+        setData(
+          (previous: any) => {
+            if (
+              !previous ||
+              previous?.auditJobId !==
+                pollingAuditJobId ||
+              previous?.inputHash !==
+                inputHash ||
+              previous
+                ?.normalizedDomain !==
+                normalizedDomain
+            ) {
+              return previous;
+            }
+
+            return {
+              ...previous,
+
+              onPage,
+
+              renderReady: false,
+
+              moduleStatus: {
+                ...previous
+                  ?.moduleStatus,
+
+                technical:
+                  technicalState,
+
+                onPage:
+                  technicalState,
+              },
+
+              unifiedOverview: {
+                ...previous
+                  ?.unifiedOverview,
+
+                keyMetrics: {
+                  ...previous
+                    ?.unifiedOverview
+                    ?.keyMetrics,
+
+                  pagesCrawled:
+                    onPage
+                      ?.crawledPages ??
+                    previous
+                      ?.unifiedOverview
+                      ?.keyMetrics
+                      ?.pagesCrawled,
+                },
+              },
+            };
+          }
+        );
+
+        setAuditProgress(92);
+
+        setAuditCurrentModule(
+          "Waiting for technical crawl"
+        );
+
+        setAuditModuleStatus(
+          (previous: any) => ({
+            ...previous,
+
+            technical:
+              technicalState,
+
+            onPage:
+              technicalState,
+          })
+        );
+      }
+    } catch (pollError) {
+      console.error(
+        "OnPage polling failed:",
+        pollError
+      );
+
+      if (attempt === 20) {
+        setError(
+          "The technical crawl could not be finalized. Reload the saved report before exporting its PDF."
+        );
+
+        setAuditCurrentModule(
+          "Technical crawl finalization failed"
+        );
+      }
     }
   }
 };
@@ -160,6 +406,13 @@ const toggleReportType = (type: string) => {
 
 const pollAuditJobStatus = (jobId: string) => {
   const interval = window.setInterval(async () => {
+    if (
+  activeAuditJobIdRef.current !==
+  jobId
+) {
+  window.clearInterval(interval);
+  return;
+}
     try {
       const res = await fetch(`/api/audit-jobs/${jobId}/status`, {
         cache: "no-store",
@@ -246,6 +499,16 @@ const effectiveReportTypes =
     ? [...PROMO_REPORT_TYPES]
     : selectedReportTypes;
 
+setData(null);
+setCompareA(null);
+setCompareB(null);
+
+activeAuditJobIdRef.current =
+  null;
+
+activeAuditIdentityRef.current =
+  null;
+
 setLoading(true);
 setError("");
 setAuditSeconds(0);
@@ -284,8 +547,21 @@ if (!startRes.ok || !startJson?.success) {
         throw new Error(errMsg);
       }
 
-      const startedJobId = startJson.auditJobId;
-      setAuditJobId(startedJobId);
+const startedJobId =
+  String(
+    startJson.auditJobId || ""
+  );
+
+if (!startedJobId) {
+  throw new Error(
+    "Audit job identity was not returned."
+  );
+}
+
+setAuditJobId(startedJobId);
+
+activeAuditJobIdRef.current =
+  startedJobId;
 
       trackAnalyticsEvent("audit_started", {
         account_type: currentUser?.trial?.isTrialing
@@ -407,33 +683,116 @@ monthlyTraffic:
 
 setData(report);
 
-trackAnalyticsEvent("audit_completed", {
-  account_type: currentUser?.trial?.isTrialing
-    ? "trial"
-    : currentUser?.isPromoAccess
-      ? "promo"
-      : "paid",
-  plan_name:
-    currentUser?.package?.name ||
-    currentUser?.packageName ||
-    "unknown",
-  module_count: effectiveReportTypes.length,
-  cached_result: Boolean(json?.cached),
-});
+/*
+ * Audit is fully ready immediately when no
+ * asynchronous technical crawl is pending.
+ */
+if (
+  report?.renderReady === true
+) {
+  activeAuditIdentityRef.current =
+    null;
 
-if (report?.onPage?.taskId) {
-  pollOnPage(report.onPage.taskId);
+  activeAuditJobIdRef.current =
+    null;
+
+  trackAnalyticsEvent(
+    "audit_completed",
+    {
+      account_type:
+        currentUser?.trial
+          ?.isTrialing
+          ? "trial"
+          : currentUser
+                ?.isPromoAccess
+            ? "promo"
+            : "paid",
+
+      plan_name:
+        currentUser?.package
+          ?.name ||
+        currentUser
+          ?.packageName ||
+        "unknown",
+
+      module_count:
+        effectiveReportTypes.length,
+
+      cached_result:
+        Boolean(json?.cached),
+
+      technical_state:
+        report?.moduleStatus
+          ?.technical ||
+        "not_required",
+    }
+  );
+
+  await loadReportHistory();
+
+  if (progressInterval) {
+    window.clearInterval(
+      progressInterval
+    );
+  }
+
+  setAuditProgress(100);
+
+  setAuditCurrentModule(
+    "Completed"
+  );
+} else {
+  const pollIdentity:
+    OnPagePollIdentity | null =
+    report?.onPage?.taskId &&
+    report?.auditJobId &&
+    report?.inputHash &&
+    report?.normalizedDomain
+      ? {
+          taskId: String(
+            report.onPage.taskId
+          ),
+
+          auditJobId: String(
+            report.auditJobId
+          ),
+
+          inputHash: String(
+            report.inputHash
+          ),
+
+          normalizedDomain:
+            String(
+              report.normalizedDomain
+            ),
+        }
+      : null;
+
+  if (!pollIdentity) {
+    throw new Error(
+      "The technical crawl identity is missing from the audit response."
+    );
+  }
+
+  activeAuditJobIdRef.current =
+    pollIdentity.auditJobId;
+
+  activeAuditIdentityRef.current =
+    pollIdentity;
+
+  setAuditProgress(92);
+
+  setAuditCurrentModule(
+    "Waiting for technical crawl"
+  );
+
+  void pollOnPage(
+    pollIdentity
+  );
+
 }
 
-await loadReportHistory();
 await loadCurrentUser();
-
-if (progressInterval) {
-  window.clearInterval(progressInterval);
-}
-
-setAuditProgress(100);
-setAuditCurrentModule("Completed");
 } catch (e: any) {
   console.error(e);
   const errMsg = typeof e?.message === "string"
@@ -462,13 +821,24 @@ clearInterval(timer);
 setAbortController(null);
 setLoading(false);
   };
-  const cancelAudit = () => {
+const cancelAudit = () => {
   if (abortController) {
     abortController.abort();
   }
 
+  activeAuditJobIdRef.current =
+    null;
+
+  activeAuditIdentityRef.current =
+    null;
+
   setAbortController(null);
   setLoading(false);
+
+  setAuditCurrentModule(
+    "Cancelled"
+  );
+
   setError("Audit cancelled.");
 };
   const chartData =
@@ -499,6 +869,144 @@ setLoading(false);
 ),
   },
 ];
+
+const normalizeHistoryDomain = (
+  item: any
+) => {
+  const raw = String(
+    item?.normalizedDomain ||
+      item?.domain ||
+      ""
+  )
+    .trim()
+    .toLowerCase();
+
+  if (!raw) {
+    return "";
+  }
+
+  try {
+    const parsed = new URL(
+      /^https?:\/\//i.test(raw)
+        ? raw
+        : `https://${raw}`
+    );
+
+    return parsed.hostname
+      .replace(/^www\./, "")
+      .replace(/\.$/, "");
+  } catch {
+    return raw
+      .replace(/^https?:\/\//, "")
+      .replace(/^www\./, "")
+      .split(/[/?#]/)[0]
+      .replace(/\.$/, "");
+  }
+};
+
+const historyReportTypesKey = (
+  item: any
+) => {
+  const reportTypes: string[] = (
+    Array.isArray(item?.reportTypes)
+      ? item.reportTypes
+      : []
+  )
+    .map((type: unknown) =>
+      String(type || "").trim()
+    )
+    .filter(
+      (type: string) =>
+        Boolean(type)
+    );
+
+  return Array.from(
+    new Set<string>(reportTypes)
+  )
+    .sort(
+      (a: string, b: string) =>
+        a.localeCompare(b)
+    )
+    .join("|");
+};
+
+const reportsAreComparable = (
+  reportA: any,
+  reportB: any
+) => {
+  if (
+    !reportA ||
+    !reportB
+  ) {
+    return false;
+  }
+
+  const domainA =
+    normalizeHistoryDomain(
+      reportA
+    );
+
+  const domainB =
+    normalizeHistoryDomain(
+      reportB
+    );
+
+  return (
+    Boolean(domainA) &&
+    domainA === domainB &&
+    historyReportTypesKey(
+      reportA
+    ) ===
+      historyReportTypesKey(
+        reportB
+      ) &&
+    reportA?.renderReady ===
+      true &&
+    reportB?.renderReady ===
+      true
+  );
+};
+
+const selectComparisonReport = (
+  slot: "A" | "B",
+  item: any
+) => {
+  if (
+    item?.renderReady !== true
+  ) {
+    setError(
+      "Only completed, export-ready reports can be compared."
+    );
+    return;
+  }
+
+  const otherReport =
+    slot === "A"
+      ? compareB
+      : compareA;
+
+  if (
+    otherReport &&
+    !reportsAreComparable(
+      item,
+      otherReport
+    )
+  ) {
+    setError(
+      "Select another completed audit for the same domain and the same module selection."
+    );
+    return;
+  }
+
+  setError("");
+
+  if (slot === "A") {
+    setCompareA(item);
+  } else {
+    setCompareB(item);
+  }
+};
+
 const loadReportHistory = async () => {
   try {
     const res = await fetch("/api/reports", {
@@ -509,20 +1017,63 @@ const loadReportHistory = async () => {
 
     if (!json?.success) return;
 
-    const formattedHistory = json.reports.map((item: any) => ({
-  id: item.id,
-  domain: item.domain,
-  normalizedDomain: item.normalizedDomain,
-  reportTypes: item.reportTypes || [],
-  overallScore: item.overallScore,
-  seoScore: item.seoScore,
-  uxScore: item.uxScore,
-  aiScore: item.aiScore,
-  traffic: item.estimatedTraffic,
-  keywordCount: item.keywordCount,
-  pdfGenerated: item.pdfGenerated,
-  createdAt: new Date(item.createdAt).toLocaleString(),
-}));
+const formattedHistory =
+  json.reports.map(
+    (item: any) => ({
+      id: item.id,
+
+      auditJobId:
+        item.auditJobId || null,
+
+      domain:
+        item.domain,
+
+      normalizedDomain:
+        item.normalizedDomain,
+
+      reportTypes:
+        item.reportTypes || [],
+
+      status:
+        item.status,
+
+      renderReady:
+        item.renderReady === true,
+
+      overallScore:
+        item.overallScore,
+
+      seoScore:
+        item.seoScore,
+
+      uxScore:
+        item.uxScore,
+
+      aiScore:
+        item.aiScore,
+
+      traffic:
+        item.estimatedTraffic,
+
+      keywordCount:
+        item.keywordCount,
+
+      pdfGenerated:
+        item.pdfGenerated,
+
+      completedAt:
+        item.completedAt
+          ? new Date(
+              item.completedAt
+            ).toLocaleString()
+          : null,
+
+      createdAt:
+        new Date(
+          item.createdAt
+        ).toLocaleString(),
+    })
+  );
 
     setHistory(formattedHistory);
   } catch (error) {
@@ -569,38 +1120,186 @@ const loadSavedReport = async (id: string) => {
     const json = await res.json();
 
     if (!res.ok || !json?.success) {
-      throw new Error(json?.error || "Failed to load report.");
+      throw new Error(
+        json?.error || "Failed to load report."
+      );
     }
 
-    const fullReport = json.report?.reportData;
+    const fullReport =
+      json.report?.reportData;
 
-    if (!fullReport) {
-      throw new Error("Saved report data is not available.");
+    if (
+      !fullReport ||
+      typeof fullReport !== "object" ||
+      Array.isArray(fullReport)
+    ) {
+      throw new Error(
+        "Saved report data is not available."
+      );
     }
 
-    setData(fullReport);
-setUrl(fullReport?.url || fullReport?.domain || json.report?.domain || "");
-setSelectedReportTypes(
-  fullReport?.reportTypes || json.report?.reportTypes || selectedReportTypes
-);
-setActiveTab("overview");
+    const reportRenderReady =
+      json.report?.renderReady === true ||
+      fullReport?.renderReady === true;
 
-trackAnalyticsEvent("report_opened", {
-  account_type: currentUser?.trial?.isTrialing
-    ? "trial"
-    : currentUser?.isPromoAccess
-      ? "promo"
-      : "paid",
-  plan_name:
-    currentUser?.package?.name ||
-    currentUser?.packageName ||
-    "unknown",
-});
+    const hydratedReport = {
+      ...fullReport,
+
+      reportId:
+        fullReport?.reportId ||
+        json.report?.id,
+
+      auditJobId:
+        fullReport?.auditJobId ||
+        json.report?.auditJobId ||
+        null,
+
+      inputHash:
+        fullReport?.inputHash ||
+        json.report?.inputHash ||
+        null,
+
+      normalizedDomain:
+        fullReport?.normalizedDomain ||
+        json.report?.normalizedDomain ||
+        null,
+
+      renderReady:
+        reportRenderReady,
+
+      reportStatus:
+        json.report?.status ||
+        fullReport?.reportStatus ||
+        "processing",
+    };
+
+    setData(hydratedReport);
+
+    setAuditJobId(
+      hydratedReport?.auditJobId ||
+        null
+    );
+
+    setUrl(
+      hydratedReport?.url ||
+        hydratedReport?.domain ||
+        json.report?.domain ||
+        ""
+    );
+
+    setSelectedReportTypes(
+      hydratedReport?.reportTypes ||
+        json.report?.reportTypes ||
+        selectedReportTypes
+    );
+
+    setActiveTab("overview");
+
+    if (
+      !reportRenderReady &&
+      hydratedReport?.onPage?.taskId &&
+      hydratedReport?.auditJobId &&
+      hydratedReport?.inputHash &&
+      hydratedReport?.normalizedDomain
+    ) {
+      const pollIdentity:
+        OnPagePollIdentity = {
+          taskId: String(
+            hydratedReport.onPage.taskId
+          ),
+
+          auditJobId: String(
+            hydratedReport.auditJobId
+          ),
+
+          inputHash: String(
+            hydratedReport.inputHash
+          ),
+
+          normalizedDomain: String(
+            hydratedReport.normalizedDomain
+          ),
+        };
+
+      activeAuditJobIdRef.current =
+        pollIdentity.auditJobId;
+
+      activeAuditIdentityRef.current =
+        pollIdentity;
+
+      setAuditCurrentModule(
+        "Waiting for technical crawl"
+      );
+
+      setAuditProgress(92);
+
+      void pollOnPage(
+        pollIdentity
+      );
+    } else {
+      activeAuditJobIdRef.current =
+        null;
+
+      activeAuditIdentityRef.current =
+        null;
+    }
+
+    trackAnalyticsEvent(
+      "report_opened",
+      {
+        account_type:
+          currentUser?.trial?.isTrialing
+            ? "trial"
+            : currentUser?.isPromoAccess
+              ? "promo"
+              : "paid",
+
+        plan_name:
+          currentUser?.package?.name ||
+          currentUser?.packageName ||
+          "unknown",
+
+        render_ready:
+          reportRenderReady,
+      }
+    );
   } catch (error: any) {
-    console.error("Saved report load failed:", error);
-    setError(error?.message || "Failed to load saved report.");
+    console.error(
+      "Saved report load failed:",
+      error
+    );
+
+    setError(
+      error?.message ||
+        "Failed to load saved report."
+    );
   }
 };
+
+useEffect(() => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const params = new URLSearchParams(
+    window.location.search
+  );
+
+  const reportId = params.get("reportId");
+
+  if (!reportId) {
+    return;
+  }
+
+  const timer = window.setTimeout(() => {
+    void loadSavedReport(reportId);
+  }, 0);
+
+  return () => {
+    window.clearTimeout(timer);
+  };
+
+}, []);
 
 const deleteReport = async (id: string) => {
   const confirmDelete = window.confirm(
@@ -634,6 +1333,18 @@ const exportComparisonPDF = async () => {
     setError("Please select two reports to compare.");
     return;
   }
+  if (
+  !reportsAreComparable(
+    compareA,
+    compareB
+  )
+) {
+  setError(
+    "Comparison is allowed only for completed audits of the same domain using the same modules."
+  );
+
+  return;
+}
 
   let comparisonA: any = compareA;
   let comparisonB: any = compareB;
@@ -727,7 +1438,7 @@ const comparisonBrandName = canWhiteLabel
     const change = Number(b || 0) - Number(a || 0);
 
     line(
-      `${label}: ${a ?? "N/A"} → ${b ?? "N/A"} | Change: ${
+      `${label}: ${a ?? "N/A"} â†’ ${b ?? "N/A"} | Change: ${
         change > 0 ? "+" : ""
       }${change}`
     );
@@ -737,19 +1448,18 @@ const comparisonBrandName = canWhiteLabel
     `${comparisonFilePrefix}-Comparison-${comparisonA.domain}-vs-${comparisonB.domain}.pdf`
   );
 };
-// =============================================================================
-// CRAWLER QUE — COMPLETE PDF EXPORT  (drop-in replacement for exportPDF)
-// =============================================================================
-// HOW TO INSTALL:
-//   1. In page.tsx find:   const exportPDF = async () => {
-//   2. Delete from that line down to the closing };  (ends just before
-//      the line:  const totalMentions = )
-//   3. Paste this entire file in that spot.
-//   No other changes needed — all helpers are self-contained inside the function.
-// =============================================================================
-
 const exportPDF = async () => {
   if (!data) return;
+
+  if (
+    data?.renderReady !== true
+  ) {
+    setError(
+      "The report is still being finalized. PDF export will unlock after every selected module reaches a final status."
+    );
+
+    return;
+  }
 
   const userRes = await fetch("/api/user/me", { cache: "no-store" });
   if (!userRes.ok) { setError("Please login first."); return; }
@@ -765,26 +1475,26 @@ const exportPDF = async () => {
   const PW     = doc.internal.pageSize.getWidth();
   const PH     = doc.internal.pageSize.getHeight();
 
-  // ── BRAND ─────────────────────────────────────────────────────────────
+  // â”€â”€ BRAND â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const canWL     = pdfUser?.canUseWhiteLabel === true && pdfUser?.whiteLabelEnabled === true;
 const brandName = canWL ? (pdfUser?.agencyName || pdfUser?.companyName || "Your Agency") : "Crawler Que";
 const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligence Report") : "Powered By Strat IQ Digital";
     const accentHex = canWL && pdfUser?.brandColor ? pdfUser.brandColor : "#00D4AA";
 
-  // ── DATA ──────────────────────────────────────────────────────────────
+  // â”€â”€ DATA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const normalized         = normalizeAuditData(data);
   const smartRecs          = buildSmartRecommendations(normalized);
-  const domain             = normalized.domain || data?.domain || "—";
+  const domain             = normalized.domain || data?.domain || "â€”";
   const generatedDate      = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
   const selectedModules    = data?.reportTypes?.length > 0 ? data.reportTypes : selectedReportTypes;
 
-  // parse hex accent → RGB
+  // parse hex accent â†’ RGB
   const hexToRgb = (h: string): [number,number,number] => {
     const r = parseInt(h.slice(1,3),16), g = parseInt(h.slice(3,5),16), b = parseInt(h.slice(5,7),16);
     return [r,g,b];
   };
 
-  // ── PALETTE ───────────────────────────────────────────────────────────
+  // â”€â”€ PALETTE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   type RGB = [number,number,number];
   const C = {
 bg:      [11, 25, 41] as RGB,
@@ -811,47 +1521,47 @@ bg:      [11, 25, 41] as RGB,
   let pageNum = 0;
 
 // =============================================================================
-// CRAWLER QUE — PDF RENDERING ENGINE v2  (overflow-proof, professional layout)
+// CRAWLER QUE â€” PDF RENDERING ENGINE v2  (overflow-proof, professional layout)
 // =============================================================================
-// HOW TO INSTALL — in app/dashboard/page.tsx, inside the exportPDF function:
+// HOW TO INSTALL â€” in app/dashboard/page.tsx, inside the exportPDF function:
 //
-//   1. Find the line:      // ── UTILS ─────────────────────────────────────
+//   1. Find the line:      // â”€â”€ UTILS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //   2. Select from that line DOWN TO (and including) the entire simpleList
-//      function — i.e. everything up to, but NOT including, the line:
-//      //  PAGE 1 — COVER
+//      function â€” i.e. everything up to, but NOT including, the line:
+//      //  PAGE 1 â€” COVER
 //   3. Delete that selection and paste this entire file in its place.
 //
 // Every helper keeps its original name and signature, so all section content
 // code below it continues to work unchanged.
 //
 // WHAT v2 FIXES:
-//   • Text can NEVER overflow a card, box, or table cell (auto-fit + ellipsis)
-//   • Cards and boxes auto-size their height to their content
-//   • Correct page numbers ("Page 4 of 33", not "Page 33" everywhere)
-//   • Emoji / unicode mojibake removed (the "Ø=Ý4" and "!'" garbage)
-//   • Raw floats formatted ($75.2K instead of 75198.56722317677)
-//   • Markdown stripped from AI response snippets (**bold** → bold)
-//   • Larger, more readable type scale with higher contrast
+//   â€¢ Text can NEVER overflow a card, box, or table cell (auto-fit + ellipsis)
+//   â€¢ Cards and boxes auto-size their height to their content
+//   â€¢ Correct page numbers ("Page 4 of 33", not "Page 33" everywhere)
+//   â€¢ Emoji / unicode mojibake removed (the "Ã˜=Ã4" and "!'" garbage)
+//   â€¢ Raw floats formatted ($75.2K instead of 75198.56722317677)
+//   â€¢ Markdown stripped from AI response snippets (**bold** â†’ bold)
+//   â€¢ Larger, more readable type scale with higher contrast
 // =============================================================================
 
-  // ── UTILS ─────────────────────────────────────────────────────────────
+  // â”€â”€ UTILS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   // Characters outside jsPDF's WinAnsi encoding render as garbage in
   // Helvetica. Map the common ones to safe equivalents, drop the rest.
   const sanitize = (s: string): string =>
     String(s)
       .replace(/\*\*|__|`/g, "")            // strip markdown bold/code
-      .replace(/→/g, "->")
-      .replace(/⚠|❗|🔴/g, "!")
-      .replace(/✦|★|⭐|🟡|🔵|🟢/g, "*")
-      .replace(/✓|✔|✅/g, "OK")
-      .replace(/❌|✖/g, "X")
+      .replace(/â†’/g, "->")
+      .replace(/âš |â—|ðŸ”´/g, "!")
+      .replace(/âœ¦|â˜…|â­|ðŸŸ¡|ðŸ”µ|ðŸŸ¢/g, "*")
+      .replace(/âœ“|âœ”|âœ…/g, "OK")
+      .replace(/âŒ|âœ–/g, "X")
       // keep printable ASCII + the WinAnsi punctuation jsPDF supports
-      .replace(/[^\x20-\x7E\u00A0-\u00FF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u2026·]/g, "")
+      .replace(/[^\x20-\x7E\u00A0-\u00FF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u2026Â·]/g, "")
       .replace(/\s+/g, " ")
       .trim();
 
-  const cl = (v: any, fb = "—"): string => {
+  const cl = (v: any, fb = "â€”"): string => {
     if (v === null || v === undefined || v === "") return fb;
     if (typeof v === "object") return fb;
     const s = sanitize(String(v));
@@ -862,7 +1572,7 @@ bg:      [11, 25, 41] as RGB,
   const clamp = (v: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
 
   const fmt = (v: any): string => {
-    const x = n(v); if (x === null) return "—";
+    const x = n(v); if (x === null) return "â€”";
     if (x >= 1_000_000) return `${(x / 1_000_000).toFixed(1)}M`;
     if (x >= 1_000)     return `${(x / 1_000).toFixed(1)}K`;
     return String(Math.round(x));
@@ -870,15 +1580,15 @@ bg:      [11, 25, 41] as RGB,
 
   // "$75.2K" instead of "75198.56722317677"
   const fmtMoney = (v: any): string => {
-    const x = n(v); if (x === null) return "—";
+    const x = n(v); if (x === null) return "â€”";
     if (x >= 1_000_000) return `$${(x / 1_000_000).toFixed(1)}M`;
     if (x >= 1_000)     return `$${(x / 1_000).toFixed(1)}K`;
     return `$${x.toFixed(2)}`;
   };
 
-  // Competition arrives as 0.0099999997-style floats on a 0–1 scale
+  // Competition arrives as 0.0099999997-style floats on a 0â€“1 scale
   const fmtCompetition = (v: any): string => {
-    const x = n(v); if (x === null) return "—";
+    const x = n(v); if (x === null) return "â€”";
     if (x <= 1) {
       const pct = Math.round(x * 100);
       const lvl = pct >= 67 ? "High" : pct >= 34 ? "Medium" : "Low";
@@ -913,11 +1623,11 @@ bg:      [11, 25, 41] as RGB,
     const k = String(s || "").toLowerCase();
     if (k === "completed") return "Data returned successfully";
     if (k === "partial") return "Some data returned, some unavailable";
-    if (k === "failed") return "Module failed — see logs";
+    if (k === "failed") return "Module failed â€” see logs";
     if (k === "available") return "Module ran but the API returned no data";
     if (k === "not_available" || k === "pending_or_not_available") return "Not included in current plan";
     if (k === "skipped") return "Not selected for this audit";
-    return "—";
+    return "â€”";
   };
   const statusColor = (s: any): RGB => {
     const k = String(s || "").toLowerCase();
@@ -930,30 +1640,30 @@ bg:      [11, 25, 41] as RGB,
   const sCol = (s: any): RGB => { const x = n(s); if (x === null) return C.muted; if (x >= 75) return C.accent; if (x >= 55) return C.amber; return C.red; };
   const sLbl = (s: any): string => { const x = n(s); if (x === null) return "No Data"; if (x >= 90) return "Excellent"; if (x >= 75) return "Strong"; if (x >= 60) return "Moderate"; return "Needs Work"; };
 
-  // ── OVERFLOW GUARDS (the heart of v2) ─────────────────────────────────
+  // â”€â”€ OVERFLOW GUARDS (the heart of v2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   // Truncate with an ellipsis so text NEVER exceeds maxW at current font.
   const ell = (text: string, maxW: number): string => {
     const t = cl(text, "");
-    if (!t) return "—";
+    if (!t) return "â€”";
     if (doc.getTextWidth(t) <= maxW) return t;
     let lo = 0, hi = t.length;
     while (lo < hi) {
       const mid = Math.ceil((lo + hi) / 2);
-      if (doc.getTextWidth(t.slice(0, mid) + "…") <= maxW) lo = mid; else hi = mid - 1;
+      if (doc.getTextWidth(t.slice(0, mid) + "â€¦") <= maxW) lo = mid; else hi = mid - 1;
     }
-    return t.slice(0, Math.max(1, lo)).trimEnd() + "…";
+    return t.slice(0, Math.max(1, lo)).trimEnd() + "â€¦";
   };
 
   // For URLs: keep the start and end, drop the middle.
   const ellMid = (text: string, maxW: number): string => {
     const t = cl(text, "");
-    if (!t || doc.getTextWidth(t) <= maxW) return t || "—";
+    if (!t || doc.getTextWidth(t) <= maxW) return t || "â€”";
     let keep = Math.floor(t.length / 2);
     while (keep > 4) {
       const head = t.slice(0, Math.ceil(keep * 0.65));
       const tail = t.slice(t.length - Math.floor(keep * 0.35));
-      const cand = head + "…" + tail;
+      const cand = head + "â€¦" + tail;
       if (doc.getTextWidth(cand) <= maxW) return cand;
       keep -= 2;
     }
@@ -971,10 +1681,10 @@ bg:      [11, 25, 41] as RGB,
     return minSize;
   };
 
-  // ── PAGE OPS ──────────────────────────────────────────────────────────
+  // â”€â”€ PAGE OPS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const drawBg = () => { doc.setFillColor(...C.bg); doc.rect(0, 0, PW, PH, "F"); doc.setFillColor(...C.accent); doc.rect(0, 0, PW, 0.5, "F"); };
 
-  // v2: takes the real page index and total — fixes the "Page 33 everywhere" bug
+  // v2: takes the real page index and total â€” fixes the "Page 33 everywhere" bug
   const drawFooter = (pageIdx: number, total: number) => {
     const fp = PH - 10;
     doc.setDrawColor(...C.border); doc.setLineWidth(0.25); doc.line(ML, fp - 3, PW - MR, fp - 3);
@@ -988,7 +1698,7 @@ bg:      [11, 25, 41] as RGB,
   const ensure  = (needed = 30) => { if (y + needed > BOT) newPage(); };
   const gap     = (mm = 5) => { y += mm; };
 
-  // ── TYPOGRAPHY (larger, higher contrast than v1) ──────────────────────
+  // â”€â”€ TYPOGRAPHY (larger, higher contrast than v1) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const h1 = (t: string) => { ensure(14); doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.setTextColor(...C.white); doc.text(ell(t, CW), ML, y); y += 8; };
   const h2 = (t: string) => { ensure(10); doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(...C.white); doc.text(ell(t, CW), ML, y); y += 6; };
   const sub = (t: string) => { ensure(8); doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(...C.muted); const ls = doc.splitTextToSize(cl(t, ""), CW); doc.text(ls, ML, y); y += ls.length * 4.6 + 2; };
@@ -996,7 +1706,7 @@ bg:      [11, 25, 41] as RGB,
   const lbl = (t: string, col: RGB = C.muted) => { doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(...col); doc.text(ell(cl(t, "").toUpperCase(), CW), ML, y); y += 4; };
   const divLine = () => { ensure(4); doc.setDrawColor(...C.faint); doc.setLineWidth(0.2); doc.line(ML, y, PW - MR, y); y += 5; };
 
-// ── SECTION HEADERS (v2.1: flow with the document, auto-numbered) ─────
+// â”€â”€ SECTION HEADERS (v2.1: flow with the document, auto-numbered) â”€â”€â”€â”€â”€
   let secCounter = 0;
   const nextSec = () => String(++secCounter).padStart(2, "0");
 
@@ -1022,7 +1732,7 @@ bg:      [11, 25, 41] as RGB,
     y += 11; if (s) { sub(s); } gap(2);
   };
 
-  // ── KPI CARD ROW (auto-fit values — nothing can overflow) ─────────────
+  // â”€â”€ KPI CARD ROW (auto-fit values â€” nothing can overflow) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const kpiRow = (cards: { label: string; value: any; sub?: string; col?: RGB }[]) => {
     const H = 28;
     ensure(H + 4);
@@ -1034,17 +1744,17 @@ bg:      [11, 25, 41] as RGB,
       const col = c.col || sCol(c.value);
       doc.setFillColor(...col); doc.roundedRect(x, yy, w, 1.5, 0.5, 0.5, "F");
 
-      // label — single line, ellipsized
+      // label â€” single line, ellipsized
       doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(...C.muted);
       doc.text(ell(cl(c.label, "").toUpperCase(), inner), x + 4, yy + 7);
 
-      // value — shrink to fit (15pt → 8pt), then ellipsize; floats formatted
-      const valText = fmtSmart(c.value ?? "—");
+      // value â€” shrink to fit (15pt â†’ 8pt), then ellipsize; floats formatted
+      const valText = fmtSmart(c.value ?? "â€”");
       const vs = fitSize(valText, inner, 15, 8, "bold");
       doc.setFont("helvetica", "bold"); doc.setFontSize(vs); doc.setTextColor(...col);
       doc.text(ell(valText, inner), x + 4, yy + 17);
 
-      // sub — single line, ellipsized
+      // sub â€” single line, ellipsized
       if (c.sub) {
         doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(...C.muted);
         doc.text(ell(cl(c.sub, ""), inner), x + 4, yy + 23.5);
@@ -1053,7 +1763,7 @@ bg:      [11, 25, 41] as RGB,
     y += H + 4;
   };
 
-  // ── SCORE BAR ─────────────────────────────────────────────────────────
+  // â”€â”€ SCORE BAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const scoreBar = (lbl_: string, score: any, note = "") => {
     ensure(19); const s = clamp(n(score) ?? 0), col = sCol(score), fw = (CW * s) / 100;
     doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(...C.soft); doc.text(ell(cl(lbl_), CW - 50), ML, y);
@@ -1065,7 +1775,7 @@ bg:      [11, 25, 41] as RGB,
     y += 15;
   };
 
-  // ── HIGHLIGHT BOX (auto-height — text always fits inside) ─────────────
+  // â”€â”€ HIGHLIGHT BOX (auto-height â€” text always fits inside) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   type BoxType = "green" | "amber" | "red" | "blue" | "muted";
   const hiBox = (title: string, body: string, type: BoxType = "green") => {
     const cmap: Record<BoxType, RGB> = { green: C.accent, amber: C.amber, red: C.red, blue: C.blue, muted: C.muted };
@@ -1082,7 +1792,7 @@ bg:      [11, 25, 41] as RGB,
     y += h + 4;
   };
 
-  // ── DATA TABLE (per-cell ellipsis, URL-aware, wrapping first column) ──
+  // â”€â”€ DATA TABLE (per-cell ellipsis, URL-aware, wrapping first column) â”€â”€
   type TR = { col1: string; col2: string; col3?: string; col4?: string; col5?: string; col6?: string; col7?: string };
   const tbl = (headers: string[], rows: TR[], colW?: number[]) => {
     if (!rows.length) { body_("No data available."); return; }
@@ -1135,9 +1845,9 @@ y += rh;
     y += 5;
   };
 
-  // ── WRAPPING TABLE — last column wraps to multiple lines instead of
+  // â”€â”€ WRAPPING TABLE â€” last column wraps to multiple lines instead of
   // being ellipsized. Use for tables where the final column is the most
-  // important content (e.g. AI response snippets). ─────────────────────
+  // important content (e.g. AI response snippets). â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const tblWrap = (headers: string[], rows: TR[], colW: number[], maxLines = 4) => {
     if (!rows.length) { body_("No data available."); return; }
     const nc = headers.length;
@@ -1187,12 +1897,12 @@ y += rh;
     y += 5;
   };
 
-  // ── ACTION CARD (auto-height; title never collides with the badge) ────
+  // â”€â”€ ACTION CARD (auto-height; title never collides with the badge) â”€â”€â”€â”€
   const actCard = (title: string, impact: string, timeline: string, detail: string, pri?: "high" | "medium" | "low") => {
     const pc: RGB = pri === "high" ? C.red : pri === "low" ? C.blue : C.amber;
 
     // measure badge
-    const badgeText = `${cl(impact, "Medium")}  ·  ${cl(timeline, "30 days")}`;
+    const badgeText = `${cl(impact, "Medium")}  Â·  ${cl(timeline, "30 days")}`;
     doc.setFont("helvetica", "bold"); doc.setFontSize(6.5);
     const badgeW = Math.min(60, doc.getTextWidth(badgeText) + 8);
 
@@ -1210,7 +1920,7 @@ y += rh;
     doc.setFont("helvetica", "bold"); doc.setFontSize(6.5); doc.setTextColor(...pc);
     doc.text(ell(badgeText, badgeW - 6), bx + 3, y + 8);
 
-    // title gets only the space LEFT of the badge — overlap is impossible
+    // title gets only the space LEFT of the badge â€” overlap is impossible
     doc.setFont("helvetica", "bold"); doc.setFontSize(9.5); doc.setTextColor(...C.white);
     doc.text(ell(cl(title), bx - ML - 14), ML + 8, y + 9);
 
@@ -1219,7 +1929,7 @@ y += rh;
     y += h + 4;
   };
 
-  // ── PILL ──────────────────────────────────────────────────────────────
+  // â”€â”€ PILL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const pill_ = (text: string, x: number, yy: number): number => {
     const t = ell(cl(text), 40);
     doc.setFont("helvetica", "bold"); doc.setFontSize(6);
@@ -1229,7 +1939,7 @@ y += rh;
     return w + 3;
   };
 
-  // ── MINI GAUGE ────────────────────────────────────────────────────────
+  // â”€â”€ MINI GAUGE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const gauge = (cx: number, cy: number, r: number, score: number, col: RGB) => {
     doc.setFillColor(24, 24, 24); doc.circle(cx, cy, r, "F");
     const pct = clamp(score) / 100, steps = 48, sa = -Math.PI / 2, ea = sa + pct * 2 * Math.PI;
@@ -1242,7 +1952,7 @@ y += rh;
     doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(...col); doc.text(String(score), cx, cy + 2.8, { align: "center" });
   };
 
-  // ── pdfShouldShow ─────────────────────────────────────────────────────
+  // â”€â”€ pdfShouldShow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const pdfShow = (sec: string): boolean => {
     if (!selectedModules || !selectedModules.length) return true;
     if (selectedModules.includes("full")) return true;
@@ -1250,7 +1960,7 @@ y += rh;
     return (map[sec] || []).some(m => selectedModules.includes(m));
   };
 
-  // ── simpleList ────────────────────────────────────────────────────────
+  // â”€â”€ simpleList â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const simpleList = (items: any[], empty = "No items available.") => {
     const safe = Array.isArray(items) ? items : [];
     if (!safe.length) { body_(empty); return; }
@@ -1262,9 +1972,9 @@ y += rh;
     });
   };
 
-  // ════════════════════════════════════════════════════════════════════
-  //  PAGE 1 — COVER
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  PAGE 1 â€” COVER
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   pageNum=1; drawBg();
   // grid lines
   doc.setDrawColor(18,18,18); doc.setLineWidth(0.15);
@@ -1294,16 +2004,16 @@ y += rh;
   gscores.forEach((gs,i)=>{ const gx=ML+i*ggap+ggap/2; gauge(gx,gyY+10,11,gs.v,sCol(gs.v)); doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.setTextColor(...C.muted); doc.text(gs.l.toUpperCase(),gx,gyY+25,{align:"center"}); });
   // tagline
   doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...C.muted);
-  doc.text(doc.splitTextToSize("This report translates technical audit data into clear business intelligence — what is working, what is at risk, and what to prioritise first.",CW),ML,200);
+  doc.text(doc.splitTextToSize("This report translates technical audit data into clear business intelligence â€” what is working, what is at risk, and what to prioritise first.",CW),ML,200);
   // bottom bar
   doc.setFillColor(...C.card); doc.rect(0,PH-20,PW,20,"F"); doc.setFillColor(...C.accent); doc.rect(0,PH-1.5,PW,1.5,"F");
-  doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(...C.muted); doc.text(`${brandName}  ·  ${tagline}`,ML,PH-8); doc.setTextColor(...C.accent); doc.text("Page 1",PW-MR,PH-8,{align:"right"});
+  doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(...C.muted); doc.text(`${brandName}  Â·  ${tagline}`,ML,PH-8); doc.setTextColor(...C.accent); doc.text("Page 1",PW-MR,PH-8,{align:"right"});
 
-  // ════════════════════════════════════════════════════════════════════
-  //  PAGE 2 — TABLE OF CONTENTS
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  PAGE 2 â€” TABLE OF CONTENTS
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   newPage(); lbl("REPORT CONTENTS",C.accent); gap(4); h1("Table of Contents");
-sub("From executive summary to action roadmap — everything your team needs to turn this audit into growth.");
+sub("From executive summary to action roadmap â€” everything your team needs to turn this audit into growth.");
   divLine();
   let tocNo = 0;
   const tocN = () => String(++tocNo).padStart(2,"0");
@@ -1340,15 +2050,15 @@ sub("From executive summary to action roadmap — everything your team needs to 
   gap(5); divLine();
   body_("Traffic, keyword, and AI visibility estimates are directional intelligence derived from keyword visibility and CTR modelling. They should not be read as exact analytics data.");
 
-  // ════════════════════════════════════════════════════════════════════
-  //  SECTION 01 — EXECUTIVE SNAPSHOT
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  SECTION 01 â€” EXECUTIVE SNAPSHOT
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   secHdr(nextSec(),"Executive Snapshot","High-level digital health, benchmark scores, and primary business risks at a glance.");
   kpiRow([
-    {label:"Overall Score",value:`${cl(String(normalized.scores.overall??"—"))}/100`,sub:sLbl(normalized.scores.overall),col:sCol(normalized.scores.overall)},
-    {label:"SEO Foundation",value:`${cl(String(normalized.scores.seo??"—"))}/100`,sub:sLbl(normalized.scores.seo),col:sCol(normalized.scores.seo)},
-    {label:"Performance",value:`${cl(String(normalized.scores.ux??normalized.scores.mobile??"—"))}/100`,sub:sLbl(normalized.scores.ux??normalized.scores.mobile),col:sCol(normalized.scores.ux??normalized.scores.mobile)},
-    {label:"AI Visibility",value:`${cl(String(normalized.scores.ai??"—"))}/100`,sub:sLbl(normalized.scores.ai),col:sCol(normalized.scores.ai)},
+    {label:"Overall Score",value:`${cl(String(normalized.scores.overall??"â€”"))}/100`,sub:sLbl(normalized.scores.overall),col:sCol(normalized.scores.overall)},
+    {label:"SEO Foundation",value:`${cl(String(normalized.scores.seo??"â€”"))}/100`,sub:sLbl(normalized.scores.seo),col:sCol(normalized.scores.seo)},
+    {label:"Performance",value:`${cl(String(normalized.scores.ux??normalized.scores.mobile??"â€”"))}/100`,sub:sLbl(normalized.scores.ux??normalized.scores.mobile),col:sCol(normalized.scores.ux??normalized.scores.mobile)},
+    {label:"AI Visibility",value:`${cl(String(normalized.scores.ai??"â€”"))}/100`,sub:sLbl(normalized.scores.ai),col:sCol(normalized.scores.ai)},
   ]);
   kpiRow([
     {label:"Share of Voice",value:fmt(Math.round((Number(data?.aiVisibility?.totalMentions??0))/(Math.max(1,Number(data?.aiOptimization?.totalMentions??1)))*100))+"%",sub:"AI share of voice",col:C.blue},
@@ -1368,16 +2078,16 @@ sub("From executive summary to action roadmap — everything your team needs to 
 hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   hiBox("Biggest Opportunity",cl(normalized.summary.biggestOpportunity),"green");
 
-  // ════════════════════════════════════════════════════════════════════
-  //  SECTION 03 — ORGANIC TRAFFIC
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  SECTION 03 â€” ORGANIC TRAFFIC
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   if(pdfShow("traffic")){
     secHdr(nextSec(),"Organic Traffic Intelligence","Modelled from ranked keyword visibility and CTR curves. Treat as directional organic visibility, not exact analytics data.");
     kpiRow([
       {label:"Est. Monthly Visits",value:fmt(data?.traffic?.rawMonthly??data?.traffic?.monthly),sub:`Confidence: ${cl(normalized.traffic.confidence)}`,col:C.accent},
-      {label:"Daily Visits",value:fmt(normalized.traffic.daily),sub:"Monthly ÷ 30",col:C.blue},
+      {label:"Daily Visits",value:fmt(normalized.traffic.daily),sub:"Monthly Ã· 30",col:C.blue},
       {label:"Keyword Footprint",value:fmt(normalized.traffic.keywordCount),sub:"Ranked keywords",col:C.amber},
-      {label:"Traffic Score",value:cl(String(data?.traffic?.score??"—")),sub:"High / Medium / Low",col:sCol(data?.traffic?.score==="High"?85:data?.traffic?.score==="Medium"?60:30)},
+      {label:"Traffic Score",value:cl(String(data?.traffic?.score??"â€”")),sub:"High / Medium / Low",col:sCol(data?.traffic?.score==="High"?85:data?.traffic?.score==="Medium"?60:30)},
     ]);
     if(data?.traffic?.confidence==="insufficient-data"){
       hiBox("Insufficient Traffic Data","Fewer than 50 ranked keywords found. Increase keyword visibility to improve confidence.","amber");
@@ -1385,30 +2095,30 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
     secTitle("Traffic Intelligence Summary");
     tbl(["Metric","Value","Notes"],[
       {col1:"Est. Monthly Visits",col2:fmt(data?.traffic?.rawMonthly??data?.traffic?.monthly),col3:"Organic visibility estimate"},
-      {col1:"Est. Daily Visits",col2:fmt(normalized.traffic.daily),col3:"Monthly ÷ 30"},
+      {col1:"Est. Daily Visits",col2:fmt(normalized.traffic.daily),col3:"Monthly Ã· 30"},
       {col1:"Keyword Footprint",col2:fmt(normalized.traffic.keywordCount),col3:"500+ moderate, 2,000+ strong"},
       {col1:"Filtered Keywords",col2:fmt(data?.traffic?.filteredKeywordCount),col3:"Low-volume (<10) removed"},
       {col1:"Confidence",col2:cl(normalized.traffic.confidence),col3:"High requires 2,000+ ranked keywords"},
-      {col1:"Data Method",col2:cl(data?.traffic?.method??"CTR curve"),col3:"Clickstream ETV → CTR fallback"},
+      {col1:"Data Method",col2:cl(data?.traffic?.method??"CTR curve"),col3:"Clickstream ETV â†’ CTR fallback"},
       {col1:"Traffic Note",col2:cl(data?.traffic?.note??"Modelled estimate").slice(0,80),col3:"Directional, not analytics data"},
     ],[50,35,CW-85]);
     if(normalized.topKeywords?.length){
       secTitle("Top Ranking Keywords");
       tbl(["Keyword","Position","Volume","Est. Traffic"],
-        normalized.topKeywords.slice(0,15).map((k:any)=>({col1:cl(k.keyword),col2:cl(String(k.position??"—")),col3:fmt(k.volume),col4:fmt(k.traffic)})),
+        normalized.topKeywords.slice(0,15).map((k:any)=>({col1:cl(k.keyword),col2:cl(String(k.position??"â€”")),col3:fmt(k.volume),col4:fmt(k.traffic)})),
         [80,22,28,CW-130]);
     }
     if(normalized.topPages?.length){
       secTitle("Top SEO Landing Pages");
       tbl(["URL","Keywords","Traffic Signal"],
-        normalized.topPages.slice(0,10).map((p:any)=>({col1:cl(p.url),col2:cl(String(p.keywords??"—")),col3:cl(String(p.traffic??"—"))})),
+        normalized.topPages.slice(0,10).map((p:any)=>({col1:cl(p.url),col2:cl(String(p.keywords??"â€”")),col3:cl(String(p.traffic??"â€”"))})),
         [100,28,CW-128]);
     }
 }
 
-  // ════════════════════════════════════════════════════════════════════
-  //  SECTION 04 — DOMAIN ANALYTICS
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  SECTION 04 â€” DOMAIN ANALYTICS
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   if(pdfShow("domainAnalytics")){
     secHdr(nextSec(),"Domain Analytics","Organic and paid visibility signals from Crawler Que Domain Analytics API.");
     kpiRow([
@@ -1425,21 +2135,21 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
     body_("Use this section to understand whether the domain relies more on organic discovery or paid acquisition for its current visibility.");
   }
 
-  // ════════════════════════════════════════════════════════════════════
-  //  SECTION 05 — SEO FOUNDATION
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  SECTION 05 â€” SEO FOUNDATION
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   if(pdfShow("seo")){
     secHdr(nextSec(),"SEO Foundation Audit","Core SEO elements: metadata, heading structure, alt text, and basic on-page signals.");
     kpiRow([
-      {label:"SEO Score",value:`${cl(String(data?.seoScore??"—"))}/100`,sub:sLbl(data?.seoScore),col:sCol(data?.seoScore)},
-      {label:"UX Score",value:`${cl(String(data?.uxScore??"—"))}/100`,sub:sLbl(data?.uxScore),col:sCol(data?.uxScore)},
+      {label:"SEO Score",value:`${cl(String(data?.seoScore??"â€”"))}/100`,sub:sLbl(data?.seoScore),col:sCol(data?.seoScore)},
+      {label:"UX Score",value:`${cl(String(data?.uxScore??"â€”"))}/100`,sub:sLbl(data?.uxScore),col:sCol(data?.uxScore)},
       {label:"Page Title",value:data?.title?"Found":"Missing",sub:data?.title?"Detected":"Not detected",col:data?.title?C.accent:C.red},
       {label:"Meta Description",value:data?.description?"Found":"Missing",sub:data?.description?"Detected":"Not detected",col:data?.description?C.accent:C.red},
     ]);
     secTitle("On-Page SEO Check");
     tbl(["Element","Status","Recommendation"],[
-      {col1:"Page Title",col2:cl(normalized.seo.title,"Not detected"),col3:"Unique, 50–60 chars, includes primary keyword"},
-      {col1:"Meta Description",col2:cl(normalized.seo.metaDescription,"Not detected"),col3:"Unique, 140–160 chars, includes CTA"},
+      {col1:"Page Title",col2:cl(normalized.seo.title,"Not detected"),col3:"Unique, 50â€“60 chars, includes primary keyword"},
+      {col1:"Meta Description",col2:cl(normalized.seo.metaDescription,"Not detected"),col3:"Unique, 140â€“160 chars, includes CTA"},
       {col1:"H1 Heading",col2:cl(normalized.seo.h1,"Not detected"),col3:"One clear H1 defining main topic or offer"},
       {col1:"Image ALT Text",col2:cl(normalized.seo.missingAlt,"Not checked"),col3:"Descriptive ALT on all important images"},
     ],[38,60,CW-98]);
@@ -1459,40 +2169,40 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
     }
   }
 
-  // ════════════════════════════════════════════════════════════════════
-  //  SECTION 06 — PERFORMANCE & CORE WEB VITALS
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  SECTION 06 â€” PERFORMANCE & CORE WEB VITALS
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   if(pdfShow("technical")){
     secHdr(nextSec(),"Performance & Core Web Vitals","PageSpeed scores and Core Web Vitals from Google PageSpeed Insights API.");
     const mob=data?.pageSpeed?.mobile||{}, dsk=data?.pageSpeed?.desktop||{};
     kpiRow([
-      {label:"Mobile Score",value:`${cl(String(mob.score??"—"))}/100`,sub:sLbl(mob.score),col:sCol(mob.score)},
-      {label:"Desktop Score",value:`${cl(String(dsk.score??"—"))}/100`,sub:sLbl(dsk.score),col:sCol(dsk.score)},
-      {label:"LCP (Mobile)",value:cl(mob.lcp,"—"),sub:"Target: < 2.5s",col:C.blue},
-      {label:"CLS (Mobile)",value:cl(mob.cls,"—"),sub:"Target: < 0.1",col:C.blue},
+      {label:"Mobile Score",value:`${cl(String(mob.score??"â€”"))}/100`,sub:sLbl(mob.score),col:sCol(mob.score)},
+      {label:"Desktop Score",value:`${cl(String(dsk.score??"â€”"))}/100`,sub:sLbl(dsk.score),col:sCol(dsk.score)},
+      {label:"LCP (Mobile)",value:cl(mob.lcp,"â€”"),sub:"Target: < 2.5s",col:C.blue},
+      {label:"CLS (Mobile)",value:cl(mob.cls,"â€”"),sub:"Target: < 0.1",col:C.blue},
     ]);
     scoreBar("Mobile Performance",mob.score,"Target 75+ for ranking advantage");
     scoreBar("Desktop Performance",dsk.score,"Target 90+ for premium experience");
-    secTitle("Core Web Vitals — Mobile vs Desktop");
+    secTitle("Core Web Vitals â€” Mobile vs Desktop");
     tbl(["Metric","Mobile","Desktop","Target"],[
-      {col1:"Performance Score",col2:cl(String(mob.score??"—")),col3:cl(String(dsk.score??"—")),col4:"75+ good, 90+ excellent"},
-      {col1:"LCP",col2:cl(mob.lcp,"—"),col3:cl(dsk.lcp,"—"),col4:"Under 2.5 seconds"},
-      {col1:"FCP",col2:cl(mob.fcp,"—"),col3:cl(dsk.fcp,"—"),col4:"Under 1.8 seconds"},
-      {col1:"CLS",col2:cl(mob.cls,"—"),col3:cl(dsk.cls,"—"),col4:"Under 0.1"},
-      {col1:"TBT",col2:cl(mob.tbt,"—"),col3:cl(dsk.tbt,"—"),col4:"Under 200ms"},
-      {col1:"Speed Index",col2:cl(mob.speedIndex,"—"),col3:cl(dsk.speedIndex,"—"),col4:"Under 3.4 seconds"},
+      {col1:"Performance Score",col2:cl(String(mob.score??"â€”")),col3:cl(String(dsk.score??"â€”")),col4:"75+ good, 90+ excellent"},
+      {col1:"LCP",col2:cl(mob.lcp,"â€”"),col3:cl(dsk.lcp,"â€”"),col4:"Under 2.5 seconds"},
+      {col1:"FCP",col2:cl(mob.fcp,"â€”"),col3:cl(dsk.fcp,"â€”"),col4:"Under 1.8 seconds"},
+      {col1:"CLS",col2:cl(mob.cls,"â€”"),col3:cl(dsk.cls,"â€”"),col4:"Under 0.1"},
+      {col1:"TBT",col2:cl(mob.tbt,"â€”"),col3:cl(dsk.tbt,"â€”"),col4:"Under 200ms"},
+      {col1:"Speed Index",col2:cl(mob.speedIndex,"â€”"),col3:cl(dsk.speedIndex,"â€”"),col4:"Under 3.4 seconds"},
     ],[40,33,33,CW-106]);
   }
 
-  // ════════════════════════════════════════════════════════════════════
-  //  SECTION 07 — AI VISIBILITY
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  SECTION 07 â€” AI VISIBILITY
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     if(pdfShow("ai")&&(data?.aiSearchVisibility||data?.aiOptimization||data?.aiVisibility)){
     secHdr(nextSec(),"AI Search Visibility & GEO Readiness","Brand discoverability in AI-generated responses, generative search, and answer engines.");
-    // 🆕 LIVE AI MODEL VISIBILITY (ChatGPT, Claude, Gemini)
+    // ðŸ†• LIVE AI MODEL VISIBILITY (ChatGPT, Claude, Gemini)
     if (data?.aiSearchVisibility) {
       const av = data.aiSearchVisibility;
-      secTitle("Live AI Model Visibility", `Market: ${cl(av.country, "US")} · Models: ${cl((av.modelsCalled||[]).join(", "), "—")}`);
+      secTitle("Live AI Model Visibility", `Market: ${cl(av.country, "US")} Â· Models: ${cl((av.modelsCalled||[]).join(", "), "â€”")}`);
       kpiRow([
         { label: "AI Awareness", value: `${av.brandKnowledge?.score ?? 0}/100`, sub: "Do AI models know you?", col: C.accent },
         { label: "Competitive", value: `${av.overallScore ?? 0}/100`, sub: "Recommended for best X?" },
@@ -1501,12 +2211,12 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
       ]);
       if (av.brandKnowledge) {
         hiBox("Does AI Know Your Brand?",
-          `Recognised by: ${(av.brandKnowledge.knownBy||[]).join(", ") || "none of the models yet"}. Per-model — ChatGPT ${av.modelBreakdown?.chatgpt ?? 0}%, Claude ${av.modelBreakdown?.claude ?? 0}%, Gemini ${av.modelBreakdown?.gemini ?? 0}%.`,
+          `Recognised by: ${(av.brandKnowledge.knownBy||[]).join(", ") || "none of the models yet"}. Per-model â€” ChatGPT ${av.modelBreakdown?.chatgpt ?? 0}%, Claude ${av.modelBreakdown?.claude ?? 0}%, Gemini ${av.modelBreakdown?.gemini ?? 0}%.`,
           ((av.brandKnowledge.score ?? 0) >= 50 ? "green" : "amber"));
       }
       if (av.promptResults?.length) {
         secTitle("Category Prompt Results");
-        const yn = (m: any) => !m ? "—" : (m.mentioned ? `Yes${m.position ? ` #${m.position}` : ""}` : "No");
+        const yn = (m: any) => !m ? "â€”" : (m.mentioned ? `Yes${m.position ? ` #${m.position}` : ""}` : "No");
         tbl(["Prompt", "ChatGPT", "Claude", "Gemini"],
           av.promptResults.slice(0, 6).map((r: any) => ({ col1: cl(r.prompt), col2: yn(r.models?.ChatGPT), col3: yn(r.models?.Claude), col4: yn(r.models?.Gemini) })),
           [CW - 75, 25, 25, 25]);
@@ -1531,12 +2241,12 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
       {label:"Share of Voice",value:`${sov}%`,sub:"AI share of voice",col:C.amber},
     ]);
     scoreBar("AI Visibility Score",aiScore,"Benchmark: 70+ good, 85+ strong");
-// ════════════════════════════════════════════════════════════════════
-// PDF — LIVE AI MODEL VISIBILITY block
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// PDF â€” LIVE AI MODEL VISIBILITY block
 // Paste this RIGHT BEFORE the line:   secTitle("AI Visibility Summary");
 // (inside the exportPDF function, in the if(pdfShow("ai")...) section)
 // It uses the existing PDF helpers: secTitle, tbl, tblWrap, fmt, cl.
-// ═══════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     secTitle("AI Visibility Summary");
     tbl(["Signal","Status","Implication"],[
@@ -1544,7 +2254,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
       {col1:"Brand Mentions",col2:fmt(aiMent),col3:aiMent>0?"Brand appears in AI-generated responses":"Brand not detected in AI responses"},
       {col1:"Model Coverage",col2:fmt(aiMods),col3:"Number of AI models tested for brand visibility"},
       {col1:"Confidence",col2:aiConf,col3:"Reliability of AI visibility measurement"},
-      {col1:"Prompt Used",col2:cl(data?.aiOptimization?.prompt?cl(data.aiOptimization.prompt).slice(0,60):"—"),col3:"The prompt used to test AI visibility"},
+      {col1:"Prompt Used",col2:cl(data?.aiOptimization?.prompt?cl(data.aiOptimization.prompt).slice(0,60):"â€”"),col3:"The prompt used to test AI visibility"},
     ],[42,35,CW-77]);
 if(data?.aiOptimization?.models?.length){
       secTitle("Model-Level Results");
@@ -1560,7 +2270,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
 
     if(data?.aiVisibility?.pageGeoReadiness){
       const geo=data.aiVisibility.pageGeoReadiness;
-      secTitle("AI Citation Readiness — Audited Page");
+      secTitle("AI Citation Readiness â€” Audited Page");
       kpiRow([{label:"Readiness Score",value:`${geo.score}/100`,sub:geo.grade,col:sCol(geo.score)}]);
       tbl(["Factor","Status"],geo.factors.map((f:any)=>({col1:cl(f.label),col2:f.pass?"Pass":"Needs work"})));
       if(geo.topIssue) hiBox("Top Fix for AI Visibility",cl(geo.topIssue),"amber");
@@ -1568,32 +2278,32 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
     hiBox("Generative Engine Optimisation (GEO) Readiness",aiScore>=70?`${domain} shows detectable AI visibility. Strengthen with: entity signals, FAQ schema, third-party citations, and topical authority.`:`${domain} has weak AI visibility. Add: company entity signals, structured data, FAQ content, and external brand citations.`,aiScore>=70?"green":"amber");
   }
 
-  // ════════════════════════════════════════════════════════════════════
-  //  SECTION 08 — COMPETITOR INTELLIGENCE
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  SECTION 08 â€” COMPETITOR INTELLIGENCE
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   if(pdfShow("competitors")&&data?.competitors?.length){
     secHdr(nextSec(),"Competitor Threat Intelligence","Domains capturing organic visibility through stronger content, authority, or keyword coverage.");
     kpiRow([
       {label:"Competitors Found",value:String(data.competitors.length),sub:"Organic overlap",col:C.accent},
       {label:"Top Competitor",value:cl(data.competitors[0]?.domain),sub:"Highest overlap",col:C.amber},
       {label:"Top Shared Keywords",value:fmt(Math.max(...data.competitors.map((c:any)=>Number(c.sharedKeywords||c.intersections||0)))),sub:"With top competitor",col:C.blue},
-      {label:"Top Threat Score",value:cl(String(data.competitors[0]?.threatScore??"—")),sub:"Risk level",col:sCol(100-(n(data.competitors[0]?.threatScore)??50))},
+      {label:"Top Threat Score",value:cl(String(data.competitors[0]?.threatScore??"â€”")),sub:"Risk level",col:sCol(100-(n(data.competitors[0]?.threatScore)??50))},
     ]);
     secTitle("Competitor Overview Table");
     tbl(["Domain","Traffic","Shared KWs","Threat","Winning Factor"],
       data.competitors.slice(0,12).map((c:any)=>({
         col1:cl(c.domain),col2:fmt(c.traffic),col3:fmt(c.sharedKeywords??c.intersections),
-        col4:cl(String(c.threatScore??"—")),col5:cl(c.likelyWinningFactor??c.winningFactor,"—"),
+        col4:cl(String(c.threatScore??"â€”")),col5:cl(c.likelyWinningFactor??c.winningFactor,"â€”"),
       })),[48,28,25,20,CW-121]);
     secTitle("Competitor Intelligence Details");
     data.competitors.slice(0,6).forEach((c:any)=>{
-      hiBox(cl(c.domain),`Shared KWs: ${fmt(c.sharedKeywords??c.intersections)}  ·  Traffic: ${fmt(c.traffic)}  ·  Threat: ${cl(String(c.threatScore??"—"))}  ·  Strength: ${cl(c.competitiveStrength,"—")}  ·  AI Risk: ${cl(c.aiRisk,"—")}  ·  Winning: ${cl(c.likelyWinningFactor??c.winningFactor,"—")}`,"amber");
+      hiBox(cl(c.domain),`Shared KWs: ${fmt(c.sharedKeywords??c.intersections)}  Â·  Traffic: ${fmt(c.traffic)}  Â·  Threat: ${cl(String(c.threatScore??"â€”"))}  Â·  Strength: ${cl(c.competitiveStrength,"â€”")}  Â·  AI Risk: ${cl(c.aiRisk,"â€”")}  Â·  Winning: ${cl(c.likelyWinningFactor??c.winningFactor,"â€”")}`,"amber");
     });
   }
 
-  // ════════════════════════════════════════════════════════════════════
-  //  SECTION 09 — KEYWORD GAP & LABS
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  SECTION 09 â€” KEYWORD GAP & LABS
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   if(pdfShow("keywords")||pdfShow("labs")){
     secHdr(nextSec(),"Keyword Gap & SEO Labs Intelligence","Missing keywords competitors rank for, plus ranked keyword intelligence from Crawler Que Labs.");
     if(data?.dataforseo?.keywordGap){
@@ -1610,9 +2320,9 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
         data.dataforseo.keywordGap.missingKeywords.slice(0,15).map((k:any)=>({
           col1:cl(k.keyword),col2:fmt(k.volume??k.search_volume),
           col3:cl(k.intent,"general"),col4:cl(k.recommendedPageType,"Supporting Content"),
-          col5:cl(String(k.opportunityScore??"—")),col6:cl(k.priority,"Low"),
+          col5:cl(String(k.opportunityScore??"â€”")),col6:cl(k.priority,"Low"),
         })),[55,22,20,38,20,CW-155]);
-      secTitle("Keyword Gap — Action Guidance");
+      secTitle("Keyword Gap â€” Action Guidance");
       data.dataforseo.keywordGap.missingKeywords.slice(0,8).forEach((k:any)=>{
         actCard(cl(k.keyword),cl(k.priority,"Medium"),cl(k.action,"Add to content roadmap"),`Volume: ${fmt(k.volume)}  |  Intent: ${cl(k.intent)}  |  Competitors: ${Array.isArray(k.competitors)?k.competitors.join(", "):cl(k.competitors)}`,cl(k.priority,"medium").toLowerCase().includes("high")?"high":"medium");
       });
@@ -1622,79 +2332,79 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
       tbl(["Cluster","Headline","Keywords"],
         data.dataforseo.keywordGap.contentIdeas.slice(0,8).map((idea:any)=>({
           col1:cl(idea.cluster),col2:cl(idea.headline),
-          col3:idea.keywords?.slice(0,4).map((kk:any)=>kk.keyword).join(", ")||"—",
+          col3:idea.keywords?.slice(0,4).map((kk:any)=>kk.keyword).join(", ")||"â€”",
         })),[35,70,CW-105]);
     }
     if(data?.dataforseo?.topKeywords?.length){
-      secTitle("Crawler Que Labs — Ranked Keywords");
+      secTitle("Crawler Que Labs â€” Ranked Keywords");
       kpiRow([
         {label:"Organic Keywords",value:fmt(data?.dataforseo?.organicKeywords),col:C.accent},
         {label:"Top Keywords Fetched",value:fmt(data?.dataforseo?.topKeywords?.length),col:C.blue},
         {label:"Competitors Found",value:fmt(data?.dataforseo?.competitors?.length),col:C.amber},
-        {label:"Fetch Iterations",value:cl(String(data?.dataforseo?.keywordFetchIterations??"—")),col:C.muted},
+        {label:"Fetch Iterations",value:cl(String(data?.dataforseo?.keywordFetchIterations??"â€”")),col:C.muted},
       ]);
       tbl(["Keyword","Position","Volume","CPC","Intent","KD","Opportunity"],
         data.dataforseo.topKeywords.slice(0,15).map((k:any)=>({
-          col1:cl(k.keyword),col2:cl(String(k.position??"—")),col3:fmt(k.volume),
-          col4:cl(k.cpc?`$${Number(k.cpc).toFixed(2)}`:"—"),col5:cl(k.intent,"—"),
-          col6:cl(String(k.difficulty??"—")),col7:cl(String(k.opportunity??"—")),
+          col1:cl(k.keyword),col2:cl(String(k.position??"â€”")),col3:fmt(k.volume),
+          col4:cl(k.cpc?`$${Number(k.cpc).toFixed(2)}`:"â€”"),col5:cl(k.intent,"â€”"),
+          col6:cl(String(k.difficulty??"â€”")),col7:cl(String(k.opportunity??"â€”")),
         })),[55,18,22,18,18,12,CW-143]);
     }
   }
 
-  // ════════════════════════════════════════════════════════════════════
-  //  SECTION 10 — KEYWORD RESEARCH
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  SECTION 10 â€” KEYWORD RESEARCH
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   if(pdfShow("keywords")&&data?.keywordResearch?.suggestions?.length){
     secHdr(nextSec(),"Keyword Research","Seed keyword suggestions from Crawler Que Keyword Suggestions API with intent and CPC signals.");
     kpiRow([
       {label:"Seed Keyword",value:cl(data?.keywordResearch?.seedKeyword),col:C.accent},
       {label:"Suggestions Found",value:fmt(data?.keywordResearch?.suggestions?.length),col:C.blue},
       {label:"Source",value:cl(data?.keywordResearch?.source,"Crawler Que"),col:C.muted},
-      {label:"Location",value:cl(data?.traffic?.country,"—"),col:C.muted},
+      {label:"Location",value:cl(data?.traffic?.country,"â€”"),col:C.muted},
     ]);
     tbl(["Keyword","Volume","CPC","Competition","Intent","KD"],
       data.keywordResearch.suggestions.slice(0,20).map((k:any)=>({
-        col1:cl(k.keyword),col2:fmt(k.volume),col3:cl(k.cpc?`$${Number(k.cpc).toFixed(2)}`:"—"),
-        col4:fmtCompetition(k.competition),col5:cl(k.intent,"—"),col6:cl(String(k.difficulty??"—")),
+        col1:cl(k.keyword),col2:fmt(k.volume),col3:cl(k.cpc?`$${Number(k.cpc).toFixed(2)}`:"â€”"),
+        col4:fmtCompetition(k.competition),col5:cl(k.intent,"â€”"),col6:cl(String(k.difficulty??"â€”")),
       })),[65,22,18,22,18,CW-145]);
   }
 
-  // ════════════════════════════════════════════════════════════════════
-  //  SECTION 11 — SERP RANKINGS
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  SECTION 11 â€” SERP RANKINGS
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   if(pdfShow("serp")&&data?.serpData){
     secHdr(nextSec(),"Live SERP Rankings","Google rank positions checked by Crawler Que SERP API for tracked keywords.");
     kpiRow([
-      {label:"Keywords Checked",value:cl(String(data?.serpData?.checkedKeywords??"—")),col:C.accent},
-      {label:"Keywords Found",value:cl(String(data?.serpData?.foundCount??"—")),col:C.green},
+      {label:"Keywords Checked",value:cl(String(data?.serpData?.checkedKeywords??"â€”")),col:C.accent},
+      {label:"Keywords Found",value:cl(String(data?.serpData?.foundCount??"â€”")),col:C.green},
       {label:"Keywords Not Found",value:cl(String(Math.max(0,(data?.serpData?.checkedKeywords??0)-(data?.serpData?.foundCount??0)))),col:C.red},
-      {label:"Average Rank",value:cl(String(data?.serpData?.avgRank??"—")),col:C.blue},
+      {label:"Average Rank",value:cl(String(data?.serpData?.avgRank??"â€”")),col:C.blue},
     ]);
     if(data?.serpData?.results?.length){
       secTitle("Keyword Rank Results");
       tbl(["Keyword","Found","Google Rank","Ranking URL"],
         data.serpData.results.map((r:any)=>({
           col1:cl(r.keyword),col2:r.found?"Yes":"No",
-          col3:r.found?`#${cl(String(r.rank),"—")}`:"Not found",col4:r.found?cl(r.url,"—"):"Not in top 100",
+          col3:r.found?`#${cl(String(r.rank),"â€”")}`:"Not found",col4:r.found?cl(r.url,"â€”"):"Not in top 100",
         })),[55,14,18,CW-87]);
     }
   }
 
-  // ════════════════════════════════════════════════════════════════════
-  //  SECTION 12 — BACKLINK AUTHORITY
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  SECTION 12 â€” BACKLINK AUTHORITY
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   if(pdfShow("backlinks")&&data?.backlinks){
     secHdr(nextSec(),"Backlink Authority & Trust Signals","Domain trust, referring domains, and top backlink sources from Crawler Que Backlinks API.");
     kpiRow([
-      {label:"Backlink Rank",value:cl(String(data?.dataforseo?.backlinkRank??normalized.backlinks.rank??"—")),sub:"Authority signal",col:sCol(n(normalized.backlinks.rank))},
+      {label:"Backlink Rank",value:cl(String(data?.dataforseo?.backlinkRank??normalized.backlinks.rank??"â€”")),sub:"Authority signal",col:sCol(n(normalized.backlinks.rank))},
       {label:"Total Backlinks",value:fmt(data?.backlinks?.backlinks??normalized.backlinks.total),col:C.accent},
       {label:"Referring Domains",value:fmt(data?.backlinks?.referringDomains??normalized.backlinks.referringDomains),col:C.blue},
       {label:"Referring Pages",value:fmt(data?.backlinks?.referringPages??normalized.backlinks.referringDomains),col:C.amber},
     ]);
     scoreBar("Backlink Authority Signal",normalized.backlinks.rank,"50+ referring domains = moderate authority");
     tbl(["Metric","Value","Benchmark"],[
-      {col1:"Backlink Rank",col2:cl(String(normalized.backlinks.rank??"—")),col3:"Higher = better; compare vs direct competitors"},
+      {col1:"Backlink Rank",col2:cl(String(normalized.backlinks.rank??"â€”")),col3:"Higher = better; compare vs direct competitors"},
       {col1:"Total Backlinks",col2:fmt(data?.backlinks?.backlinks),col3:"Quality matters more than raw count"},
       {col1:"Referring Domains",col2:fmt(data?.backlinks?.referringDomains),col3:"50+ moderate, 200+ strong authority"},
       {col1:"Referring Pages",col2:fmt(data?.backlinks?.referringPages),col3:"More pages = broader link surface"},
@@ -1704,21 +2414,21 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
       tbl(["Domain","Anchor","Rank","Source URL"],
         data.backlinks.topBacklinks.slice(0,12).map((b:any)=>({
           col1:cl(b.domainFrom,"Unknown"),col2:cl(b.anchor,"No anchor"),
-          col3:cl(String(b.rank??"—")),col4:cl(b.sourceUrl,"—"),
+          col3:cl(String(b.rank??"â€”")),col4:cl(b.sourceUrl,"â€”"),
         })),[42,42,14,CW-98]);
     }
     if(normalized.backlinks.samples?.length){
       secTitle("Backlink Samples");
       tbl(["Anchor","Source","Target"],
-        normalized.backlinks.samples.slice(0,10).map((l:any)=>({col1:cl(l.anchor,"No anchor"),col2:cl(l.source,"—"),col3:cl(l.target,"—")})),
+        normalized.backlinks.samples.slice(0,10).map((l:any)=>({col1:cl(l.anchor,"No anchor"),col2:cl(l.source,"â€”"),col3:cl(l.target,"â€”")})),
         [42,68,CW-110]);
     }
     hiBox("Authority Insight",data?.backlinks?.referringDomains?`${domain} has ${cl(String(data.backlinks.referringDomains))} referring domains and ${cl(String(data.backlinks.backlinks??"unknown"))} total backlinks. Focus on earning quality industry mentions and relevant authority links.`:"Data not available from Crawler Que Backlinks API.","blue");
   }
 
-  // ════════════════════════════════════════════════════════════════════
-  //  SECTION 13 — TECHNICAL SEO AUDIT
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  SECTION 13 â€” TECHNICAL SEO AUDIT
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   if(pdfShow("technical")&&data?.onPage){
     secHdr(nextSec(),"Technical SEO Audit","OnPage crawl status, page-level issues, broken links, and crawl signals from Crawler Que OnPage API.");
     kpiRow([
@@ -1728,7 +2438,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
       {label:"Missing Descriptions",value:fmt(data?.onPage?.missingDescription),col:(n(data?.onPage?.missingDescription)??0)>0?C.amber:C.green},
     ]);
     tbl(["Check","Result","Notes"],[
-      {col1:"Crawl Status",col2:cl(data?.onPage?.crawlStatus,"—"),col3:"Completed crawl preferred"},
+      {col1:"Crawl Status",col2:cl(data?.onPage?.crawlStatus,"â€”"),col3:"Completed crawl preferred"},
       {col1:"Pages Crawled",col2:fmt(data?.onPage?.crawledPages),col3:"More pages = deeper technical inspection"},
       {col1:"Broken Links",col2:fmt(data?.onPage?.brokenLinks),col3:"All broken links should be fixed or redirected"},
       {col1:"Missing Titles",col2:fmt(data?.onPage?.missingTitle),col3:"Every important page needs a unique title"},
@@ -1739,15 +2449,15 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
       secTitle("Sample Crawled Pages");
       tbl(["Title","URL","Status","Load Time"],
         data.onPage.pages.slice(0,12).map((p:any)=>({
-          col1:cl(p.title,"Untitled"),col2:cl(p.url,"—"),
-          col3:cl(String(p.statusCode??"—")),col4:cl(p.loadTime?`${p.loadTime}ms`:"—"),
+          col1:cl(p.title,"Untitled"),col2:cl(p.url,"â€”"),
+          col3:cl(String(p.statusCode??"â€”")),col4:cl(p.loadTime?`${p.loadTime}ms`:"â€”"),
         })),[55,65,14,CW-134]);
     }
   }
 
-  // ════════════════════════════════════════════════════════════════════
-  //  SECTION 14 — CONTENT QUALITY
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  SECTION 14 â€” CONTENT QUALITY
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   if(pdfShow("content")){
     secHdr(nextSec(),"Content Quality & Relevance","On-page content signals and Crawler Que Content Analysis results.");
     kpiRow([
@@ -1760,40 +2470,40 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
       secTitle("Content Opportunities");
       tbl(["Keyword","Volume","Competitor Domains"],
         data.dataforseo.keywordGap.opportunities.slice(0,10).map((k:any)=>({
-          col1:cl(k.keyword),col2:fmt(k.volume),col3:Array.isArray(k.competitors)?k.competitors.join(", "):cl(k.competitors,"—"),
+          col1:cl(k.keyword),col2:fmt(k.volume),col3:Array.isArray(k.competitors)?k.competitors.join(", "):cl(k.competitors,"â€”"),
         })),[60,25,CW-85]);
     }
     if(data?.contentAnalysis?.results?.length){
       secTitle("Content Analysis Results");
       tbl(["Domain","Topic","Content Length","URL"],
         data.contentAnalysis.results.slice(0,10).map((item:any)=>({
-          col1:cl(item.domain,"Unknown"),col2:cl(item.mainTopic,"—"),
-          col3:cl(String(item.contentLength??"—")),col4:cl(item.url,"—"),
+          col1:cl(item.domain,"Unknown"),col2:cl(item.mainTopic,"â€”"),
+          col3:cl(String(item.contentLength??"â€”")),col4:cl(item.url,"â€”"),
         })),[38,40,22,CW-100]);
     }
   }
 
-  // ════════════════════════════════════════════════════════════════════
-  //  SECTION 15 — LOCAL SEO
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  SECTION 15 â€” LOCAL SEO
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   if(pdfShow("local")&&data?.businessData?.listings?.length){
     secHdr(nextSec(),"Local SEO & Business Listings","Business listing visibility, ratings, and review signals from Crawler Que Business Data API.");
     kpiRow([
       {label:"Listings Found",value:fmt(data?.businessData?.listings?.length),col:C.accent},
       {label:"Search Query",value:cl(data?.businessData?.keyword),col:C.blue},
       {label:"Location",value:cl(data?.businessData?.location),col:C.muted},
-      {label:"Top Rating",value:cl(String(Math.max(...(data.businessData.listings||[]).map((l:any)=>Number(l.rating||0)))||"—")),col:C.amber},
+      {label:"Top Rating",value:cl(String(Math.max(...(data.businessData.listings||[]).map((l:any)=>Number(l.rating||0)))||"â€”")),col:C.amber},
     ]);
     tbl(["Business","Category","Rating","Reviews","Address"],
       data.businessData.listings.slice(0,10).map((item:any)=>({
-        col1:cl(item.title,"Unknown"),col2:cl(item.category,"—"),
-        col3:cl(String(item.rating??"—")),col4:cl(String(item.reviews??"—")),col5:cl(item.address,"—"),
+        col1:cl(item.title,"Unknown"),col2:cl(item.category,"â€”"),
+        col3:cl(String(item.rating??"â€”")),col4:cl(String(item.reviews??"â€”")),col5:cl(item.address,"â€”"),
       })),[40,30,14,16,CW-100]);
   }
 
-  // ════════════════════════════════════════════════════════════════════
-  //  SECTION 16 — RECOMMENDATIONS
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  SECTION 16 â€” RECOMMENDATIONS
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   if(pdfShow("recommendations")){
     secHdr(nextSec(),"AI Recommendations Engine","Prioritised strategic actions generated from real audit data across all selected modules.");
     kpiRow([
@@ -1810,7 +2520,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
         actCard(
           `Priority ${i+1}: ${String(rec).split(".")[0]||`Recommendation ${i+1}`}`,
           isHigh?"High Impact":isMed?"Medium Impact":"Quick Win",
-          isHigh?"7–30 days":isMed?"30–60 days":"60–90 days",
+          isHigh?"7â€“30 days":isMed?"30â€“60 days":"60â€“90 days",
           `${rec}  |  Owner: ${owner}`,
           isHigh?"high":isMed?"medium":"low"
         );
@@ -1819,41 +2529,41 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
     simpleList(smartRecs.slice(0,5),"");
   }
 
-  // ════════════════════════════════════════════════════════════════════
-  //  SECTION 17 — ACTION ROADMAP
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  SECTION 17 â€” ACTION ROADMAP
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   secHdr(nextSec(),"30 / 60 / 90 Day Action Roadmap","A practical execution sequence for agencies, consultants, and growth teams.");
   secTitle("Priority Execution Matrix");
 tbl(["Priority","Focus","Timeline","Actions"],[
-    {col1:"P1 — Immediate",col2:"High impact / Fast fix",col3:"0–30 days",col4:"Critical SEO, speed, metadata, crawlability, broken links"},
-    {col1:"P2 — Growth",col2:"High impact / Medium effort",col3:"30–60 days",col4:"Keyword expansion, AI visibility, content, landing pages"},
-    {col1:"P3 — Authority",col2:"Medium–high impact",col3:"60–90 days",col4:"Backlinks, topical authority, competitor coverage"},
-    {col1:"P4 — Ongoing",col2:"Continuous optimisation",col3:"Continuous",col4:"A/B testing, CRO, monitoring, structured data"},
+    {col1:"P1 â€” Immediate",col2:"High impact / Fast fix",col3:"0â€“30 days",col4:"Critical SEO, speed, metadata, crawlability, broken links"},
+    {col1:"P2 â€” Growth",col2:"High impact / Medium effort",col3:"30â€“60 days",col4:"Keyword expansion, AI visibility, content, landing pages"},
+    {col1:"P3 â€” Authority",col2:"Mediumâ€“high impact",col3:"60â€“90 days",col4:"Backlinks, topical authority, competitor coverage"},
+    {col1:"P4 â€” Ongoing",col2:"Continuous optimisation",col3:"Continuous",col4:"A/B testing, CRO, monitoring, structured data"},
   ],[28,40,24,CW-92]);
   secTitle("Roadmap Phases");
-  actCard("First 30 Days — Fix the Foundation","High Priority","0–30 days","Resolve critical SEO issues: missing metadata, heading structure, broken links, page speed, and crawl errors. Fast wins that improve indexing, UX, and conversion readiness.","high");
-  actCard("Next 30 Days — Expand Visibility","High Priority","31–60 days","Create or optimise pages around keyword gaps, commercial opportunities, competitor content, and AI-search friendly entity signals. Build content that ranks and converts.","medium");
-  actCard("Final 30 Days — Build Authority","Medium Priority","61–90 days","Strengthen topical authority, improve internal linking, earn relevant backlinks, and monitor AI visibility improvements against the benchmark scores in this report.","low");
+  actCard("First 30 Days â€” Fix the Foundation","High Priority","0â€“30 days","Resolve critical SEO issues: missing metadata, heading structure, broken links, page speed, and crawl errors. Fast wins that improve indexing, UX, and conversion readiness.","high");
+  actCard("Next 30 Days â€” Expand Visibility","High Priority","31â€“60 days","Create or optimise pages around keyword gaps, commercial opportunities, competitor content, and AI-search friendly entity signals. Build content that ranks and converts.","medium");
+  actCard("Final 30 Days â€” Build Authority","Medium Priority","61â€“90 days","Strengthen topical authority, improve internal linking, earn relevant backlinks, and monitor AI visibility improvements against the benchmark scores in this report.","low");
 
-  // ════════════════════════════════════════════════════════════════════
-  //  APPENDIX — EVIDENCE
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  APPENDIX â€” EVIDENCE
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Benchmark guide
   secHdr(nextSec(),"Benchmark & Metric Reference","What each score in this report means and the target to aim for.");
   tbl(["Metric","Range","Target","What it means"],[
-    {col1:"Overall Score",col2:"0–100",col3:"80+",col4:"Combined SEO, tech, visibility, authority, and growth readiness"},
-    {col1:"SEO Score",col2:"0–100",col3:"80+",col4:"Title tags, meta, headings, crawlability, and technical foundations"},
-    {col1:"Performance",col2:"0–100",col3:"75–90+",col4:"Loading speed and user experience, especially on mobile"},
-    {col1:"AI Visibility",col2:"0–100",col3:"70–85+",col4:"Brand readiness for AI-style answers and generative search"},
-    {col1:"LCP",col2:"Seconds",col3:"< 2.5s",col4:"Largest Contentful Paint — main content load speed"},
-    {col1:"CLS",col2:"Score",col3:"< 0.1",col4:"Cumulative Layout Shift — visual stability"},
-    {col1:"TBT",col2:"ms",col3:"< 200ms",col4:"Total Blocking Time — JavaScript interaction delay"},
-    {col1:"Traffic Estimate",col2:"Visits",col3:"Directional",col4:"Modelled from keyword visibility and CTR — not analytics"},
+    {col1:"Overall Score",col2:"0â€“100",col3:"80+",col4:"Combined SEO, tech, visibility, authority, and growth readiness"},
+    {col1:"SEO Score",col2:"0â€“100",col3:"80+",col4:"Title tags, meta, headings, crawlability, and technical foundations"},
+    {col1:"Performance",col2:"0â€“100",col3:"75â€“90+",col4:"Loading speed and user experience, especially on mobile"},
+    {col1:"AI Visibility",col2:"0â€“100",col3:"70â€“85+",col4:"Brand readiness for AI-style answers and generative search"},
+    {col1:"LCP",col2:"Seconds",col3:"< 2.5s",col4:"Largest Contentful Paint â€” main content load speed"},
+    {col1:"CLS",col2:"Score",col3:"< 0.1",col4:"Cumulative Layout Shift â€” visual stability"},
+    {col1:"TBT",col2:"ms",col3:"< 200ms",col4:"Total Blocking Time â€” JavaScript interaction delay"},
+    {col1:"Traffic Estimate",col2:"Visits",col3:"Directional",col4:"Modelled from keyword visibility and CTR â€” not analytics"},
   ],[35,18,25,CW-78]);
 
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   //  CLOSING PAGE
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   newPage();
   doc.setDrawColor(18,18,18); doc.setLineWidth(0.15);
   for(let i=0;i<=14;i++) doc.line(i*15,0,i*15,PH);
@@ -1862,19 +2572,19 @@ tbl(["Priority","Focus","Timeline","Actions"],[
   doc.setTextColor(...C.accent); doc.text("with clarity.",PW/2,106,{align:"center"});
   doc.setDrawColor(...C.accent); doc.setLineWidth(0.5); doc.line(PW/2-28,113,PW/2+28,113);
   doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(...C.muted);
-  doc.text(doc.splitTextToSize(`${domain} should prioritise improvements that increase technical health, search visibility, authority, and AI discoverability. The goal is not just higher scores — it is turning this audit into a measurable growth plan.`,90),PW/2,122,{align:"center"});
+  doc.text(doc.splitTextToSize(`${domain} should prioritise improvements that increase technical health, search visibility, authority, and AI discoverability. The goal is not just higher scores â€” it is turning this audit into a measurable growth plan.`,90),PW/2,122,{align:"center"});
   doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(...C.accent); doc.text(brandName,PW/2,155,{align:"center"});
   doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(...C.muted); doc.text(tagline,PW/2,162,{align:"center"}); doc.text(generatedDate,PW/2,168,{align:"center"});
 
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   //  FOOTERS ON ALL PAGES
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   const total=doc.getNumberOfPages();
   for(let i=2;i<=total;i++){ doc.setPage(i); drawFooter(i,total); }
 
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   //  SAVE
-  // ════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   const safeDomain=String(domain).replace(/[^a-z0-9.-]/gi,"-");
 
   trackAnalyticsEvent("pdf_exported", {
@@ -2070,7 +2780,7 @@ const isLargeSiteWarning =
   </div>
 )}
 
-{/* Top Input — only show on overview tab */}
+{/* Top Input â€” only show on overview tab */}
 {(activeTab === "overview" || activeTab === "unified") && (
 <div className="cq-card cq-frame mb-6 !rounded-none p-6">
   <div className="mb-4 flex items-center justify-between gap-4">
@@ -2166,7 +2876,7 @@ const isLargeSiteWarning =
 {selectedReportTypes.includes("ai") && (
   <div className="rounded-2xl border border-[#222] bg-[#111] p-4">
     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#8A8A8A]">
-      Custom AI Prompts (optional) — One per line, maximum 5.
+      Custom AI Prompts (optional) â€” One per line, maximum 5.
     </p>
     <textarea
       value={customPrompts}
@@ -2189,26 +2899,46 @@ const isLargeSiteWarning =
 
 <button
   onClick={exportPDF}
-disabled={!data}
+  disabled={
+    !data ||
+    loading ||
+    data?.renderReady !== true
+  }
       className="h-12 min-w-[170px] rounded-xl border border-[#C5FF3D]/35 bg-transparent px-6 font-mono text-sm font-bold uppercase tracking-[0.12em] text-[#C5FF3D] transition hover:bg-[#C5FF3D]/10 disabled:opacity-40"
     >
-      Export PDF
+      {data &&
+data?.renderReady !== true
+  ? "Preparing PDF..."
+  : "Export PDF"}
     </button>
 
   </div>
 </div>
 )}
 {data?.onPage?.taskId &&
-  data?.onPage?.crawlStatus !== "completed" && (
-<div className="cq-card mb-6 border-l-2 border-l-[var(--cq-signal)] p-5">
+  data?.renderReady !== true && (
+    <div className="cq-card mb-6 border-l-2 border-l-amber-400 p-5">
       <p className="font-semibold text-[var(--cq-text)]">
-        OnPage crawl is running in the background
+        Technical crawl is being finalized
       </p>
+
       <p className="mt-1 text-sm text-[var(--cq-text-2)]">
-        You can export the PDF now. Technical crawl data will appear if it becomes available before export.
+        The main audit findings are available,
+        but PDF export remains locked until
+        the technical module completes, fails,
+        or reaches its timeout safely.
+      </p>
+
+      <p className="mt-3 font-mono text-xs uppercase tracking-wider text-amber-300">
+        Current status:{" "}
+        {data?.moduleStatus
+          ?.technical ||
+          data?.onPage
+            ?.crawlStatus ||
+          "running"}
       </p>
     </div>
-)}
+  )}
 {error && (
 <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/8 p-5">
     <p className="font-semibold text-red-400">Audit failed</p>
@@ -2321,7 +3051,7 @@ disabled={!data}
           Current Plan
         </p>
         <h3 className="mt-2 text-xl font-bold text-white">
-          {currentUser?.package?.name || "—"}
+          {currentUser?.package?.name || "â€”"}
         </h3>
         <p className="mt-1 text-sm text-[#8A8A8A]">
           {currentUser?.auditsUsed || 0} of {currentUser?.package?.monthlyAudits || 0} audits used this month.
@@ -2371,27 +3101,68 @@ disabled={!data}
 
         {data && (
   <>
-    <div className="mb-6 rounded-2xl border border-green-100 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-green-600">
-            Audit Status
-          </p>
+{data?.renderReady === true ? (
+  <div className="mb-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/8 p-5">
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
+          Audit Status
+        </p>
 
-          <h3 className="mt-1 text-lg font-bold text-slate-950">
-            Audit Completed Successfully
-          </h3>
+        <h3 className="mt-1 text-lg font-bold text-white">
+          {[
+            "failed",
+            "timed_out",
+          ].includes(
+            String(
+              data?.moduleStatus
+                ?.technical ||
+                data?.moduleStatus
+                  ?.onPage ||
+                ""
+            )
+          )
+            ? "Audit Ready With a Technical Limitation"
+            : "Audit Completed Successfully"}
+        </h3>
 
-          <p className="mt-1 text-sm text-slate-500">
-            All connected Crawler Que modules processed successfully.
-          </p>
-        </div>
+        <p className="mt-1 text-sm text-[#A0A0A0]">
+          Every selected module has reached
+          a final status. The report is now
+          safe to review, save, and export.
+        </p>
+      </div>
 
-        <div className="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-700">
-          Live Data
-        </div>
+      <div className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-sm font-semibold text-emerald-300">
+        Report Ready
       </div>
     </div>
+  </div>
+) : (
+  <div className="mb-6 rounded-2xl border border-amber-400/20 bg-amber-400/8 p-5">
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-amber-300">
+          Audit Status
+        </p>
+
+        <h3 className="mt-1 text-lg font-bold text-white">
+          Finalizing Audit
+        </h3>
+
+        <p className="mt-1 text-sm text-[#A0A0A0]">
+          Technical crawl processing is still
+          active. PDF export will unlock
+          automatically after finalization.
+        </p>
+      </div>
+
+      <div className="rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-sm font-semibold text-amber-300">
+        Processing
+      </div>
+    </div>
+  </div>
+)}
 {/* HISTORY */}
 {activeTab === "history" && (
   <Section title="Audit History & Comparison">
@@ -2519,11 +3290,22 @@ disabled={!data}
     {history.length > 0 ? (
       <div className="grid gap-4">
         {history.map((item, i) => {
-          const previous = history[i + 1];
-          const scoreChange =
-            previous?.overallScore != null && item?.overallScore != null
-              ? item.overallScore - previous.overallScore
-              : null;
+const previous =
+  history
+    .slice(i + 1)
+    .find((candidate) =>
+      reportsAreComparable(
+        item,
+        candidate
+      )
+    );
+
+const scoreChange =
+  previous?.overallScore != null &&
+  item?.overallScore != null
+    ? item.overallScore -
+      previous.overallScore
+    : null;
 
           return (
             <div
@@ -2561,7 +3343,11 @@ disabled={!data}
   type="button"
   onClick={(e) => {
     e.stopPropagation();
-    setCompareA(item);
+
+    selectComparisonReport(
+      "A",
+      item
+    );
   }}
   className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-600"
 >
@@ -2572,7 +3358,11 @@ disabled={!data}
   type="button"
   onClick={(e) => {
     e.stopPropagation();
-    setCompareB(item);
+
+    selectComparisonReport(
+      "B",
+      item
+    );
   }}
   className="rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-600"
 >
@@ -2638,7 +3428,7 @@ disabled={!data}
     )}
   </Section>
 )}
-{/* UNIFIED OVERVIEW — merged into Overview tab */}
+{/* UNIFIED OVERVIEW â€” merged into Overview tab */}
 {activeTab === "overview" && data && (
 <Section title="Intelligence Summary">
     <p className="mb-5 text-sm text-[#8A8A8A]">
@@ -3327,7 +4117,7 @@ value={
       <h3 className="mb-3 font-semibold text-slate-950">Domain Insight</h3>
       <p className="text-sm leading-6 text-slate-600">
         {data?.domainAnalytics
-          ? "This section shows the domain’s organic and paid visibility signals from Crawler Que. Use this to compare whether the website is relying more on organic discovery or paid acquisition."
+          ? "This section shows the domainâ€™s organic and paid visibility signals from Crawler Que. Use this to compare whether the website is relying more on organic discovery or paid acquisition."
           : "Data not available from Crawler Que Domain Analytics."}
       </p>
     </div>
@@ -3416,22 +4206,22 @@ value={
 {/* AI */}
 {activeTab === "ai" && (
 data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
-  <Section title="AI Search Visibility™">
-    {/* ════════════════════════════════════════════════════════════════════ */}
-{/* 🆕 LIVE AI MODEL VISIBILITY — ChatGPT · Claude · Gemini (PRIMARY)     */}
-{/* Paste this block RIGHT AFTER the line: <Section title="AI Search Visibility™"> */}
-{/* ════════════════════════════════════════════════════════════════════ */}
+  <Section title="AI Search Visibilityâ„¢">
+    {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+{/* ðŸ†• LIVE AI MODEL VISIBILITY â€” ChatGPT Â· Claude Â· Gemini (PRIMARY)     */}
+{/* Paste this block RIGHT AFTER the line: <Section title="AI Search Visibilityâ„¢"> */}
+{/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
 
-{/* ════════════════════════════════════════════════════════════════════ */}
-{/* 🆕 LIVE AI MODEL VISIBILITY (V2) — paste RIGHT AFTER:                  */}
-{/*    <Section title="AI Search Visibility™">                            */}
-{/* ════════════════════════════════════════════════════════════════════ */}
+{/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+{/* ðŸ†• LIVE AI MODEL VISIBILITY (V2) â€” paste RIGHT AFTER:                  */}
+{/*    <Section title="AI Search Visibilityâ„¢">                            */}
+{/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
 {data?.aiSearchVisibility ? (
   <div className="mb-8">
     <div className="mb-4 flex flex-wrap items-center gap-2">
       <span className="inline-flex h-2 w-2 rounded-full bg-[#00D4AA]" />
       <span className="text-xs font-semibold uppercase tracking-wide text-[#00D4AA]">
-        Live AI Models · {(data.aiSearchVisibility.modelsCalled || []).join(" · ") || "ChatGPT · Claude · Gemini"}
+        Live AI Models Â· {(data.aiSearchVisibility.modelsCalled || []).join(" Â· ") || "ChatGPT Â· Claude Â· Gemini"}
       </span>
       {data.aiSearchVisibility.country && (
         <span className="rounded-full border border-[#1e3a5f] bg-[#122B4E] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[#94A3B8]">
@@ -3440,7 +4230,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
       )}
     </div>
 
-    {/* 🆕 headline: Awareness vs Competitive Visibility */}
+    {/* ðŸ†• headline: Awareness vs Competitive Visibility */}
     {data.aiSearchVisibility.brandKnowledge && (
       <div className="mb-5 flex flex-wrap gap-3">
         <div className="flex-1 min-w-[200px] rounded-2xl border border-[#00D4AA]/30 bg-[#00D4AA]/5 p-4">
@@ -3451,7 +4241,9 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
         <div className="flex-1 min-w-[200px] rounded-2xl border border-[#1e3a5f] bg-[#0E2440] p-4">
           <p className="text-xs uppercase tracking-wide text-[#64748B]">Competitive Visibility</p>
           <p className="text-2xl font-extrabold text-white">{data.aiSearchVisibility.overallScore}/100</p>
-          <p className="text-[11px] text-[#94A3B8]">Does AI recommend you for generic "best X" searches?</p>
+          <p className="text-[11px] text-[#94A3B8]">
+  Does AI recommend you for generic &quot;best X&quot; searches?
+</p>
         </div>
       </div>
     )}
@@ -3460,7 +4252,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
     <div className="mb-6 grid gap-4 md:grid-cols-4">
       <MetricCard label="Overall AI Score" value={`${data.aiSearchVisibility.overallScore}/100`} score={Number(data.aiSearchVisibility.overallScore || 0)} tooltip="Spontaneous visibility: does AI recommend you for category questions?" />
       <MetricCard label="Visibility Rate" value={`${data.aiSearchVisibility.visibilityRate}%`} score={Number(data.aiSearchVisibility.visibilityRate || 0)} tooltip="Share of category prompts where your brand appeared." />
-      <MetricCard label="Avg Position" value={data.aiSearchVisibility.avgPosition ? `${data.aiSearchVisibility.avgPosition} / 5` : "—"} tooltip="Average rank when mentioned (1 = first)." />
+      <MetricCard label="Avg Position" value={data.aiSearchVisibility.avgPosition ? `${data.aiSearchVisibility.avgPosition} / 5` : "â€”"} tooltip="Average rank when mentioned (1 = first)." />
       <MetricCard label="Sentiment Score" value={`${data.aiSearchVisibility.sentimentScore}/100`} score={Number(data.aiSearchVisibility.sentimentScore || 0)} tooltip="How positive the mentions of your brand are." />
     </div>
 
@@ -3475,7 +4267,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
       ))}
     </div>
 
-    {/* 🆕 BRAND KNOWLEDGE — does AI actually know you? (Feature A) */}
+    {/* ðŸ†• BRAND KNOWLEDGE â€” does AI actually know you? (Feature A) */}
     {data.aiSearchVisibility.brandKnowledge && (
       <div className="mb-6 rounded-2xl border border-[#00D4AA]/30 bg-[#00D4AA]/5 p-5">
         <div className="mb-3 flex items-center justify-between">
@@ -3496,9 +4288,9 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
               <div key={m} className="rounded-xl border border-[#1e3a5f] bg-[#0E2440] p-3">
                 <div className="mb-1 flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase text-[#64748B]">{m}</span>
-                  <span className={k.knows ? "text-[#00D4AA] text-xs font-semibold" : "text-[#64748B] text-xs"}>{k.knows ? "Knows ✓" : "Unknown"}</span>
+                  <span className={k.knows ? "text-[#00D4AA] text-xs font-semibold" : "text-[#64748B] text-xs"}>{k.knows ? "Knows âœ“" : "Unknown"}</span>
                 </div>
-                {k.snippet && <p className="text-[11px] leading-snug text-[#94A3B8]">{k.snippet}…</p>}
+                {k.snippet && <p className="text-[11px] leading-snug text-[#94A3B8]">{k.snippet}â€¦</p>}
                 {k.citedPage && <p className="mt-1 truncate text-[11px] text-[#00D4AA]">cited: {k.citedPage}</p>}
               </div>
             );
@@ -3512,7 +4304,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
       <div className="mb-6 overflow-hidden rounded-2xl border border-[#1e3a5f] bg-[#0E2440]">
         <div className="border-b border-[#1e3a5f] px-5 py-3">
           <h3 className="font-semibold text-white">Category Prompt Results</h3>
-          <p className="text-xs text-[#64748B]">Does AI recommend you for what you rank for? ✅ mentioned, ❌ missing.</p>
+          <p className="text-xs text-[#64748B]">Does AI recommend you for what you rank for? âœ… mentioned, âŒ missing.</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -3521,16 +4313,16 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
             </tr></thead>
             <tbody>
               {data.aiSearchVisibility.promptResults.map((row: any, i: number) => {
-                const cell = (m: any) => !m ? <span className="text-[#475569]">—</span> : m.mentioned
-                  ? <span className="text-[#00D4AA]">✅{m.position ? ` #${m.position}` : ""}{m.citedPage ? " 🔗" : ""}</span>
-                  : <span className="text-[#64748B]">❌</span>;
+                const cell = (m: any) => !m ? <span className="text-[#475569]">â€”</span> : m.mentioned
+                  ? <span className="text-[#00D4AA]">âœ…{m.position ? ` #${m.position}` : ""}{m.citedPage ? " ðŸ”—" : ""}</span>
+                  : <span className="text-[#64748B]">âŒ</span>;
                 return (
                   <tr key={i} className="border-t border-[#13294a]">
                     <td className="px-5 py-3 text-white">{row.prompt}</td>
                     <td className="px-3 py-3 text-center">{cell(row.models?.ChatGPT)}</td>
                     <td className="px-3 py-3 text-center">{cell(row.models?.Claude)}</td>
                     <td className="px-3 py-3 text-center">{cell(row.models?.Gemini)}</td>
-                    <td className="px-3 py-3 text-center text-[#94A3B8]">{row.avgPosition ?? "—"}</td>
+                    <td className="px-3 py-3 text-center text-[#94A3B8]">{row.avgPosition ?? "â€”"}</td>
                   </tr>
                 );
               })}
@@ -3540,7 +4332,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
       </div>
     )}
 
-    {/* 🆕 AI CITATIONS — which of your pages AI referenced */}
+    {/* ðŸ†• AI CITATIONS â€” which of your pages AI referenced */}
     {data.aiSearchVisibility.citations?.length > 0 && (
       <div className="mb-6 rounded-2xl border border-[#1e3a5f] bg-[#0E2440] p-5">
         <h3 className="mb-1 font-semibold text-white">Pages AI Cited</h3>
@@ -3556,12 +4348,12 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
       </div>
     )}
 
-    {/* 🆕 PAGES & KEYWORDS — which keyword makes which page rank (Crawler Que) */}
+    {/* ðŸ†• PAGES & KEYWORDS â€” which keyword makes which page rank (Crawler Que) */}
     {data.aiSearchVisibility.rankedPages?.length > 0 && (
       <div className="mb-6 overflow-hidden rounded-2xl border border-[#1e3a5f] bg-[#0E2440]">
         <div className="border-b border-[#1e3a5f] px-5 py-3">
           <h3 className="font-semibold text-white">Your Pages & The Keywords They Rank For</h3>
-          <p className="text-xs text-[#64748B]">Real ranking data — the keywords driving each page (basis for AI prompts).</p>
+          <p className="text-xs text-[#64748B]">Real ranking data â€” the keywords driving each page (basis for AI prompts).</p>
         </div>
         <div className="divide-y divide-[#13294a]">
           {data.aiSearchVisibility.rankedPages.map((p: any, i: number) => (
@@ -3573,7 +4365,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
               <div className="flex flex-wrap gap-1.5">
                 {(p.keywords || []).slice(0, 6).map((k: any, j: number) => (
                   <span key={j} className="rounded-full border border-[#1e3a5f] bg-[#122B4E] px-2.5 py-0.5 text-[11px] text-[#E2E8F0]">
-                    {k.keyword}{k.position ? <span className="text-[#64748B]"> · #{k.position}</span> : null}
+                    {k.keyword}{k.position ? <span className="text-[#64748B]"> Â· #{k.position}</span> : null}
                   </span>
                 ))}
               </div>
@@ -3597,14 +4389,14 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
       </div>
       <div className="rounded-2xl border border-[#00D4AA]/30 bg-[#00D4AA]/5 p-5">
         <h3 className="mb-2 font-semibold text-white">Missed Opportunities</h3>
-        <p className="mb-3 text-xs text-[#94A3B8]">Prompts where your brand was not mentioned — turn these into content.</p>
+        <p className="mb-3 text-xs text-[#94A3B8]">Prompts where your brand was not mentioned â€” turn these into content.</p>
         {data.aiSearchVisibility.missedPrompts?.length > 0 ? (
           <ul className="space-y-2">
             {data.aiSearchVisibility.missedPrompts.slice(0, 5).map((p: string, i: number) => (
-              <li key={i} className="flex gap-2 text-sm text-[#E2E8F0]"><span className="text-[#00D4AA]">→</span><span>{p}</span></li>
+              <li key={i} className="flex gap-2 text-sm text-[#E2E8F0]"><span className="text-[#00D4AA]">â†’</span><span>{p}</span></li>
             ))}
           </ul>
-        ) : <p className="text-sm text-[#00D4AA]">Your brand appeared in every tested prompt. 🎉</p>}
+        ) : <p className="text-sm text-[#00D4AA]">Your brand appeared in every tested prompt. ðŸŽ‰</p>}
       </div>
     </div>
 
@@ -3613,7 +4405,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
     </div>
   </div>
 ) : null}
-{/* ════════════════════ END V2 BLOCK ════════════════════ */}
+{/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• END V2 BLOCK â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
 
     <p className="mb-5 text-sm text-slate-500">
       Deeper per-model breakdown and competitor share, expanding on the live results above.
@@ -3691,19 +4483,19 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
     {data?.aiVisibility?.pageGeoReadiness && (
       <div className="mb-6 rounded-2xl border border-[#222] bg-[#111] p-5">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="font-semibold text-white">AI Citation Readiness — Audited Page</h3>
+          <h3 className="font-semibold text-white">AI Citation Readiness â€” Audited Page</h3>
           <span className="rounded-full bg-[#C5FF3D]/10 px-3 py-1 text-xs font-semibold text-[#C5FF3D]">
-            {data.aiVisibility.pageGeoReadiness.score}/100 · {data.aiVisibility.pageGeoReadiness.grade}
+            {data.aiVisibility.pageGeoReadiness.score}/100 Â· {data.aiVisibility.pageGeoReadiness.grade}
           </span>
         </div>
         <p className="mb-4 text-sm text-[#8A8A8A]">
-          How well the audited page is structured for AI assistants to read, summarize, and cite — based on
+          How well the audited page is structured for AI assistants to read, summarize, and cite â€” based on
           headings, content depth, structured data, and accessibility signals from this page.
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
           {data.aiVisibility.pageGeoReadiness.factors.map((f: any, i: number) => (
             <div key={i} className="flex items-center gap-2 rounded-lg border border-[#222] px-3 py-2 text-sm">
-              <span className={f.pass ? "text-[#C5FF3D]" : "text-[#777]"}>{f.pass ? "✓" : "○"}</span>
+              <span className={f.pass ? "text-[#C5FF3D]" : "text-[#777]"}>{f.pass ? "âœ“" : "â—‹"}</span>
               <span className={f.pass ? "text-white" : "text-[#8A8A8A]"}>{f.label}</span>
             </div>
           ))}
@@ -3993,7 +4785,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
                   Timeline
                 </p>
                 <p className="mt-1 text-sm font-bold text-slate-950">
-                  {i < 3 ? "7–30 days" : i < 6 ? "30–60 days" : "60–90 days"}
+                  {i < 3 ? "7â€“30 days" : i < 6 ? "30â€“60 days" : "60â€“90 days"}
                 </p>
               </div>
 
@@ -4017,7 +4809,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
                   Difficulty
                 </p>
                 <p className="mt-1 text-sm font-bold text-slate-950">
-                  {i < 3 ? "Medium" : "Low–Medium"}
+                  {i < 3 ? "Medium" : "Lowâ€“Medium"}
                 </p>
               </div>
             </div>
@@ -4197,7 +4989,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 {activeTab === "serp" && (
   <Section title="Live SERP Rankings">
     <p className="mb-5 text-sm text-slate-500">
-      Powered by Crawler Que SERP API. Shows if the audited domain appears in Google’s top results for tracked keywords.
+      Powered by Crawler Que SERP API. Shows if the audited domain appears in Googleâ€™s top results for tracked keywords.
     </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-3">
@@ -4469,9 +5261,9 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 
               <div className="mt-3 flex gap-2 text-xs text-slate-500">
                 <span>Position: {k.position || "Data not available"}</span>
-                <span>•</span>
+                <span>â€¢</span>
                 <span>Estimated Traffic: {k.traffic || "Data not available"}</span>
-                <span>•</span>
+                <span>â€¢</span>
                 <span>CPC: {k.cpc || "Data not available"}</span>
               </div>
             </div>
@@ -4631,7 +5423,7 @@ const MODULE_STATUS_UI: Record<string, { label: string; cls: string }> = {
 };
 const moduleStatusUI = (s: any) =>
   MODULE_STATUS_UI[String(s || "").toLowerCase()] ??
-  { label: String(s || "—"), cls: "border-[var(--cq-line)] bg-[var(--cq-surface-2)] text-[var(--cq-text-2)]" };
+  { label: String(s || "â€”"), cls: "border-[var(--cq-line)] bg-[var(--cq-surface-2)] text-[var(--cq-text-2)]" };
 
 function getScoreExplainer(label: string, score: number) {
   const cleanLabel = String(label || "").toLowerCase();
@@ -4880,12 +5672,12 @@ function AccountSettingsTab({ currentUser }: { currentUser: any }) {
             <p className="text-sm text-[#8A8A8A]">
               White-label PDF branding is available on Agency and Enterprise plans.
             </p>
-            <a
-              href="/#pricing"
-              className="mt-4 inline-block rounded-xl border border-[#C5FF3D]/30 px-4 py-2 text-sm font-semibold text-[#C5FF3D]"
-            >
-              View plans &#8594;
-            </a>
+<Link
+  href="/#pricing"
+  className="mt-4 inline-block rounded-xl border border-[#C5FF3D]/30 px-4 py-2 text-sm font-semibold text-[#C5FF3D]"
+>
+  View plans &#8594;
+</Link>
           </div>
           )}
 
@@ -4901,11 +5693,11 @@ function AccountSettingsTab({ currentUser }: { currentUser: any }) {
           disabled={saving}
           className="rounded-xl bg-[#C5FF3D] px-6 py-3 text-sm font-bold text-black hover:opacity-90 disabled:opacity-50"
         >
-          {saving ? "Saving..." : saved ? "Saved ✓" : "Save Settings"}
+          {saving ? "Saving..." : saved ? "Saved âœ“" : "Save Settings"}
         </button>
 
         <p className="text-xs text-[#555]">
-          Changes take effect on the next PDF export. Use <span className="text-[#8A8A8A]">Reset to Default</span> to switch back to Crawler Que branding at any time. Reset only clears the form — click Save Settings to save the reset to your account.
+          Changes take effect on the next PDF export. Use <span className="text-[#8A8A8A]">Reset to Default</span> to switch back to Crawler Que branding at any time. Reset only clears the form â€” click Save Settings to save the reset to your account.
         </p>
       </div>
     </Section>
@@ -4991,7 +5783,7 @@ function TrialBanner({ currentUser }: { currentUser: any }) {
               disabled={loading === plan.name}
               className="mt-4 w-full rounded-lg bg-[#C5FF3D] px-3 py-2 text-sm font-bold text-black hover:opacity-90 disabled:opacity-50"
             >
-              {loading === plan.name ? "Switching…" : "Choose this plan"}
+              {loading === plan.name ? "Switchingâ€¦" : "Choose this plan"}
             </button>
           </div>
         ))}
@@ -5074,7 +5866,7 @@ function PlanSwitcher({ currentUser }: { currentUser: any }) {
                     : "bg-[#C5FF3D] text-black hover:opacity-90"
                 }`}
               >
-                {loading === plan.name ? "Updating…" : isCurrent ? "Current Plan" : `${action} →`}
+                {loading === plan.name ? "Updatingâ€¦" : isCurrent ? "Current Plan" : `${action} â†’`}
               </button>
             </div>
           );
@@ -5157,7 +5949,7 @@ function PricingCard({
       <div className="mt-5 space-y-3">
         {features.map((feature) => (
           <div key={feature} className="flex gap-2 text-sm text-[#CCCCCC]">
-            <span className="font-bold text-[#C5FF3D]">✓</span>
+            <span className="font-bold text-[#C5FF3D]">âœ“</span>
             <span>{feature}</span>
           </div>
         ))}

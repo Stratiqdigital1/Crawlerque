@@ -7,6 +7,10 @@ import { cookies } from "next/headers";
 import { hasAuditLimit, canUseModule } from "@/lib/permissions";
 import { getLocationCode } from "@/lib/dataforseo-config";
 import {
+  AuditIdentityError,
+  buildAuditIdentity,
+} from "@/lib/audit-identity";
+import {
   getPromoAccessForSession,
   PROMO_REPORT_TYPES,
 } from "@/lib/promo-access";
@@ -42,59 +46,6 @@ function getClientIp(req: Request) {
   return "unknown";
 }
 
-function validatePublicAuditUrl(input: string) {
-  let parsed: URL;
-
-  try {
-    parsed = new URL(input.startsWith("http") ? input : `https://${input}`);
-  } catch {
-    throw new Error("Invalid URL.");
-  }
-
-  if (!["http:", "https:"].includes(parsed.protocol)) {
-    throw new Error("Only HTTP and HTTPS URLs are allowed.");
-  }
-
-  const hostname = parsed.hostname.toLowerCase();
-
-  const blockedHosts = ["localhost", "127.0.0.1", "0.0.0.0", "::1"];
-
-  if (blockedHosts.includes(hostname)) {
-    throw new Error("Localhost URLs are not allowed.");
-  }
-
-  if (
-    hostname.startsWith("10.") ||
-    hostname.startsWith("192.168.") ||
-    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname)
-  ) {
-    throw new Error("Private network URLs are not allowed.");
-  }
-
-  return parsed.toString();
-}
-
-function normalizeUrl(input: string) {
-  if (!input) return "";
-  const trimmed = input.trim();
-
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    return trimmed;
-  }
-
-  return `https://${trimmed}`;
-}
-
-function extractDomain(url: string) {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return String(url || "")
-      .replace(/^https?:\/\//, "")
-      .replace(/^www\./, "")
-      .replace(/\/.*$/, "");
-  }
-}
 
 async function fetchHtml(url: string) {
   try {
@@ -241,12 +192,14 @@ async function getCachedAuditReport(userId: string, domain: string, reportTypes:
 
   const cached = await prisma.auditReport.findFirst({
     where: {
-      userId,
-      normalizedDomain: domain,
-      createdAt: {
-        gte: since,
-      },
-    },
+  userId,
+  normalizedDomain: domain,
+  status: "completed",
+  renderReady: true,
+  createdAt: {
+    gte: since,
+  },
+},
     orderBy: {
       createdAt: "desc",
     },
@@ -492,22 +445,33 @@ if (promoAccess) {
 }
 
 
-    const inputUrl = body?.url || body?.domain;
-    if (!inputUrl) {
-  return withSecurityHeaders(
-  NextResponse.json(
-    { success: false, error: "Website URL is required." },
-    { status: 400 }
-  )
-);
-}
-    const requestedReportTypes = Array.isArray(body?.reportTypes)
-  ? body.reportTypes
-  : body?.reportType
-  ? [body.reportType]
-  : ["seo", "technical"];
+const inputUrl = body?.url || body?.domain;
 
-const reportTypes = promoAccess
+if (!inputUrl) {
+  return withSecurityHeaders(
+    NextResponse.json(
+      {
+        success: false,
+        error: "Website URL is required.",
+      },
+      {
+        status: 400,
+      }
+    )
+  );
+}
+
+const requestedReportTypes = Array.isArray(
+  body?.reportTypes
+)
+  ? body.reportTypes.map((type: unknown) =>
+      String(type)
+    )
+  : body?.reportType
+    ? [String(body.reportType)]
+    : ["seo", "technical"];
+
+const permittedReportTypes = promoAccess
   ? [...PROMO_REPORT_TYPES]
   : isFreeUser
     ? ["seo", "technical"]
@@ -516,34 +480,233 @@ const reportTypes = promoAccess
           allowedReportTypes.has(type)
       );
 
-if (reportTypes.length === 0) {
+if (permittedReportTypes.length === 0) {
   return withSecurityHeaders(
-  NextResponse.json(
-    {
-      success: false,
-      error: "Your current package does not allow the selected report modules.",
-    },
-    { status: 403 }
-  )
-);
+    NextResponse.json(
+      {
+        success: false,
+        error:
+          "Your current package does not allow the selected report modules.",
+      },
+      {
+        status: 403,
+      }
+    )
+  );
 }
 
-    if (!inputUrl) {
-      return withSecurityHeaders(
-  NextResponse.json(
-    { success: false, error: "URL is required" },
-    { status: 400 }
-  )
-);
-    }
+/*
+ * Authenticated audits use the real user ID.
+ * A legacy free audit receives a temporary identity
+ * based on its client IP.
+ */
+const auditOwnerIdentity =
+  user?.id ||
+  session?.userId ||
+  `free:${clientIp}`;
 
-const safeUrl = validatePublicAuditUrl(String(inputUrl));
+let auditIdentity;
 
-const url = normalizeUrl(safeUrl);
-const domain = extractDomain(url);
+try {
+  auditIdentity = buildAuditIdentity({
+    userId: auditOwnerIdentity,
+    url: String(inputUrl),
+    reportTypes: permittedReportTypes,
+  });
+} catch (error) {
+  if (error instanceof AuditIdentityError) {
+    return withSecurityHeaders(
+      NextResponse.json(
+        {
+          success: false,
+          error: error.message,
+        },
+        {
+          status: 400,
+        }
+      )
+    );
+  }
+
+  throw error;
+}
+
+const {
+  normalizedUrl: url,
+  normalizedDomain: domain,
+  reportTypes,
+  inputHash,
+} = auditIdentity;
+
 const locationCode = getLocationCode(domain);
 const origin = new URL(req.url).origin;
 
+/*
+ * Load and validate the exact job created by
+ * /api/audit-jobs/start.
+ */
+if (incomingAuditJobId) {
+  if (!user?.id) {
+    return withSecurityHeaders(
+      NextResponse.json(
+        {
+          success: false,
+          error:
+            "An authenticated user is required for this audit job.",
+        },
+        {
+          status: 401,
+        }
+      )
+    );
+  }
+
+  auditJob = await prisma.auditJob.findFirst({
+    where: {
+      id: incomingAuditJobId,
+      userId: user.id,
+    },
+  });
+
+  if (!auditJob) {
+    return withSecurityHeaders(
+      NextResponse.json(
+        {
+          success: false,
+          error: "Audit job not found.",
+        },
+        {
+          status: 404,
+        }
+      )
+    );
+  }
+
+  if (
+    !auditJob.inputHash ||
+    !auditJob.normalizedDomain
+  ) {
+    return withSecurityHeaders(
+      NextResponse.json(
+        {
+          success: false,
+          error:
+            "This audit job was created before the security update. Please start a new audit.",
+        },
+        {
+          status: 409,
+        }
+      )
+    );
+  }
+
+  const jobReportTypes = Array.isArray(
+    auditJob.reportTypes
+  )
+    ? auditJob.reportTypes
+        .map((type: unknown) => String(type))
+        .sort((a: string, b: string) =>
+          a.localeCompare(b)
+        )
+    : [];
+
+  const sameReportTypes =
+    jobReportTypes.length ===
+      reportTypes.length &&
+    reportTypes.every(
+      (type, index) =>
+        type === jobReportTypes[index]
+    );
+
+  const identityMismatch =
+    auditJob.inputHash !== inputHash ||
+    auditJob.normalizedDomain !== domain ||
+    auditJob.url !== url ||
+    !sameReportTypes;
+
+  if (identityMismatch) {
+    await updateAuditJob(auditJob.id, {
+      status: "failed",
+      progress: 100,
+      currentModule:
+        "Audit identity validation failed",
+      error:
+        "The audit URL, domain, user, or selected modules did not match the original job.",
+      failedAt: new Date(),
+      renderReady: false,
+    });
+
+    return withSecurityHeaders(
+      NextResponse.json(
+        {
+          success: false,
+          error:
+            "Audit identity mismatch. Please start a new audit.",
+        },
+        {
+          status: 409,
+        }
+      )
+    );
+  }
+
+  if (
+    ["failed", "cancelled"].includes(
+      auditJob.status
+    )
+  ) {
+    return withSecurityHeaders(
+      NextResponse.json(
+        {
+          success: false,
+          error:
+            "This audit job is no longer active. Please start a new audit.",
+        },
+        {
+          status: 409,
+        }
+      )
+    );
+  }
+
+  await updateAuditJob(auditJob.id, {
+    status: "running",
+    progress: 5,
+    currentModule: "Initializing audit",
+    startedAt:
+      auditJob.startedAt || new Date(),
+    completedAt: null,
+    failedAt: null,
+    error: null,
+    moduleStatus: {},
+    technicalTaskId: null,
+    renderReady: false,
+  });
+} else {
+  auditJob = await prisma.auditJob.create({
+    data: {
+      userId: user?.id || null,
+      domain,
+      normalizedDomain: domain,
+      url,
+      inputHash,
+      reportTypes,
+      status: "running",
+      progress: 5,
+      currentModule: "Initializing audit",
+      startedAt: new Date(),
+      moduleStatus: {},
+      technicalTaskId: null,
+      renderReady: false,
+      usageCounted: false,
+    },
+  });
+}
+
+/*
+ * Cached reports are accepted only after the
+ * current job has been validated.
+ */
 const cachedAudit =
   user &&
   !isFreeAudit &&
@@ -556,33 +719,70 @@ const cachedAudit =
       )
     : null;
 
-if (cachedAudit) {
+if (cachedAudit && user) {
+  const cachedReportData =
+    cachedAudit.reportData as Record<
+      string,
+      unknown
+    >;
 
-  await prisma.auditLog.create({
-  data: {
-    userId: user?.id || null,
-    email: user?.email || null,
-    ip: clientIp,
-    domain,
-    auditMode: isFreeAudit ? "free" : "paid",
-    reportTypes,
-    status: "success",
-    message: isFreeAudit ? "Free audit completed" : "Paid audit completed",
-  },
-});
+  const cachedModuleStatus =
+    cachedReportData?.moduleStatus &&
+    typeof cachedReportData.moduleStatus ===
+      "object"
+      ? cachedReportData.moduleStatus
+      : {};
+
+  await updateAuditJob(auditJob.id, {
+    status: "completed",
+    progress: 100,
+    currentModule:
+      "Completed from verified cache",
+    moduleStatus: cachedModuleStatus,
+    completedAt: new Date(),
+    resultReportId: cachedAudit.id,
+    resultData: cachedReportData,
+    renderReady: true,
+  });
+
+  try {
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        email: user.email || null,
+        ip: clientIp,
+        domain,
+        auditMode: "paid",
+        reportTypes,
+        status: "success",
+        message:
+          "Verified cached audit returned",
+      },
+    });
+  } catch (logError) {
+    console.error(
+      "Cached audit log failed:",
+      logError
+    );
+  }
+
   return withSecurityHeaders(
-  NextResponse.json({
-    success: true,
-    cached: true,
-    reportId: cachedAudit.id,
-    report: {
-      ...(cachedAudit.reportData as any),
-      reportId: cachedAudit.id,
+    NextResponse.json({
+      success: true,
       cached: true,
-      cachedAt: cachedAudit.createdAt,
-    },
-  })
-);
+      auditJobId: auditJob.id,
+      reportId: cachedAudit.id,
+      renderReady: true,
+      report: {
+        ...cachedReportData,
+        auditJobId: auditJob.id,
+        reportId: cachedAudit.id,
+        cached: true,
+        cachedAt: cachedAudit.createdAt,
+        renderReady: true,
+      },
+    })
+  );
 }
 const hasModule = (module: string) => reportTypes.includes(module);
 
@@ -938,33 +1138,100 @@ const aiJson = await aiRes.json();
 }
 }
 
-    if (runTechnical) {
-try {
-  const onPageStartRes = await fetch(`${origin}/api/dataforseo/onpage/start`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    url,
-    maxCrawlPages: 100,
-  }),
-  cache: "no-store",
-});
+if (runTechnical) {
+  try {
+    const cookieHeader =
+      req.headers.get("cookie");
 
-const onPageStartJson = await onPageStartRes.json();
+    const onPageHeaders:
+      Record<string, string> = {
+        "Content-Type":
+          "application/json",
+      };
 
-onPage = onPageStartJson?.taskId
-  ? {
-      taskId: onPageStartJson.taskId,
-      crawlStatus: "started",
-      crawledPages: 0,
-      pages: [],
+    if (cookieHeader) {
+      onPageHeaders.cookie =
+        cookieHeader;
     }
-  : null;
- } catch (error) {
-  console.error("OnPage inside audit failed:", error);
 
-  moduleStatus.onPage = "not_available";
-}
+    const onPageStartRes =
+      await fetch(
+        `${origin}/api/dataforseo/onpage/start`,
+        {
+          method: "POST",
+
+          headers:
+            onPageHeaders,
+
+          body: JSON.stringify({
+            url,
+            maxCrawlPages: 100,
+
+            auditJobId:
+              auditJob.id,
+
+            inputHash,
+
+            normalizedDomain:
+              domain,
+          }),
+
+          cache: "no-store",
+        }
+      );
+
+    const onPageStartJson =
+      await onPageStartRes.json();
+
+    if (
+      !onPageStartRes.ok ||
+      !onPageStartJson?.success ||
+      !onPageStartJson?.taskId
+    ) {
+      throw new Error(
+        onPageStartJson?.error ||
+          "Technical crawl could not be started."
+      );
+    }
+
+    onPage = {
+      auditJobId:
+        auditJob.id,
+
+      taskId:
+        onPageStartJson.taskId,
+
+      inputHash,
+
+      normalizedDomain:
+        domain,
+
+      crawlStatus: "started",
+
+      crawledPages: 0,
+
+      pages: [],
+    };
+
+    moduleStatus.technical =
+      "running";
+
+    moduleStatus.onPage =
+      "running";
+  } catch (error) {
+    console.error(
+      "OnPage inside audit failed:",
+      error
+    );
+
+    onPage = null;
+
+    moduleStatus.technical =
+      "failed";
+
+    moduleStatus.onPage =
+      "failed";
+  }
 }
 
     if (runTraffic) {
@@ -1476,11 +1743,14 @@ const aiVisibility = {
 
 moduleStatus = {
   seo: runSEO ? "completed" : "skipped",
-  technical: runTechnical
-    ? onPage?.pages?.length > 0
-      ? "completed"
-      : "partial"
-    : "skipped",
+technical: runTechnical
+  ? onPage?.crawlStatus ===
+    "completed"
+    ? "completed"
+    : onPage?.taskId
+      ? "running"
+      : "failed"
+  : "skipped",
 
   dataforseo:
     runTraffic || runKeywordResearch || runCompetitors || runBacklinks
@@ -1510,12 +1780,15 @@ aiOptimization:
         : "failed"
       : "skipped",
 
-  onPage:
-    runTechnical
-      ? onPage?.pages?.length > 0
-        ? "completed"
-        : "partial"
-      : "skipped",
+onPage:
+  runTechnical
+    ? onPage?.crawlStatus ===
+      "completed"
+      ? "completed"
+      : onPage?.taskId
+        ? "running"
+        : "failed"
+    : "skipped",
 
   serp:
     runSERP
@@ -1566,11 +1839,16 @@ await updateAuditJob(auditJob.id, {
   moduleStatus,
 });
 
-    const report = {
-      reportTypes,
-      url,
-      domain,
-      moduleStatus,
+const report = {
+  auditJobId: auditJob.id,
+  inputHash,
+  normalizedDomain: domain,
+  renderReady: false,
+
+  reportTypes,
+  url,
+  domain,
+  moduleStatus,
       unifiedOverview,
       title,
       description,
@@ -1633,13 +1911,19 @@ aiVisibility,
     if (user && !isFreeAudit) {
     try {
       savedReport = await prisma.auditReport.create({
-        data: {
-          userId: user.id,
-          domain: report?.domain || domain,
-          normalizedDomain: domain,
+data: {
+  userId: user.id,
+  domain: report?.domain || domain,
+  normalizedDomain: domain,
 
-          reportTypes: reportTypes,
-          reportData: report,
+  auditJobId: auditJob.id,
+  inputHash,
+  status: "processing",
+  renderReady: false,
+  moduleStatus,
+
+  reportTypes,
+  reportData: report,
 
           overallScore: Number(report?.overallScore || 0),
           seoScore: Number(report?.seoScore || 0),
@@ -1729,15 +2013,62 @@ if (
   }
 }
 
-    if (auditJob?.id) {
+if (auditJob?.id) {
+  const waitingForTechnicalCrawl =
+    runTechnical &&
+    Boolean(onPage?.taskId) &&
+    onPage?.crawlStatus !== "completed";
+
   await updateAuditJob(auditJob.id, {
-    status: "completed",
-    progress: 100,
-    currentModule: "Completed",
-    completedAt: new Date(),
-    resultReportId: savedReport?.id || null,
+    status: waitingForTechnicalCrawl
+      ? "running"
+      : "completed",
+
+    progress: waitingForTechnicalCrawl
+      ? 92
+      : 100,
+
+    currentModule:
+      waitingForTechnicalCrawl
+        ? "Waiting for technical crawl"
+        : "Completed",
+
+    completedAt:
+      waitingForTechnicalCrawl
+        ? null
+        : new Date(),
+
+    technicalTaskId:
+      onPage?.taskId || null,
+
+    resultReportId:
+      savedReport?.id || null,
+
     resultData: report,
+
+    renderReady:
+      !waitingForTechnicalCrawl,
   });
+
+  if (
+    savedReport?.id &&
+    !waitingForTechnicalCrawl
+  ) {
+    await prisma.auditReport.update({
+      where: {
+        id: savedReport.id,
+      },
+      data: {
+        status: "completed",
+        renderReady: true,
+        completedAt: new Date(),
+        reportData: {
+          ...report,
+          renderReady: true,
+        },
+      },
+    });
+  }
 }
 
    // Log every successful audit for observability and usage tracking.
@@ -1770,18 +2101,25 @@ if (
       console.error("AuditLog write failed:", logError);
     }
 
-    return withSecurityHeaders(
-      NextResponse.json({
-        success: true,
-        auditJobId: auditJob?.id || null,
-        reportId: savedReport?.id || null,
-        report: {
-          ...report,
-          auditJobId: auditJob?.id || null,
-          reportId: savedReport?.id || null,
-        },
-      })
-    );
+const renderReady =
+  !runTechnical ||
+  !onPage?.taskId ||
+  onPage?.crawlStatus === "completed";
+
+return withSecurityHeaders(
+  NextResponse.json({
+    success: true,
+    auditJobId: auditJob?.id || null,
+    reportId: savedReport?.id || null,
+    renderReady,
+    report: {
+      ...report,
+      auditJobId: auditJob?.id || null,
+      reportId: savedReport?.id || null,
+      renderReady,
+    },
+  })
+);
 } catch (error) {
   console.error("Audit API failed:", error);
 

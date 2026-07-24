@@ -11,10 +11,15 @@ import {
   getPromoAccessForSession,
   PROMO_REPORT_TYPES,
 } from "@/lib/promo-access";
+import {
+  AuditIdentityError,
+  buildAuditIdentity,
+} from "@/lib/audit-identity";
+
+export const runtime = "nodejs";
 
 async function getSessionFromCookie() {
-  const cookieStore =
-    await cookies();
+  const cookieStore = await cookies();
 
   const token = cookieStore.get(
     "stratiq_session"
@@ -25,52 +30,23 @@ async function getSessionFromCookie() {
   }
 
   try {
-    const payload: any =
-      await verifySessionToken(token);
+const payload =
+  await verifySessionToken(token);
 
     if (!payload?.userId) {
       return null;
     }
 
     return {
-      id: String(
-        payload.userId
-      ),
-      role: String(
-        payload.role || "user"
-      ),
+      id: String(payload.userId),
+      role: String(payload.role || "user"),
       promoAccessId:
         payload.promoAccessId
-          ? String(
-              payload.promoAccessId
-            )
+          ? String(payload.promoAccessId)
           : null,
     };
   } catch {
     return null;
-  }
-}
-
-function extractDomainFromUrl(
-  input: string
-) {
-  try {
-    const withProtocol =
-      /^https?:\/\//i.test(input)
-        ? input
-        : `https://${input}`;
-
-    return new URL(
-      withProtocol
-    ).hostname.replace(
-      /^www\./,
-      ""
-    );
-  } catch {
-    return input
-      .replace(/^https?:\/\//, "")
-      .replace(/^www\./, "")
-      .split("/")[0];
   }
 }
 
@@ -143,26 +119,126 @@ export async function POST(
 
     const body = await req.json();
 
-    const url = String(
-      body?.url || ""
-    );
-
-    const reportTypes =
+    const requestedReportTypes =
       promoAccess
         ? [...PROMO_REPORT_TYPES]
-        : Array.isArray(
-              body?.reportTypes
-            )
+        : Array.isArray(body?.reportTypes)
           ? body.reportTypes
           : [];
 
-    if (!url) {
+    const identity = buildAuditIdentity({
+      userId: session.id,
+      url: String(body?.url || ""),
+      reportTypes: requestedReportTypes,
+    });
+
+    /*
+     * Prevent accidental duplicate jobs when the user
+     * double-clicks Run Audit or the browser retries.
+     *
+     * Only reuse jobs created during the last 15 minutes.
+     */
+    const activeJobThreshold = new Date(
+      Date.now() - 15 * 60 * 1000
+    );
+
+    const existingActiveJob =
+      await prisma.auditJob.findFirst({
+        where: {
+          userId: session.id,
+          inputHash: identity.inputHash,
+          status: {
+            in: ["pending", "running"],
+          },
+          createdAt: {
+            gte: activeJobThreshold,
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        select: {
+          id: true,
+          status: true,
+          progress: true,
+          currentModule: true,
+          normalizedDomain: true,
+          inputHash: true,
+          renderReady: true,
+        },
+      });
+
+    if (existingActiveJob) {
+      return withSecurityHeaders(
+        NextResponse.json({
+          success: true,
+          reused: true,
+          job: existingActiveJob,
+          auditJobId:
+            existingActiveJob.id,
+        })
+      );
+    }
+
+    const job =
+      await prisma.auditJob.create({
+        data: {
+          userId: session.id,
+
+          domain:
+            identity.normalizedDomain,
+
+          normalizedDomain:
+            identity.normalizedDomain,
+
+          url:
+            identity.normalizedUrl,
+
+          inputHash:
+            identity.inputHash,
+
+          reportTypes:
+            identity.reportTypes,
+
+          status: "pending",
+          progress: 1,
+          currentModule:
+            "Audit queued",
+
+          moduleStatus: {},
+
+          technicalTaskId: null,
+          renderReady: false,
+          usageCounted: false,
+        },
+        select: {
+          id: true,
+          status: true,
+          progress: true,
+          currentModule: true,
+          normalizedDomain: true,
+          inputHash: true,
+          renderReady: true,
+        },
+      });
+
+    return withSecurityHeaders(
+      NextResponse.json({
+        success: true,
+        reused: false,
+        job,
+        auditJobId: job.id,
+      })
+    );
+  } catch (error) {
+    if (
+      error instanceof AuditIdentityError
+    ) {
       return withSecurityHeaders(
         NextResponse.json(
           {
             success: false,
-            error:
-              "URL is required.",
+            error: error.message,
           },
           {
             status: 400,
@@ -171,38 +247,6 @@ export async function POST(
       );
     }
 
-    const job =
-      await prisma.auditJob.create({
-        data: {
-          userId: session.id,
-          domain:
-            extractDomainFromUrl(
-              url
-            ),
-          url,
-          reportTypes,
-          status: "pending",
-          progress: 1,
-          currentModule:
-            "Audit queued",
-          moduleStatus: {},
-        },
-        select: {
-          id: true,
-          status: true,
-          progress: true,
-          currentModule: true,
-        },
-      });
-
-    return withSecurityHeaders(
-      NextResponse.json({
-        success: true,
-        job,
-        auditJobId: job.id,
-      })
-    );
-  } catch (error) {
     console.error(
       "Audit job start failed:",
       error

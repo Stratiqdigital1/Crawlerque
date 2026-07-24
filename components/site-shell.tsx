@@ -36,8 +36,8 @@ export function SiteNav() {
   const [feat, setFeat] = useState(false);
 const links: [string, string][] = [
   ["/#pricing", "Pricing"],
-  ["/sample-report", "Sample report"],
-  ["/blog", "Blog"],
+  ["/sample-report", "Resources"],
+  ["/for-agencies", "Agency"],
   ["/login", "Login"],
 ];
   return (
@@ -48,6 +48,9 @@ const links: [string, string][] = [
         </a>
 
         <nav className="hidden items-center gap-1 md:flex">
+          <a href="/dashboard" className="rounded-lg px-4 py-2 text-[15px] font-medium text-[var(--cq-text-2)] transition-colors hover:bg-[var(--cq-surface)] hover:text-[var(--cq-text)]">
+            Dashboard
+          </a>
           {/* Features mega-menu */}
           <div className="relative" onMouseEnter={() => setFeat(true)} onMouseLeave={() => setFeat(false)}>
             <button className="flex items-center gap-1 rounded-lg px-4 py-2 text-[15px] font-medium text-[var(--cq-text-2)] transition-colors hover:bg-[var(--cq-surface)] hover:text-[var(--cq-text)]">
@@ -87,7 +90,7 @@ const links: [string, string][] = [
         </nav>
 
         <div className="flex items-center gap-3">
-          <a href="/#pricing" className="cq-btn cq-btn--primary hidden !py-2.5 md:inline-flex">Get started</a>
+          <a href="/#pricing" className="cq-btn cq-btn--primary hidden !py-2.5 md:inline-flex">Start 7-Day Trial</a>
           <button onClick={() => setOpen(!open)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--cq-line)] text-[var(--cq-text-2)] md:hidden">
             {open ? "✕" : "☰"}
           </button>
@@ -113,7 +116,7 @@ const links: [string, string][] = [
               {label}
             </a>
           ))}
-          <a href="/#pricing" className="cq-btn cq-btn--primary mt-3 w-full">Get started</a>
+          <a href="/#pricing" className="cq-btn cq-btn--primary mt-3 w-full">Start 7-Day Trial</a>
         </div>
       )}
       <div className="cq-scanline" />

@@ -24,7 +24,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Crawler Que — AI Website Growth Intelligence & SEO Audit Tool",
   description:
-    "Run modular SEO, AI visibility, traffic & competitor audits in minutes. White-label PDF reports. Plans from $30/mo with a 7-day free trial. Free audit, no signup.",
+    "Run 12 website growth audit modules covering SEO, technical performance, traffic, keywords, rankings, competitors, backlinks, content quality, AI search visibility, and prioritized recommendations. Start with a 7-day trial.",
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-touch-icon.png",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Crawler Que — AI Website Growth Intelligence & SEO Audit Tool",
     description:
-      "Modular SEO, AI visibility, traffic & competitor audits with white-label PDF reports. Free audit, no signup.",
+      "Explore 12 website growth modules with AI visibility testing, prioritized recommendations, action roadmaps, saved history, and professional reports.",
     images: ["/logo-full.png"],
   },
 };
@@ -70,7 +70,7 @@ return (
       name: "Crawler Que",
       applicationCategory: "BusinessApplication",
       operatingSystem: "Web",
-      description: "AI-powered SEO and website audit tool with AI search visibility, traffic, competitor, and backlink analysis plus white-label PDF reports.",
+      description: "AI website growth intelligence with 12 audit modules covering SEO, technical performance, traffic, keywords, rankings, competitors, backlinks, content quality, AI search visibility, and prioritized recommendations.",
       offers: {
         "@type": "AggregateOffer",
         lowPrice: "30",
