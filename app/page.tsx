@@ -150,7 +150,7 @@ const MODULES = [
   {
     id: "core-web-vitals",
     number: "04",
-    name: "Core Web Vitals",
+    name: "Core Web Vitals Checker",
     Icon: Gauge,
     short: "Measure mobile and desktop speed, stability, and responsiveness using user-experience metrics.",
     hover: ["LCP", "CLS", "FCP, TBT and Speed Index"],
@@ -201,7 +201,7 @@ const MODULES = [
   {
     id: "serp-rankings",
     number: "07",
-    name: "SERP Rankings",
+    name: "SERP Rank Tracker",
     Icon: BarChart3,
     short: "Track live ranking positions and understand where important keywords appear in search results.",
     hover: ["Current position", "Ranking URL", "Found vs. not found"],
@@ -235,7 +235,7 @@ const MODULES = [
   {
     id: "backlink-authority",
     number: "09",
-    name: "Backlink Authority",
+    name: "Backlink Checker",
     Icon: Link2,
     short: "Evaluate domain authority, referring sources, and backlink quality signals that support trust and rankings.",
     hover: ["Referring domains", "Top backlinks", "Authority signals"],
@@ -805,16 +805,16 @@ useEffect(() => {
           <div>
             <div className="inline-flex items-center gap-2 rounded-lg border border-cyan-300/30 bg-cyan-300/7 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-cyan-300">
               <Sparkles className="h-3.5 w-3.5" />
-              12 modules. Complete growth visibility.
+              The AI-powered SEO audit tool · 12 growth modules
             </div>
 
             <h1 className="mt-6 max-w-[690px] text-[clamp(3rem,6vw,5.35rem)] font-extrabold leading-[.98] tracking-[-0.045em] text-white">
-              Explore the
+              The AI SEO Audit Tool
               <span className="mt-2 block"><span className="text-cyan-300">12</span> Growth Modules</span>
             </h1>
 
             <p className="mt-6 max-w-xl text-[17px] leading-8 text-slate-300">
-              Each module reveals a different part of your website&apos;s growth performance so you can fix issues, unlock opportunities, and outrank with confidence.
+              Crawler Que is an AI-powered website&apos;s audit tool that runs 12 growth modules — SEO, Core Web Vitals, traffic, competitors, backlinks, and AI search visibility — in one report.
             </p>
 
             <div className="mt-10 grid max-w-2xl gap-0 sm:grid-cols-3">
@@ -858,7 +858,7 @@ useEffect(() => {
   </p>
 
   <h2 className="mt-3 text-[clamp(2rem,4vw,3.5rem)] font-extrabold leading-[1.05] tracking-[-0.04em] text-white">
-    Explore what every module audits.
+    Explore what the website audit tool checks.
   </h2>
 
   <p className="mt-4 max-w-2xl text-[15px] leading-7 text-slate-400">
@@ -1280,6 +1280,18 @@ useEffect(() => {
               [
                 "Can agencies use their own branding?",
                 "Agency and Enterprise workflows support white-label reporting, including agency identity, report branding, saved history, and comparison reporting where enabled by the selected plan.",
+              ],
+              [
+                "What is the best AI SEO audit tool?",
+                "Crawler Que is an AI SEO audit tool that runs 12 growth modules in one report, including AI search visibility that traditional tools don't measure. You get prioritized fixes and a white-label PDF.",
+              ],
+              [
+                "Is there a tool that checks my brand in ChatGPT, Claude, and Gemini?",
+                "Yes. Crawler Que's AI Search Visibility module tests your brand across ChatGPT, Claude, and Gemini and scores your GEO readiness. It shows where competitors appear instead of you.",
+              ],
+              [
+                "How do I audit my website for AI search visibility?",
+                "Run a free Crawler Que audit and add the AI Search Visibility module. It reports brand mentions, cited pages, missed prompts, and a model-by-model visibility score.",
               ],
             ].map(([question, answer]) => (
               <details key={question} className="cq-reference-panel group rounded-2xl p-5">
