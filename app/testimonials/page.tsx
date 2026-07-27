@@ -14,13 +14,13 @@ export const metadata = {
 };
 
 const QUOTES = [
-  { q: "[We used to spend half a day pulling reports together for each client. Now I run the audit, tweak a few things, and the PDF is basically done. It's given me my Fridays back.]", Name: "[Sarah Whitfield]", Role: "[Founder, Northlight SEO]" },
-  { q: "[Honestly I was skeptical about the AI visibility part at first. But when I showed a client that ChatGPT wasn't mentioning them and their competitor was, that was the moment they signed. Sold me on the whole thing.]", Name: "[Daniel Okafor,]", Role: "[Digital Marketing Lead, Bright Harbor Media]" },
-  { q: "[The reports actually make sense to my clients, which is the biggest thing for me. They don't want forty pages of keyword tables, they want to know what to fix and why. This gives them exactly that.]", Name: "[Priya Nair,]", Role: "[Freelance SEO Consultant]" },
-  { q: "[Good tool for the price. The Core Web Vitals and technical checks caught a couple of issues our old setup missed. Interface took me a day or two to get comfortable with but no complaints now.]", Name: "[Marcus Reilly,]", Role: "[Head of Growth, Tenfold Commerce]" },
-  { q: "[We audit a lot of sites every month and the white label reports have made client calls so much smoother. Everything is branded, everything is clear, and the roadmap gives us something concrete to talk through.]", Name: "[Elena Vasquez,]", Role: "[Account Director, Pivot Point Agency]" },
-  { q: "[What I like is that it doesn't just dump data on you. It tells you what matters most and roughly what it's worth to fix. That prioritisation is the part I actually use.]", Name: "[Tom Bradley,]", Role: "[In House SEO Manager, Kestrel Software]" },
-  { q: "[Started on the trial mostly to see the AI search visibility scoring and ended up keeping it for the whole audit suite. It has quietly become the first thing I run when I take on a new project.]", Name: "[Aisha Rahman,]", Role: "[SEO Strategist, Meridian Digital]" },
+  { q: "[We used to spend half a day pulling reports together for each client. Now I run the audit, tweak a few things, and the PDF is basically done. It's given me my Fridays back.]", name: "[Sarah Whitfield]", role: "[Founder, Northlight SEO]" },
+  { q: "[Honestly I was skeptical about the AI visibility part at first. But when I showed a client that ChatGPT wasn't mentioning them and their competitor was, that was the moment they signed. Sold me on the whole thing.]", name: "[Daniel Okafor,]", role: "[Digital Marketing Lead, Bright Harbor Media]" },
+  { q: "[The reports actually make sense to my clients, which is the biggest thing for me. They don't want forty pages of keyword tables, they want to know what to fix and why. This gives them exactly that.]", name: "[Priya Nair,]", role: "[Freelance SEO Consultant]" },
+  { q: "[Good tool for the price. The Core Web Vitals and technical checks caught a couple of issues our old setup missed. Interface took me a day or two to get comfortable with but no complaints now.]", name: "[Marcus Reilly,]", role: "[Head of Growth, Tenfold Commerce]" },
+  { q: "[We audit a lot of sites every month and the white label reports have made client calls so much smoother. Everything is branded, everything is clear, and the roadmap gives us something concrete to talk through.]", name: "[Elena Vasquez,]", role: "[Account Director, Pivot Point Agency]" },
+  { q: "[What I like is that it doesn't just dump data on you. It tells you what matters most and roughly what it's worth to fix. That prioritisation is the part I actually use.]", name: "[Tom Bradley,]", role: "[In House SEO Manager, Kestrel Software]" },
+  { q: "[Started on the trial mostly to see the AI search visibility scoring and ended up keeping it for the whole audit suite. It has quietly become the first thing I run when I take on a new project.]", name: "[Aisha Rahman,]", role: "[SEO Strategist, Meridian Digital]" },
 ];
 
 export default function TestimonialsPage() {
