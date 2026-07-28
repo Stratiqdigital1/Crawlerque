@@ -2,8 +2,9 @@
 import { PersonaPage } from "@/components/site-shell";
 
 export const metadata = {
-  title: "Affordable SEO Audit Tool for Consultants — Crawler Que",
-  description: "Deliver enterprise-quality SEO audit reports on a solo budget. Crawler Que's Starter plan is $30/month with branded PDF exports.",
+  title: "SEO Tools for Consultants & Freelancers | Plans From $30/mo",
+  description:
+    "Affordable AI SEO tools for independent consultants. Deliver branded audit reports, uncover growth priorities, and run 7 full audits monthly from $30/month.",
 };
 
 export default function ForConsultantsPage() {
@@ -11,19 +12,58 @@ export default function ForConsultantsPage() {
     <PersonaPage
       eyebrow="For consultants & freelancers"
       title="Look enterprise-level. Pay freelancer prices."
-      sub="Deliver branded intelligence reports that justify premium rates — starting at $30/month for 7 full audits."
+      sub="Deliver branded website-growth reports that support premium consulting conversations, starting at $30/month for 7 full audits."
+      introLinks={[
+        {
+          href: "/blog/the-freelance-seo-consultants-toolkit-enterprise-level-reports-on-a-solo-budget",
+          label: "The freelance SEO consultant's toolkit",
+        },
+      ]}
       pains={[
-        { t: "Big-tool prices, solo budget", d: "Mainstream SEO suites start at $199+/month — hard to justify with five clients." },
-        { t: "Deliverables decide your rate", d: "A polished report is the difference between charging $150 and $500 for the same expertise." },
-        { t: "Every prospect wants proof", d: "Closing new clients means showing them something concrete about their site — fast." },
+        {
+          t: "Big-tool prices, solo budget",
+          d: "Large SEO suites can be difficult to justify when you manage a focused client portfolio.",
+        },
+        {
+          t: "Deliverables decide your rate",
+          d: "A polished, easy-to-understand report can strengthen how clients perceive and value your expertise.",
+        },
+        {
+          t: "Every prospect wants proof",
+          d: "Closing new clients means showing them something concrete about their site, quickly and clearly.",
+        },
       ]}
       features={[
-        { t: "Starter plan at $30", d: "7 full audits per month, all 12 growth modules, branded PDF export. Pays for itself with one report." },
-        { t: "A stronger prospect-audit workflow", d: "Use a complete audit to bring real website findings into prospect calls, demonstrate value, and turn the report into a clear consulting opportunity." },
-        { t: "Reports clients keep", d: "Executive snapshot, plain-language insights, and a roadmap — a deliverable that gets forwarded, with your name on it." },
-        { t: "Grow into white-label", d: "When you scale, the Agency plan adds full white-labelling and three seats. Your brand on everything." },
+        {
+          t: "Starter plan at $30",
+          d: "Run 7 full audits per month with all growth modules, branded PDF exports, and saved report history.",
+        },
+        {
+          t: "A stronger prospect-audit workflow",
+          d: "Bring real website findings into prospect calls, demonstrate value, and turn the report into a clear consulting opportunity.",
+        },
+        {
+          t: "Reports clients keep",
+          d: "Deliver an executive snapshot, plain-language insights, and a prioritized roadmap clients can review and share.",
+          link: {
+            href: "/sample-report",
+            label: "View a branded sample report",
+          },
+        },
+        {
+          t: "Grow into white-label",
+          d: "When you scale, the Agency plan adds full white-label reporting, comparison reports, and three user seats.",
+        },
       ]}
-      proof="Consultant math: charge $150 per audit report at just 5 clients per month and the Starter plan returns $701 in profit. Most consultants we see charge more and deliver the report as the opening of a retainer conversation."
+      proof="Consultant example: charging $150 for five audit-backed reports produces $750 in revenue before other business costs. The $30 Starter plan is designed to make professional reporting accessible to independent consultants."
+      cta={{
+        title: "Choose a plan built for independent consultants.",
+        sub: "Start with a 7-day trial, run 3 complete audits, and review the full workflow before your first subscription charge.",
+        primaryHref: "/#pricing",
+        primaryLabel: "View plans from $30/mo →",
+        secondaryHref: "/sample-report",
+        secondaryLabel: "View sample report",
+      }}
     />
   );
 }

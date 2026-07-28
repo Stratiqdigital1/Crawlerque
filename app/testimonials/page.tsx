@@ -9,8 +9,8 @@
 import { SiteNav, SiteFooter, PageHero, Section, CtaBand } from "@/components/site-shell";
 
 export const metadata = {
-  title: "Customer Testimonials — Crawler Que",
-  description: "See how agencies, consultants, and SEO teams use Crawler Que to audit websites and deliver client-ready growth plans faster.",
+  title: "Crawler Que Reviews & Customer Testimonials | SEO Audits",
+  description: "See how agencies, consultants, and SEO teams use Crawler Que for website audits and AI visibility reporting. Read customer feedback and results.",
 };
 
 const QUOTES = [
@@ -30,7 +30,7 @@ export default function TestimonialsPage() {
       <PageHero
         eyebrow="Testimonials"
         title="What agencies say about Crawler Que"
-        sub="Real teams, real reports, real client wins."
+        sub="Customer feedback on website audits, reporting workflows, and growth intelligence."
       />
       <Section>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

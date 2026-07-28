@@ -21,18 +21,38 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-data",
 });
 
+const title = "SEO Audit Tool with AI Visibility Scoring | Crawler Que";
+const description =
+  "Run a complete SEO audit in minutes. Get SEO scores, Core Web Vitals, competitor gaps, AI search visibility, and a client-ready report. Plans from $30/month.";
+
 export const metadata: Metadata = {
-  title: "Crawler Que — AI Website Growth Intelligence & SEO Audit Tool",
-  description:
-    "Run 12 website growth audit modules covering SEO, technical performance, traffic, keywords, rankings, competitors, backlinks, content quality, AI search visibility, and prioritized recommendations. Start with a 7-day trial.",
+  metadataBase: new URL("https://crawlerque.com"),
+  title,
+  description,
+  alternates: {
+    canonical: "/",
+  },
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
-    title: "Crawler Que — AI Website Growth Intelligence & SEO Audit Tool",
-    description:
-      "Explore 12 website growth modules with AI visibility testing, prioritized recommendations, action roadmaps, saved history, and professional reports.",
+    title,
+    description,
+    url: "/",
+    type: "website",
+    siteName: "Crawler Que",
+    images: [
+      {
+        url: "/logo-full.png",
+        alt: "Crawler Que SEO Audit Tool",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
     images: ["/logo-full.png"],
   },
 };
@@ -70,7 +90,7 @@ return (
       name: "Crawler Que",
       applicationCategory: "BusinessApplication",
       operatingSystem: "Web",
-      description: "AI website growth intelligence with 12 audit modules covering SEO, technical performance, traffic, keywords, rankings, competitors, backlinks, content quality, AI search visibility, and prioritized recommendations.",
+      description: "SEO audit software with technical analysis, Core Web Vitals, competitor intelligence, AI visibility scoring, and prioritized website growth recommendations.",
       offers: {
         "@type": "AggregateOffer",
         lowPrice: "30",

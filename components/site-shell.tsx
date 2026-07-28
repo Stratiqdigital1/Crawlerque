@@ -36,8 +36,8 @@ export function SiteNav() {
   const [feat, setFeat] = useState(false);
 const links: [string, string][] = [
   ["/#pricing", "Pricing"],
-  ["/sample-report", "Resources"],
-  ["/for-agencies", "Agency"],
+  ["/sample-report", "Sample report"],
+  ["/blog", "Blog"],
   ["/login", "Login"],
 ];
   return (
@@ -48,9 +48,6 @@ const links: [string, string][] = [
         </a>
 
         <nav className="hidden items-center gap-1 md:flex">
-          <a href="/dashboard" className="rounded-lg px-4 py-2 text-[15px] font-medium text-[var(--cq-text-2)] transition-colors hover:bg-[var(--cq-surface)] hover:text-[var(--cq-text)]">
-            Dashboard
-          </a>
           {/* Features mega-menu */}
           <div className="relative" onMouseEnter={() => setFeat(true)} onMouseLeave={() => setFeat(false)}>
             <button className="flex items-center gap-1 rounded-lg px-4 py-2 text-[15px] font-medium text-[var(--cq-text-2)] transition-colors hover:bg-[var(--cq-surface)] hover:text-[var(--cq-text)]">
@@ -90,7 +87,7 @@ const links: [string, string][] = [
         </nav>
 
         <div className="flex items-center gap-3">
-          <a href="/#pricing" className="cq-btn cq-btn--primary hidden !py-2.5 md:inline-flex">Start 7-Day Trial</a>
+          <a href="/#pricing" className="cq-btn cq-btn--primary hidden !py-2.5 md:inline-flex">Get started</a>
           <button onClick={() => setOpen(!open)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--cq-line)] text-[var(--cq-text-2)] md:hidden">
             {open ? "✕" : "☰"}
           </button>
@@ -116,7 +113,7 @@ const links: [string, string][] = [
               {label}
             </a>
           ))}
-          <a href="/#pricing" className="cq-btn cq-btn--primary mt-3 w-full">Start 7-Day Trial</a>
+          <a href="/#pricing" className="cq-btn cq-btn--primary mt-3 w-full">Get started</a>
         </div>
       )}
       <div className="cq-scanline" />
@@ -203,12 +200,31 @@ export function Section({ children, alt = false }: { children: React.ReactNode; 
   );
 }
 
+type PageLink = {
+  href: string;
+  label: string;
+};
+
+type PersonaItem = {
+  t: string;
+  d: string;
+  link?: PageLink;
+};
+
 export function CtaBand({
   title = "Start your 7-day trial.",
-  sub = "Get 3 full audits with access to all 12 growth modules. A card is required, and you can cancel during the trial.",
+  sub = "Run 3 complete audits with access to every Crawler Que growth module. A card is required, and you can cancel during the trial.",
+  primaryHref = "/#pricing",
+  primaryLabel = "Start Your 7-Day Trial →",
+  secondaryHref = "/sample-report",
+  secondaryLabel = "View sample report",
 }: {
   title?: string;
   sub?: string;
+  primaryHref?: string;
+  primaryLabel?: string;
+  secondaryHref?: string;
+  secondaryLabel?: string;
 }) {
   return (
     <section className="px-5 py-20 text-center md:px-8">
@@ -216,34 +232,22 @@ export function CtaBand({
         <p className="cq-eyebrow cq-eyebrow--signal">
           Complete website growth intelligence
         </p>
-
         <h2 className="mt-4 text-[clamp(1.8rem,4vw,2.6rem)] font-extrabold leading-tight">
           {title}
         </h2>
-
         <p className="mx-auto mt-4 max-w-lg text-[16px] leading-relaxed text-[var(--cq-text-2)]">
           {sub}
         </p>
-
         <div className="mt-8 flex flex-wrap justify-center gap-4">
-          <a
-            href="/#pricing"
-            className="cq-btn cq-btn--primary !px-8 !py-4"
-          >
-            Start Your 7-Day Trial →
+          <a href={primaryHref} className="cq-btn cq-btn--primary !px-8 !py-4">
+            {primaryLabel}
           </a>
-
-          <a
-            href="/sample-report"
-            className="cq-btn cq-btn--ghost !px-8 !py-4"
-          >
-            View sample report
+          <a href={secondaryHref} className="cq-btn cq-btn--ghost !px-8 !py-4">
+            {secondaryLabel}
           </a>
         </div>
-
         <p className="mt-4 text-xs text-[var(--cq-text-3)]">
-          3 full audits · All 12 modules ·
-          Card required · Cancel during trial
+          3 full audits · All growth modules · Card required · Cancel during trial
         </p>
       </div>
     </section>
@@ -251,45 +255,120 @@ export function CtaBand({
 }
 
 /* ── PERSONA PAGE TEMPLATE (for-agencies / for-seo-teams / for-consultants) */
-export function PersonaPage({ eyebrow, title, sub, pains, features, proof }: {
-  eyebrow: string; title: string; sub: string;
-  pains: { t: string; d: string }[];
-  features: { t: string; d: string }[];
+export function PersonaPage({
+  eyebrow,
+  title,
+  sub,
+  pains,
+  features,
+  proof,
+  introLinks = [],
+  proofLinks = [],
+  cta,
+}: {
+  eyebrow: string;
+  title: string;
+  sub: string;
+  pains: PersonaItem[];
+  features: PersonaItem[];
   proof: string;
+  introLinks?: PageLink[];
+  proofLinks?: PageLink[];
+  cta?: {
+    title?: string;
+    sub?: string;
+    primaryHref?: string;
+    primaryLabel?: string;
+    secondaryHref?: string;
+    secondaryLabel?: string;
+  };
 }) {
   return (
     <main className="min-h-screen bg-[var(--cq-ink)] text-[var(--cq-text)]">
       <SiteNav />
       <PageHero eyebrow={eyebrow} title={title} sub={sub} />
       <Section>
+        {introLinks.length > 0 && (
+          <div className="mb-8 flex flex-wrap items-center gap-3 rounded-xl border border-[var(--cq-line)] bg-[var(--cq-surface)]/55 px-5 py-4 text-sm text-[var(--cq-text-2)]">
+            <span className="font-semibold text-[var(--cq-text)]">Helpful resources:</span>
+            {introLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="font-semibold text-[var(--cq-signal)] hover:underline"
+              >
+                {link.label} →
+              </a>
+            ))}
+          </div>
+        )}
+
         <h2 className="text-2xl font-extrabold">Sound familiar?</h2>
         <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {pains.map(p => (
-            <div key={p.t} className="cq-card p-6">
-              <h3 className="text-[16px] font-bold">{p.t}</h3>
-              <p className="mt-2 text-[15px] leading-relaxed text-[var(--cq-text-2)]">{p.d}</p>
+          {pains.map((pain) => (
+            <div key={pain.t} className="cq-card p-6">
+              <h3 className="text-[16px] font-bold">{pain.t}</h3>
+              <p className="mt-2 text-[15px] leading-relaxed text-[var(--cq-text-2)]">
+                {pain.d}
+              </p>
+              {pain.link && (
+                <a
+                  href={pain.link.href}
+                  className="mt-4 inline-flex text-sm font-semibold text-[var(--cq-signal)] hover:underline"
+                >
+                  {pain.link.label} →
+                </a>
+              )}
             </div>
           ))}
         </div>
       </Section>
+
       <Section alt>
         <h2 className="text-2xl font-extrabold">How Crawler Que fixes it</h2>
         <div className="mt-8 grid gap-4 md:grid-cols-2">
-          {features.map(f => (
-            <div key={f.t} className="cq-card flex gap-4 p-6">
+          {features.map((feature) => (
+            <div key={feature.t} className="cq-card flex gap-4 p-6">
               <span className="mt-1.5 h-1 w-4 shrink-0 bg-[var(--cq-signal)]" />
               <div>
-                <h3 className="text-[16px] font-bold">{f.t}</h3>
-                <p className="mt-1.5 text-[15px] leading-relaxed text-[var(--cq-text-2)]">{f.d}</p>
+                <h3 className="text-[16px] font-bold">{feature.t}</h3>
+                <p className="mt-1.5 text-[15px] leading-relaxed text-[var(--cq-text-2)]">
+                  {feature.d}
+                </p>
+                {feature.link && (
+                  <a
+                    href={feature.link.href}
+                    className="mt-4 inline-flex text-sm font-semibold text-[var(--cq-signal)] hover:underline"
+                  >
+                    {feature.link.label} →
+                  </a>
+                )}
               </div>
             </div>
           ))}
         </div>
+
         <div className="cq-card cq-frame mt-8 p-6">
-          <p className="text-[16px] leading-relaxed text-[var(--cq-text-2)]">{proof}</p>
+          <p className="text-[16px] leading-relaxed text-[var(--cq-text-2)]">
+            {proof}
+          </p>
+          {proofLinks.length > 0 && (
+            <div className="mt-5 flex flex-wrap gap-4">
+              {proofLinks.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="text-sm font-semibold text-[var(--cq-signal)] hover:underline"
+                >
+                  {link.label} →
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       </Section>
-      <CtaBand />
+
+      <CtaBand {...cta} />
       <SiteFooter />
     </main>
   );

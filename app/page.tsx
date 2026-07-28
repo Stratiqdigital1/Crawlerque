@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   ArrowRight,
   BarChart3,
@@ -110,6 +111,10 @@ const MODULES = [
       "Structured-data and schema signals",
     ],
     output: "A clear SEO foundation score with prioritized issues and recommended fixes.",
+    learnMore: {
+      href: "/blog/what-is-an-ai-website-audit-tool-and-why-your-seo-stack-needs-one-in-2026",
+      label: "What is an AI website audit tool?",
+    },
     badge: "Best starting point",
   },
   {
@@ -128,6 +133,10 @@ const MODULES = [
       "Page-level technical problems",
     ],
     output: "A technical issue inventory ranked by severity, impact, and the team that should resolve it.",
+    learnMore: {
+      href: "/blog/the-2026-technical-seo-audit-checklist-25-checks-every-website-needs-before-it-can-rank",
+      label: "See the full 2026 technical SEO audit checklist",
+    },
     badge: "Best for deep audits",
   },
   {
@@ -163,6 +172,10 @@ const MODULES = [
       "Speed Index and performance opportunities",
     ],
     output: "A performance score with the fixes most likely to improve UX, rankings, and conversion readiness.",
+    learnMore: {
+      href: "/blog/core-web-vitals-in-2026-what-they-are-why-they-still-matter-and-how-to-fix-them-fast",
+      label: "How to fix Core Web Vitals in 2026",
+    },
   },
   {
     id: "traffic-intelligence",
@@ -180,6 +193,10 @@ const MODULES = [
       "Confidence label based on available data",
     ],
     output: "Directional traffic intelligence with transparent confidence labels, not a replacement for analytics data.",
+    learnMore: {
+      href: "/blog/how-to-estimate-your-websites-organic-traffic-without-google-analytics-access",
+      label: "How we estimate organic traffic",
+    },
   },
   {
     id: "keyword-opportunities",
@@ -231,6 +248,10 @@ const MODULES = [
       "Content and authority gaps",
     ],
     output: "A competitor benchmark that turns market overlap into clear opportunities and defensive priorities.",
+    learnMore: {
+      href: "/blog/ai-competitor-visibility-analysis",
+      label: "See how AI competitor visibility analysis works",
+    },
   },
   {
     id: "backlink-authority",
@@ -282,6 +303,10 @@ const MODULES = [
       "GEO and AI citation readiness",
     ],
     output: "A model-by-model AI visibility score with brand, competitor, citation, and missed-opportunity insights.",
+    learnMore: {
+      href: "/blog/ai-search-visibility-explained-how-to-find-out-if-chatgpt-recommends-your-brand",
+      label: "Learn how AI search visibility works",
+    },
   },
   {
     id: "recommendations-roadmap",
@@ -631,11 +656,48 @@ data-open={open ? "true" : "false"}
               </div>
 
               <div className="rounded-xl border border-[var(--module-accent)]/20 bg-[#0c2238]/88 p-4">
-                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--module-accent)]">What you receive</p>
-                <p className="mt-3 text-[13px] leading-6 text-slate-200">{module.output}</p>
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--module-accent)]">
+                  What you receive
+                </p>
+
+                {module.id === "recommendations-roadmap" ? (
+                  <p className="mt-3 text-[13px] leading-6 text-slate-200">
+                    A clear growth plan designed for business owners, marketers, {" "}
+                    <Link href="/for-seo-teams" className="font-semibold text-[var(--module-accent)] hover:underline">
+                      SEO teams
+                    </Link>
+                    , {" "}
+                    <Link href="/for-consultants" className="font-semibold text-[var(--module-accent)] hover:underline">
+                      consultants
+                    </Link>
+                    , and {" "}
+                    <Link href="/for-agencies" className="font-semibold text-[var(--module-accent)] hover:underline">
+                      agencies
+                    </Link>
+                    .
+                  </p>
+                ) : (
+                  <p className="mt-3 text-[13px] leading-6 text-slate-200">
+                    {module.output}
+                  </p>
+                )}
+
+                {module.learnMore && (
+                  <Link
+                    href={module.learnMore.href}
+                    className="mt-4 inline-flex text-[11px] font-semibold text-[var(--module-accent)] hover:underline"
+                  >
+                    {module.learnMore.label} →
+                  </Link>
+                )}
+
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <a href="/sample-report" className="cq-btn cq-btn--ghost !px-4 !py-2 !text-xs">View sample report</a>
-                  <a href="#pricing" className="cq-btn cq-btn--primary !px-4 !py-2 !text-xs">Start trial</a>
+                  <Link href="/sample-report" className="cq-btn cq-btn--ghost !px-4 !py-2 !text-xs">
+                    View sample report
+                  </Link>
+                  <a href="#pricing" className="cq-btn cq-btn--primary !px-4 !py-2 !text-xs">
+                    Start trial
+                  </a>
                 </div>
               </div>
             </div>
@@ -805,23 +867,23 @@ useEffect(() => {
           <div>
             <div className="inline-flex items-center gap-2 rounded-lg border border-cyan-300/30 bg-cyan-300/7 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-cyan-300">
               <Sparkles className="h-3.5 w-3.5" />
-              The AI-powered SEO audit tool · 12 growth modules
+              AI-powered SEO audit and website growth intelligence
             </div>
 
             <h1 className="mt-6 max-w-[690px] text-[clamp(3rem,6vw,5.35rem)] font-extrabold leading-[.98] tracking-[-0.045em] text-white">
-              The AI SEO Audit Tool
-              <span className="mt-2 block"><span className="text-cyan-300">12</span> Growth Modules</span>
+              SEO Audit Tool With
+              <span className="mt-2 block text-cyan-300">AI Visibility Built In.</span>
             </h1>
 
             <p className="mt-6 max-w-xl text-[17px] leading-8 text-slate-300">
-              Crawler Que is an AI-powered website&apos;s audit tool that runs 12 growth modules — SEO, Core Web Vitals, traffic, competitors, backlinks, and AI search visibility — in one report.
+              Find technical SEO issues, Core Web Vitals, ranking opportunities, competitor gaps, backlinks, content weaknesses, and brand visibility across ChatGPT, Claude, and Gemini — then turn every finding into a prioritized growth plan.
             </p>
 
             <div className="mt-10 grid max-w-2xl gap-0 sm:grid-cols-3">
               {[
-                { Icon: Layers3, title: "12 Powerful Modules", text: "Complete coverage of SEO and website growth.", accent: "#19e2d0", glow: "25,226,208" },
-                { Icon: Target, title: "Actionable Insights", text: "Clear findings with priorities that matter.", accent: "#f59e0b", glow: "245,158,11" },
-                { Icon: Zap, title: "Built for Results", text: "Solve issues, seize opportunities, grow.", accent: "#3b82f6", glow: "59,130,246" },
+                { Icon: Layers3, title: "Complete Audit Coverage", text: "See the search, technical, content, authority, and AI signals shaping growth.", accent: "#19e2d0", glow: "25,226,208" },
+                { Icon: Target, title: "Actionable Insights", text: "Clear findings with priorities, ownership, and next steps.", accent: "#f59e0b", glow: "245,158,11" },
+                { Icon: Zap, title: "Built for Results", text: "Move from audit data to a focused growth roadmap.", accent: "#3b82f6", glow: "59,130,246" },
               ].map(({ Icon, title, text, accent, glow }, index) => (
                 <div key={title} className={`py-2 pr-5 ${index > 0 ? "border-l border-white/8 pl-5" : ""}`}>
                   <div
@@ -1283,7 +1345,7 @@ useEffect(() => {
               ],
               [
                 "What is the best AI SEO audit tool?",
-                "Crawler Que is an AI SEO audit tool that runs 12 growth modules in one report, including AI search visibility that traditional tools don't measure. You get prioritized fixes and a white-label PDF.",
+                "Crawler Que combines website auditing, AI visibility scoring, prioritized recommendations, and client-ready reporting in one focused workflow. The best choice depends on your team, required data depth, and reporting needs.",
               ],
               [
                 "Is there a tool that checks my brand in ChatGPT, Claude, and Gemini?",
@@ -1291,7 +1353,7 @@ useEffect(() => {
               ],
               [
                 "How do I audit my website for AI search visibility?",
-                "Run a free Crawler Que audit and add the AI Search Visibility module. It reports brand mentions, cited pages, missed prompts, and a model-by-model visibility score.",
+                "Start a 7-day Crawler Que trial and include the AI Search Visibility module in your audit. It reports brand mentions, cited pages, missed prompts, competitor visibility, and a model-by-model visibility score.",
               ],
             ].map(([question, answer]) => (
               <details key={question} className="cq-reference-panel group rounded-2xl p-5">
@@ -1302,6 +1364,23 @@ useEffect(() => {
                 <p className="mt-4 pr-8 text-[14px] leading-7 text-[var(--cq-text-2)]">{answer}</p>
               </details>
             ))}
+
+            <details className="cq-reference-panel group rounded-2xl p-5">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[16px] font-bold marker:hidden">
+                How is Crawler Que different from SEMrush and Ahrefs?
+                <ChevronDown className="h-5 w-5 shrink-0 text-[var(--cq-signal)] transition-transform group-open:rotate-180" />
+              </summary>
+              <p className="mt-4 pr-8 text-[14px] leading-7 text-[var(--cq-text-2)]">
+                Crawler Que focuses on bringing website audits, AI visibility, prioritized recommendations, report history, and client-ready delivery into one workflow. {" "}
+                <Link
+                  href="/blog/crawler-que-vs-semrush-vs-ahrefs-which-seo-audit-tool-is-actually-worth-it-in-2026"
+                  className="font-semibold text-[var(--cq-signal)] hover:underline"
+                >
+                  Read the detailed Crawler Que, SEMrush, and Ahrefs comparison
+                </Link>
+                .
+              </p>
+            </details>
           </div>
         </div>
       </section>

@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 
-const title = "SEO Tools for Consultants & Freelancers | Plans From $30/mo";
+const title = "SEO Audit Report Example | View a Crawler Que Sample PDF";
 const description =
-  "Affordable AI SEO tools for independent consultants. Deliver branded audit reports, uncover growth priorities, and run 7 full audits monthly from $30/month.";
+  "See a real Crawler Que audit report before you subscribe. Review the executive snapshot, SEO findings, AI visibility, technical data, and action roadmap.";
 
 export const metadata: Metadata = {
   title,
   description,
   alternates: {
-    canonical: "/for-consultants",
+    canonical: "/sample-report",
   },
   openGraph: {
     title,
     description,
-    url: "/for-consultants",
+    url: "/sample-report",
     type: "website",
   },
   twitter: {
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ForConsultantsLayout({
+export default function SampleReportLayout({
   children,
 }: {
   children: React.ReactNode;
