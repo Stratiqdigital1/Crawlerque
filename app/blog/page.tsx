@@ -12,11 +12,40 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const title =
+  "Crawler Que Blog | SEO, AI Visibility & Website Growth Guides";
+
+const description =
+  "Read practical guides on SEO audits, AI search visibility, technical SEO, competitors, backlinks, Core Web Vitals, content, and website growth.";
+
 export const metadata: Metadata = {
-  title:
-    "Crawler Que Blog | SEO, AI Visibility & Website Growth Guides",
-  description:
-    "Read Crawler Que guides on SEO audits, AI search visibility, competitor analysis, traffic growth, backlinks, Core Web Vitals, and GEO.",
+  title,
+  description,
+
+  alternates: {
+    canonical: "/blog",
+  },
+
+  openGraph: {
+    title,
+    description,
+    url: "/blog",
+    type: "website",
+    siteName: "Crawler Que",
+    images: [
+      {
+        url: "/logo-full.png",
+        alt: "Crawler Que SEO and AI Visibility Blog",
+      },
+    ],
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: ["/logo-full.png"],
+  },
 };
 
 function isRemoteImage(src: string) {

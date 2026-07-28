@@ -23,7 +23,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 const title = "SEO Audit Tool with AI Visibility Scoring | Crawler Que";
 const description =
-  "Run a complete SEO audit in minutes. Get SEO scores, Core Web Vitals, competitor gaps, AI search visibility, and a client-ready report. Plans from $30/month.";
+  "Run a complete SEO audit in minutes. Get SEO scores, Core Web Vitals, competitor gaps, AI visibility, and a client-ready report. Plans from $30/month.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://crawlerque.com"),
