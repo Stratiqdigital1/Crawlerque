@@ -876,7 +876,7 @@ useEffect(() => {
             </h1>
 
             <p className="mt-6 max-w-xl text-[17px] leading-8 text-slate-300">
-              Find technical SEO issues, Core Web Vitals, ranking opportunities, competitor gaps, backlinks, content weaknesses, and brand visibility across ChatGPT, Claude, and Gemini — then turn every finding into a prioritized growth plan.
+              Find technical SEO issues, Core Web Vitals, ranking opportunities, competitor gaps, backlinks, content weaknesses, and brand visibility across ChatGPT, Claude, and Gemini then turn every finding into a prioritized growth plan.
             </p>
 
             <div className="mt-10 grid max-w-2xl gap-0 sm:grid-cols-3">
