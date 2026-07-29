@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
@@ -9,6 +10,7 @@ import {
 } from "@/lib/audit-identity";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 type DataForSeoTaskResponse = {
   status_message?: string;
@@ -37,35 +39,60 @@ function getAuthHeader() {
   );
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function dataForSeoPost(
   endpoint: string,
   payload: Array<Record<string, unknown>>
 ): Promise<unknown> {
-  const response = await fetch(
-    `https://api.dataforseo.com/v3/${endpoint}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: getAuthHeader(),
-        "Content-Type":
-          "application/json",
-      },
-      body: JSON.stringify(payload),
-      cache: "no-store",
+  let lastResponse: unknown = null;
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const response = await fetch(
+        `https://api.dataforseo.com/v3/${endpoint}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: getAuthHeader(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+          cache: "no-store",
+          signal: AbortSignal.timeout(20_000),
+        }
+      );
+
+      const json: unknown = await response.json();
+      lastResponse = json;
+
+      if (response.ok) return json;
+
+      const retryable =
+        response.status === 408 ||
+        response.status === 429 ||
+        response.status >= 500;
+
+      if (!retryable || attempt === 3) {
+        console.error("DataForSEO OnPage start failed:", json);
+        return json;
+      }
+    } catch (error) {
+      lastError = error;
+      if (attempt === 3) break;
     }
-  );
 
-  const json: unknown =
-    await response.json();
-
-  if (!response.ok) {
-    console.error(
-      "DataForSEO OnPage start failed:",
-      json
-    );
+    await sleep(500 * 2 ** (attempt - 1));
   }
 
-  return json;
+  if (lastResponse) return lastResponse;
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("OnPage task could not be created after safe retries.");
 }
 
 function asRecord(
@@ -326,6 +353,13 @@ export async function POST(
           normalizedDomain:
             job.normalizedDomain,
           inputHash: job.inputHash,
+          pageLimit:
+            Number(
+              asRecord(
+                asRecord(job.resultData)
+                  .technicalConfig
+              ).pageLimit || 100
+            ),
           message:
             "Existing OnPage crawl reused.",
         })
@@ -430,6 +464,13 @@ export async function POST(
         },
 
         renderReady: false,
+
+        resultData: {
+          ...asRecord(job.resultData),
+          technicalConfig: {
+            pageLimit: maxCrawlPages,
+          },
+        } as Prisma.InputJsonObject,
       },
     });
 
@@ -442,8 +483,9 @@ export async function POST(
         normalizedDomain:
           job.normalizedDomain,
         inputHash: job.inputHash,
+        pageLimit: maxCrawlPages,
         message:
-          "OnPage crawl started.",
+          "OnPage crawl started with safe retry protection.",
       })
     );
   } catch (error) {

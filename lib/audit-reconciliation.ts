@@ -1,3 +1,7 @@
+import {
+  buildEvidenceBackedRecommendations,
+} from "@/lib/recommendation-engine";
+
 type JsonRecord = Record<string, any>;
 
 type ReconcileOptions = {
@@ -6,7 +10,7 @@ type ReconcileOptions = {
   completedAt?: string | null;
 };
 
-const FINAL_TECHNICAL_STATES = new Set(["completed", "failed", "timed_out", "skipped"]);
+const FINAL_TECHNICAL_STATES = new Set(["completed", "partial", "failed", "timed_out", "skipped"]);
 
 function isRecord(value: unknown): value is JsonRecord {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -116,6 +120,10 @@ function getTechnicalState(report: JsonRecord) {
     return "running";
   }
 
+  if (report?.onPage?.isPartial === true && state === "completed") {
+    return "partial";
+  }
+
   return state;
 }
 
@@ -159,6 +167,7 @@ function findHomepage(report: JsonRecord) {
 
 function technicalConfidence(state: string, pagesCrawled: number) {
   if (state === "completed") return "high";
+  if (state === "partial" && pagesCrawled > 0) return "moderate";
   if (["failed", "timed_out"].includes(state) && pagesCrawled > 0) return "limited";
   if (["failed", "timed_out"].includes(state)) return "unavailable";
   if (state === "running") return "processing";
@@ -177,7 +186,7 @@ function reconcileIssues(report: JsonRecord, canonicalSeo: JsonRecord, technical
 
     if (
       pagesCrawled === 0 &&
-      ["failed", "timed_out"].includes(technicalState) &&
+      ["partial", "failed", "timed_out"].includes(technicalState) &&
       /(broken link|duplicate title|duplicate description|missing title tags|missing descriptions|crawl)/.test(title)
     ) {
       return false;
@@ -338,7 +347,7 @@ function selectBiggestIssue(issues: any[], aiScore: number | null, technicalStat
   );
 
   if (highSeverity) return firstText(highSeverity?.title, highSeverity?.issue);
-  if (["failed", "timed_out"].includes(technicalState)) return "Technical crawl completed with limited coverage";
+  if (["partial", "failed", "timed_out"].includes(technicalState)) return "Technical crawl completed with limited coverage";
   if (aiScore !== null && aiScore < 40) return "Low AI search visibility";
   return firstText(issues?.[0]?.title, issues?.[0]?.issue, "No critical issue detected from the available data");
 }
@@ -371,7 +380,7 @@ export function reconcileAuditReport(
   const homepageHtags = asRecord(homepageMeta?.htags || homepage?.htags);
 
   const initialH1 = readH1(report?.h1);
-  const technicalCanOverride = Boolean(homepage) && ["completed", "failed", "timed_out"].includes(technicalState);
+  const technicalCanOverride = Boolean(homepage) && ["completed", "partial", "failed", "timed_out"].includes(technicalState);
 
   const canonicalSeo = {
     source: technicalCanOverride
@@ -452,8 +461,46 @@ export function reconcileAuditReport(
 
   const issues = reconcileIssues(report, canonicalSeo, technicalState, pagesCrawled);
   const biggestIssue = selectBiggestIssue(issues, aiScore, technicalState);
-  const biggestOpportunity = selectBiggestOpportunity(report, aiScore);
+  const fallbackBiggestOpportunity = selectBiggestOpportunity(report, aiScore);
   const aiCompatibility = canonicalAiCompatibility(aiSearchVisibility);
+
+  const selectedReportTypes = asArray(report?.reportTypes).map((value) =>
+    firstText(value).toLowerCase()
+  );
+  const recommendationsSelected =
+    selectedReportTypes.includes("recommendations") ||
+    selectedReportTypes.includes("ai");
+
+  const recommendationResult = buildEvidenceBackedRecommendations({
+    ...report,
+    canonicalSeo,
+    onPage: {
+      ...onPage,
+      crawledPages: pagesCrawled,
+      pagesCrawled,
+      crawlStatus: technicalState,
+      confidence: technicalConfidence(technicalState, pagesCrawled),
+    },
+    issues,
+    overallScore,
+    seoScore,
+    uxScore,
+    aiScore,
+  });
+  const canonicalRecommendations = recommendationsSelected
+    ? recommendationResult.recommendations
+    : [];
+  const canonicalRoadmap = recommendationsSelected
+    ? recommendationResult.roadmap
+    : {
+        first30Days: [],
+        next30Days: [],
+        final30Days: [],
+      };
+  const biggestOpportunity =
+    recommendationResult.filteredKeywordGaps.length > 0
+      ? "Validated non-branded keyword gaps"
+      : fallbackBiggestOpportunity;
 
   const reportStatus = firstText(
     options.reportStatus,
@@ -477,10 +524,16 @@ export function reconcileAuditReport(
     aiOptimization: aiSearchVisibility
       ? "completed"
       : asRecord(report?.moduleStatus)?.aiOptimization || "skipped",
+    aiRecommendations:
+      recommendationsSelected
+        ? canonicalRecommendations.length > 0
+          ? "completed"
+          : "partial"
+        : "skipped",
   };
 
   const reconciliation = {
-    version: "2.0",
+    version: "3.0",
     reconciledAt: new Date().toISOString(),
     renderReady,
     reportStatus,
@@ -489,11 +542,20 @@ export function reconcileAuditReport(
       final: FINAL_TECHNICAL_STATES.has(technicalState),
       confidence: technicalConfidence(technicalState, pagesCrawled),
       pagesCrawled,
+      discoveredPages:
+        numberOrNull(onPage?.discoveredPages) ?? pagesCrawled,
+      completedPages:
+        numberOrNull(onPage?.completedPages) ?? pagesCrawled,
+      failedPages: numberOrNull(onPage?.failedPages) ?? 0,
+      remainingPages: numberOrNull(onPage?.remainingPages) ?? 0,
+      outsideLimitPages: numberOrNull(onPage?.outsideLimitPages) ?? 0,
+      coveragePercent: numberOrNull(onPage?.coveragePercent) ?? null,
       pageLimit: numberOrNull(onPage?.pageLimit) || 100,
       limitation:
-        ["failed", "timed_out"].includes(technicalState)
+        firstText(onPage?.limitation) ||
+        (["partial", "failed", "timed_out"].includes(technicalState)
           ? `Technical crawl ${technicalState}; metrics are based on ${pagesCrawled} returned page(s).`
-          : null,
+          : null),
     },
     sources: {
       seo: canonicalSeo.source,
@@ -539,9 +601,24 @@ export function reconcileAuditReport(
       : [],
   };
 
+  const reconciledDataforseo = isRecord(report?.dataforseo)
+    ? {
+        ...asRecord(report.dataforseo),
+        keywordGap: isRecord(report?.dataforseo?.keywordGap)
+          ? {
+              ...asRecord(report.dataforseo.keywordGap),
+              missingKeywords: recommendationResult.filteredKeywordGaps,
+              opportunities: recommendationResult.filteredKeywordGaps.slice(0, 10),
+              suppressedCompetitorBrandedKeywords:
+                recommendationResult.suppressedCompetitorBrandedKeywords,
+            }
+          : report?.dataforseo?.keywordGap,
+      }
+    : report?.dataforseo;
+
   return {
     ...report,
-    reportVersion: "2.0",
+    reportVersion: "3.0",
     reportStatus,
     renderReady,
     completedAt,
@@ -573,6 +650,10 @@ export function reconcileAuditReport(
       method: canonicalTraffic.method,
       source: canonicalTraffic.source,
     },
+    dataforseo: reconciledDataforseo,
+    keywordGap: isRecord(reconciledDataforseo?.keywordGap)
+      ? reconciledDataforseo.keywordGap
+      : report?.keywordGap,
     providerSignals: {
       ...asRecord(report?.providerSignals),
       domainAnalytics: report?.domainAnalytics || null,
@@ -609,6 +690,18 @@ export function reconcileAuditReport(
       ...asRecord(report?.summary),
       biggestIssue,
       biggestOpportunity,
+    },
+    recommendations: canonicalRecommendations,
+    actionRoadmap: canonicalRoadmap,
+    aiRecommendations: {
+      ...asRecord(report?.aiRecommendations),
+      recommendations: canonicalRecommendations,
+      roadmap: canonicalRoadmap,
+      source: recommendationResult.source,
+      methodologyVersion: recommendationResult.methodologyVersion,
+      businessType: recommendationResult.businessType,
+      suppressedCompetitorBrandedKeywords:
+        recommendationResult.suppressedCompetitorBrandedKeywords,
     },
     reconciliation,
   };

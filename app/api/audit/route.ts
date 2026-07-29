@@ -934,6 +934,10 @@ await updateAuditJob(auditJob.id, {
       description?.split(".")?.[0] ||
       domain.replace(/\.(com|co|net|org|io|pk|us)$/i, "");
 
+    const brandNameForAudit =
+      title?.split(/[|–—]/)[0]?.trim() ||
+      domain.split(".")[0].replace(/[-_]+/g, " ");
+
     const h1Count = countMatches(html, /<h1[\s>]/gi);
     const h1 = getFirstH1(html);
     const imageCount = countMatches(html, /<img[\s>]/gi);
@@ -1127,12 +1131,6 @@ try {
           .filter(Boolean)
           .slice(0, 8);
 
-        const detectedBrandName =
-          title
-            ?.split(/[|–—]/)[0]
-            ?.trim() ||
-          domain.split(".")[0].replace(/[-_]+/g, " ");
-
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 110000);
 
@@ -1142,7 +1140,7 @@ try {
           body: JSON.stringify({
             url: auditTargetUrl,
             domain,
-            brandName: detectedBrandName,
+            brandName: brandNameForAudit,
             industry: dataforseo?.detectedNiche || "",
             categoryKeywords,
             country: locationName,
@@ -1202,6 +1200,11 @@ try {
       }
     }
 
+const requestedCrawlPageLimit = Math.min(
+  100,
+  Math.max(1, Number(body?.maxCrawlPages || 100))
+);
+
 if (runTechnical) {
   try {
     const cookieHeader =
@@ -1229,7 +1232,7 @@ if (runTechnical) {
 
           body: JSON.stringify({
             url: auditTargetUrl,
-            maxCrawlPages: 100,
+            maxCrawlPages: requestedCrawlPageLimit,
 
             auditJobId:
               auditJob.id,
@@ -1274,8 +1277,15 @@ if (runTechnical) {
 
       crawledPages: 0,
 
-      pageLimit: 100,
+      pageLimit:
+        Number(onPageStartJson?.pageLimit || requestedCrawlPageLimit),
 
+      discoveredPages: 0,
+      completedPages: 0,
+      failedPages: 0,
+      remainingPages: 0,
+      coveragePercent: 0,
+      confidence: "processing",
       pages: [],
     };
 
@@ -1379,44 +1389,26 @@ try {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            url,
-            keyword: cleanSeedKeyword,
-            locationName,
-            languageName,
+            url: auditTargetUrl,
+            maxPages: Math.min(
+              20,
+              Math.max(1, Number(body?.contentPageLimit || 10))
+            ),
           }),
           cache: "no-store",
         }
       );
 
       const contentAnalysisJson = await contentAnalysisRes.json();
-      const rawContentAnalysis = contentAnalysisJson?.contentAnalysis || null;
 
-const blockedContentDomains = [
-  "upi.com",
-  "apple.com",
-  "blogspot.com",
-  "podcasts.apple.com",
-  "kioncentralcoast.com",
-  "kion546.com",
-  "bunnymaxim.com",
-  "groovyfreeads.com",
-];
+      if (!contentAnalysisRes.ok || !contentAnalysisJson?.success) {
+        throw new Error(
+          contentAnalysisJson?.error ||
+            "First-party Content Quality analysis could not be completed."
+        );
+      }
 
-if (rawContentAnalysis?.results?.length > 0) {
-  contentAnalysis = {
-    ...rawContentAnalysis,
-    results: rawContentAnalysis.results.filter((item: any) => {
-      const itemDomain = String(item.domain || "").toLowerCase();
-      const itemUrl = String(item.url || "").toLowerCase();
-
-      return !blockedContentDomains.some(
-        (blocked) => itemDomain.includes(blocked) || itemUrl.includes(blocked)
-      );
-    }),
-  };
-} else {
-  contentAnalysis = rawContentAnalysis;
-}
+      contentAnalysis = contentAnalysisJson?.contentAnalysis || null;
     } catch (error) {
   console.error("Content Analysis inside audit failed:", error);
 
@@ -1430,7 +1422,13 @@ try {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          keyword: cleanSeedKeyword,
+          url: auditTargetUrl,
+          domain,
+          brandName: brandNameForAudit,
+          serviceKeyword:
+            (dataforseo?.topKeywords || [])
+              .find((item: any) => item?.branded !== true)
+              ?.keyword || cleanSeedKeyword,
           locationName,
           languageName,
         }),
@@ -1637,6 +1635,21 @@ organicKeywords: dataforseo?.organicKeywords || null,
             serpData,
             backlinks: dataforseo?.backlinks || null,
             contentAnalysis,
+            businessType: dataforseo?.detectedNiche || "general",
+            detectedNiche: dataforseo?.detectedNiche || "general",
+            canonicalSeo: {
+              title,
+              metaDescription: description,
+              h1,
+              homepageUrl: auditTargetUrl,
+            },
+            pageSpeed: {
+              mobile: mobileSpeed,
+              desktop: desktopSpeed,
+            },
+            onPage,
+            aiSearchVisibility,
+            pageInsights: aiSearchVisibility?.pageInsights || null,
           }),
           cache: "no-store",
         }
@@ -1648,49 +1661,50 @@ organicKeywords: dataforseo?.organicKeywords || null,
   console.error("AI Recommendations failed:", error);
 }
 }
-const cleanedRecommendations = (aiRecommendations?.recommendations || [])
-  .map((rec: any) => String(rec || "").replace(/^"+|"+$/g, "").trim())
-  .filter((rec: string) => {
-    const value = rec.toLowerCase();
+const normalizeRecommendation = (recommendation: any, index: number) => {
+  if (!recommendation) return null;
 
-    return (
-      rec.length > 20 &&
-      rec !== "{}" &&
-      rec !== "[]" &&
-      !value.includes("tasks") &&
-      !value.includes("status_code") &&
-      !value.includes("api")
-    );
-  });
+  if (typeof recommendation === "string") {
+    const detail = recommendation.replace(/^"+|"+$/g, "").trim();
+    if (!detail) return null;
 
-const fallbackRecommendations = [
-  aiVisibilityScore === 0
-  ? `Build stronger AI visibility for "${cleanSeedKeyword}" by adding clear entity signals, expert content, FAQs, schema, and third-party brand mentions.`
-  : aiVisibilityConfidence === "low"
-  ? `Expand AI visibility testing for "${cleanSeedKeyword}" because the current AI score is directional and based on a limited usable model sample.`
-  : null,
+    return {
+      id: `legacy-${index + 1}`,
+      title: detail.split(".")[0] || `Recommendation ${index + 1}`,
+      detail,
+      sourceModule: "Recommendations",
+      impact: "Medium",
+      effort: "Medium",
+      owner: "Growth Team",
+      timeline: "31–60 days",
+      expectedImpact: "Improve website growth performance.",
+      affectedUrls: [],
+      evidence: [],
+      validationStatus: "directional",
+      confidence: "directional",
+    };
+  }
 
-  dataforseo?.organicKeywords <= 5
-    ? `Expand organic visibility by creating supporting pages around "${cleanSeedKeyword}" and related commercial search intents.`
-    : null,
+  return recommendation;
+};
 
-  onPage?.crawledPages > 0
-    ? `Use the OnPage crawl data to improve page titles, meta descriptions, H1 structure, internal links, and crawl depth across important pages.`
-    : null,
+const finalRecommendations = (aiRecommendations?.recommendations || [])
+  .map(normalizeRecommendation)
+  .filter(Boolean)
+  .slice(0, 10);
 
-  dataforseo?.backlinks?.referringDomains < 25
-    ? "Improve authority by earning relevant backlinks from industry websites, local publications, directories, and partner mentions."
-    : null,
-
-  mobileSpeed.score === 0 || mobileSpeed.score < 60
-    ? "Fix mobile performance issues because slow mobile experience can hurt conversions, UX, and organic visibility."
-    : null,
-].filter(Boolean);
-
-const finalRecommendations =
-  cleanedRecommendations.length > 0
-    ? cleanedRecommendations
-    : fallbackRecommendations;
+const actionRoadmap =
+  aiRecommendations?.roadmap || {
+    first30Days: finalRecommendations.filter(
+      (item: any) => item?.timeline === "0–30 days"
+    ),
+    next30Days: finalRecommendations.filter(
+      (item: any) => item?.timeline === "31–60 days"
+    ),
+    final30Days: finalRecommendations.filter(
+      (item: any) => item?.timeline === "61–90 days"
+    ),
+  };
     const unifiedOverview = {
       domain,
       overallStatus:
@@ -1889,7 +1903,9 @@ onPage:
     runLocal
       ? businessData?.listings?.length > 0
         ? "completed"
-        : "failed"
+        : businessData
+          ? "partial"
+          : "failed"
       : "skipped",
 
   domainAnalytics:
@@ -1901,7 +1917,7 @@ onPage:
 
   contentAnalysis:
     runContent
-      ? contentAnalysis?.results?.length > 0
+      ? Number(contentAnalysis?.analyzedPages || contentAnalysis?.results?.length || 0) > 0
         ? "completed"
         : "failed"
       : "skipped",
@@ -1984,7 +2000,13 @@ aiVisibility,
       issues,
 
       recommendations: finalRecommendations,
-      aiRecommendations,
+      actionRoadmap,
+      aiRecommendations: aiRecommendations
+        ? {
+            ...aiRecommendations,
+            roadmap: actionRoadmap,
+          }
+        : null,
 
       summary: {
         biggestIssue:

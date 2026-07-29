@@ -81,7 +81,8 @@ const keywordCount = firstNumber([
 
   const keywordGaps =
     asArray(report?.keywordGaps)
-      .concat(asArray(report?.keywordGap))
+      .concat(asArray(report?.keywordGap?.missingKeywords))
+      .concat(asArray(report?.dataforseo?.keywordGap?.missingKeywords))
       .concat(asArray(report?.seoLabs?.keywordGaps))
       .concat(asArray(report?.keywords?.gaps))
       .filter(Boolean);
@@ -91,11 +92,23 @@ const keywordCount = firstNumber([
       .concat(asArray(report?.topIssues))
       .filter(Boolean);
 
-  const recommendations =
-    asArray(report?.recommendations)
-      .concat(asArray(report?.aiRecommendations?.recommendations))
-      .concat(asArray(report?.actionPlan))
-      .filter(Boolean);
+  const recommendationMap = new Map<string, any>();
+
+  asArray(report?.recommendations)
+    .concat(asArray(report?.aiRecommendations?.recommendations))
+    .concat(asArray(report?.actionPlan))
+    .map(formatRecommendation)
+    .filter(Boolean)
+    .forEach((recommendation: any) => {
+      const key = String(recommendation?.id || recommendation?.title || "")
+        .toLowerCase()
+        .trim();
+      if (key && !recommendationMap.has(key)) {
+        recommendationMap.set(key, recommendation);
+      }
+    });
+
+  const recommendations = Array.from(recommendationMap.values());
 
   return {
     domain: report?.domain || report?.url || "Website",
@@ -197,6 +210,10 @@ topKeywords: getTopKeywords(report),
 topPages: getTopPages(report),
 issues,
 recommendations,
+actionRoadmap:
+  report?.actionRoadmap ||
+  report?.aiRecommendations?.roadmap ||
+  null,
 
 moduleStatus: getModuleStatus(report),
 dataQuality: getDataQuality({
@@ -402,6 +419,61 @@ export function buildSmartRecommendations(normalized: any) {
   });
 
   return Array.from(deduped.values()).slice(0, 10);
+}
+
+function formatRecommendation(item: any) {
+  if (!item) return null;
+
+  if (typeof item === "string") {
+    const detail = item.trim();
+    if (!detail) return null;
+
+    return {
+      id: detail.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 80),
+      title: detail.split(".")[0] || "Recommendation",
+      detail,
+      sourceModule: "Recommendations",
+      impact: "Medium",
+      effort: "Medium",
+      owner: "Growth Team",
+      timeline: "31–60 days",
+      expectedImpact: "Improve the audited website based on available evidence.",
+      affectedUrls: [],
+      evidence: [],
+      validationStatus: "directional",
+      confidence: "directional",
+    };
+  }
+
+  return {
+    id:
+      item?.id ||
+      String(item?.title || item?.detail || "recommendation")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .slice(0, 80),
+    title:
+      item?.title ||
+      item?.issue ||
+      String(item?.detail || item?.recommendation || "Recommendation").split(".")[0],
+    detail:
+      item?.detail ||
+      item?.description ||
+      item?.recommendation ||
+      "Review this recommendation against the attached evidence.",
+    sourceModule: item?.sourceModule || item?.source || "Recommendations",
+    impact: item?.impact || "Medium",
+    effort: item?.effort || item?.difficulty || "Medium",
+    owner: item?.owner || "Growth Team",
+    timeline: item?.timeline || "31–60 days",
+    expectedImpact: item?.expectedImpact || item?.outcome || "Improve website growth performance.",
+    affectedUrls: asArray(item?.affectedUrls).filter(Boolean),
+    evidence: asArray(item?.evidence).filter(Boolean),
+    validationStatus: item?.validationStatus || "directional",
+    confidence: item?.confidence || "directional",
+    keyword: item?.keyword || null,
+    recommendedPageType: item?.recommendedPageType || null,
+  };
 }
 
 function firstNumber(values: any[]) {
@@ -624,6 +696,49 @@ function getTechnicalCrawl(report: any) {
       null,
 
     pagesCrawled,
+    discoveredPages: firstNumber([
+      report?.onPage?.discoveredPages,
+      report?.reconciliation?.technical?.discoveredPages,
+      pagesCrawled,
+    ]),
+    completedPages: firstNumber([
+      report?.onPage?.completedPages,
+      report?.reconciliation?.technical?.completedPages,
+      pagesCrawled,
+    ]),
+    failedPages: firstNumber([
+      report?.onPage?.failedPages,
+      report?.reconciliation?.technical?.failedPages,
+      0,
+    ]),
+    remainingPages: firstNumber([
+      report?.onPage?.remainingPages,
+      report?.reconciliation?.technical?.remainingPages,
+      0,
+    ]),
+    outsideLimitPages: firstNumber([
+      report?.onPage?.outsideLimitPages,
+      report?.reconciliation?.technical?.outsideLimitPages,
+      0,
+    ]),
+    pageLimit: firstNumber([
+      report?.onPage?.pageLimit,
+      report?.reconciliation?.technical?.pageLimit,
+      100,
+    ]),
+    coveragePercent: firstNumber([
+      report?.onPage?.coveragePercent,
+      report?.reconciliation?.technical?.coveragePercent,
+    ]),
+    isPartial:
+      report?.onPage?.isPartial === true ||
+      ["partial", "failed", "timed_out"].includes(
+        String(
+          report?.onPage?.crawlStatus ||
+            report?.moduleStatus?.technical ||
+            ""
+        ).toLowerCase()
+      ),
 
     issuesFound: firstNumber([
       report?.onPage?.issuesFound,

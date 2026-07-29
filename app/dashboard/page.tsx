@@ -9,7 +9,6 @@ import Link from "next/link";
 import jsPDF from "jspdf";
 import {
   normalizeAuditData,
-  buildSmartRecommendations,
 } from "@/lib/audit-normalizer";
 import {
   BarChart,
@@ -703,86 +702,14 @@ if (
   );
 }
 
-let report = {
+const report = {
   ...(json?.report || json),
   reportTypes: effectiveReportTypes,
 };
 
-if (
-  effectiveReportTypes.includes("ai") ||
-  effectiveReportTypes.includes("recommendations")
-) {
-try {
-  const recRes = await fetch("/api/dataforseo/ai-recommendations", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      domain: report?.domain || url,
-      seedKeyword:
-        report?.keywordResearch?.seedKeyword ||
-        report?.businessData?.keyword ||
-        report?.dataforseo?.topKeywords?.[0]?.keyword ||
-        report?.dataforseo?.keywordGap?.missingKeywords?.[0]?.keyword,
-      seoScore: report?.seoScore,
-      uxScore: report?.uxScore,
-      aiVisibilityScore:
-        report?.aiSearchVisibility?.overallScore ??
-        report?.aiScore ??
-        null,
-monthlyTraffic:
-  report?.traffic?.rawMonthly ||
-  report?.traffic?.monthly,
-      organicKeywords:
-        report?.traffic?.rankedKeywordCount ??
-        report?.keywordCount ??
-        report?.dataforseo?.rankedKeywordCount ??
-        null,
-      competitors:
-  report?.competitors?.length
-    ? report.competitors
-    : report?.dataforseo?.competitors || [],
-      keywordGaps:
-  report?.keywordGap?.missingKeywords ||
-  report?.dataforseo?.keywordGap?.missingKeywords ||
-  report?.dataforseo?.keywordGap?.opportunities ||
-  [],
-      issues: report?.issues || [],
-      serpData: report?.serpData || {},
-      backlinks: report?.backlinks || {},
-      contentAnalysis: report?.contentAnalysis || {},
-    }),
-  });
-
-  const recJson = await recRes.json();
-
-  if (recJson?.success) {
-    report = {
-      ...report,
-      recommendations:
-        recJson?.aiRecommendations?.recommendations ||
-        report?.recommendations ||
-        [],
-      aiRecommendations: recJson?.aiRecommendations,
-      moduleStatus: {
-        ...report?.moduleStatus,
-        aiRecommendations: "available",
-      },
-    };
-  }
-} catch (recError) {
-  console.error("AI recommendations failed:", recError);
-
-    report = {
-    ...report,
-    moduleStatus: {
-      ...report?.moduleStatus,
-      aiRecommendations: "not_available",
-    },
-  };
-}
-}
+/* Recommendations are generated and saved server-side. The dashboard never
+ * runs a second client-side recommendation request, so History, PDF, and the
+ * live report all use the same reconciled recommendation set. */
 
 setData(report);
 
@@ -1806,7 +1733,6 @@ const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligenc
 
   // ── DATA ──────────────────────────────────────────────────────────────
   const normalized         = normalizeAuditData(data);
-  const smartRecs          = buildSmartRecommendations(normalized);
   const domain             = normalized.domain || data?.domain || "—";
   const generatedDate      = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
   const selectedModules    = data?.reportTypes?.length > 0 ? data.reportTypes : selectedReportTypes;
@@ -2794,10 +2720,16 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   if(pdfShow("technical")&&data?.onPage){
     secHdr(nextSec(),"Technical SEO Audit","OnPage crawl status, page-level issues, broken links, and crawl signals from Crawler Que OnPage API.");
     kpiRow([
+      {label:"Pages Discovered",value:fmt(data?.onPage?.discoveredPages),col:C.blue},
       {label:"Pages Crawled",value:fmt(data?.onPage?.crawledPages),col:C.accent},
+      {label:"Coverage",value:data?.onPage?.coveragePercent!==null&&data?.onPage?.coveragePercent!==undefined?`${fmt(data.onPage.coveragePercent)}%`:"—",col:(n(data?.onPage?.coveragePercent)??0)>=90?C.green:C.amber},
+      {label:"Crawl Page Limit",value:fmt(data?.onPage?.pageLimit),col:C.muted},
+    ]);
+    kpiRow([
+      {label:"Completed Pages",value:fmt(data?.onPage?.completedPages),col:C.green},
+      {label:"Failed Pages",value:fmt(data?.onPage?.failedPages),col:(n(data?.onPage?.failedPages)??0)>0?C.red:C.green},
+      {label:"Remaining Pages",value:fmt(data?.onPage?.remainingPages),col:(n(data?.onPage?.remainingPages)??0)>0?C.amber:C.green},
       {label:"Crawl Confidence",value:cl(data?.onPage?.confidence??data?.reconciliation?.technical?.confidence,"Unknown"),col:data?.onPage?.confidence==="high"?C.green:C.amber},
-      {label:"Broken Links",value:fmt(data?.onPage?.brokenLinks),col:n(data?.onPage?.brokenLinks)&&n(data.onPage.brokenLinks)!==null&&(n(data.onPage.brokenLinks)??0)>0?C.red:C.green},
-      {label:"Missing Titles",value:fmt(data?.onPage?.missingTitle),col:(n(data?.onPage?.missingTitle)??0)>0?C.amber:C.green},
     ]);
     if(data?.onPage?.limitation||data?.reconciliation?.technical?.limitation){
       hiBox("Technical Coverage Limitation",cl(data?.onPage?.limitation??data?.reconciliation?.technical?.limitation),"amber");
@@ -2807,7 +2739,10 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
       {col1:"Confidence",col2:cl(data?.onPage?.confidence??data?.reconciliation?.technical?.confidence,"—"),col3:"Limited when the crawl times out or returns partial coverage"},
       {col1:"Pages Discovered",col2:fmt(data?.onPage?.discoveredPages),col3:"Pages identified by the crawl"},
       {col1:"Pages Crawled",col2:fmt(data?.onPage?.crawledPages),col3:"Pages with returned technical evidence"},
-      {col1:"Pages Remaining",col2:fmt(data?.onPage?.remainingPages),col3:"Unprocessed pages at finalization"},
+      {col1:"Pages Remaining",col2:fmt(data?.onPage?.remainingPages),col3:"Unprocessed in-scope pages at finalization"},
+      {col1:"Crawl Page Limit",col2:fmt(data?.onPage?.pageLimit),col3:"Maximum pages requested for this audit"},
+      {col1:"Outside Crawl Limit",col2:fmt(data?.onPage?.outsideLimitPages),col3:"Discovered pages excluded by the visible crawl cap"},
+      {col1:"Coverage",col2:data?.onPage?.coveragePercent!==null&&data?.onPage?.coveragePercent!==undefined?`${fmt(data.onPage.coveragePercent)}%`:"—",col3:"Returned pages divided by in-scope discovered pages"},
       {col1:"Broken Links",col2:fmt(data?.onPage?.brokenLinks),col3:"All evidenced broken links should be fixed or redirected"},
       {col1:"Missing Titles",col2:fmt(data?.onPage?.missingTitle),col3:"Every important page needs a unique title"},
       {col1:"Missing Descriptions",col2:fmt(data?.onPage?.missingDescription),col3:"Descriptions improve search CTR"},
@@ -2827,12 +2762,12 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   //  SECTION 14 — CONTENT QUALITY
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("content")){
-    secHdr(nextSec(),"Content Quality & Relevance","On-page content signals and Crawler Que Content Analysis results.");
+    secHdr(nextSec(),"First-Party Content Quality","Only pages from the audited domain are scored. External pages are excluded from this module.");
     kpiRow([
-      {label:"Title Found",value:data?.title?"Yes":"Missing",col:data?.title?C.accent:C.red},
-      {label:"Meta Description",value:data?.description?"Yes":"Missing",col:data?.description?C.accent:C.red},
-      {label:"Content Results",value:fmt(data?.contentAnalysis?.results?.length),col:C.blue},
-      {label:"Content Opportunities",value:fmt(data?.dataforseo?.keywordGap?.opportunities?.length),col:C.amber},
+      {label:"Pages Requested",value:fmt(data?.contentAnalysis?.requestedPages),col:C.blue},
+      {label:"Pages Analyzed",value:fmt(data?.contentAnalysis?.analyzedPages??data?.contentAnalysis?.results?.length),col:C.accent},
+      {label:"Failed Pages",value:fmt(data?.contentAnalysis?.failedPages),col:(n(data?.contentAnalysis?.failedPages)??0)>0?C.amber:C.green},
+      {label:"Average Score",value:data?.contentAnalysis?.averageScore!==null&&data?.contentAnalysis?.averageScore!==undefined?`${fmt(data.contentAnalysis.averageScore)}/100`:"—",col:sCol(data?.contentAnalysis?.averageScore)},
     ]);
     if(data?.dataforseo?.keywordGap?.opportunities?.length){
       secTitle("Content Opportunities");
@@ -2842,12 +2777,15 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
         })),[60,25,CW-85]);
     }
     if(data?.contentAnalysis?.results?.length){
-      secTitle("Content Analysis Results");
-      tbl(["Domain","Topic","Content Length","URL"],
+      secTitle("Audited-Site Content Results");
+      tbl(["Page","Score","Words","Top Issue","URL"],
         data.contentAnalysis.results.slice(0,10).map((item:any)=>({
-          col1:cl(item.domain,"Unknown"),col2:cl(item.mainTopic,"—"),
-          col3:cl(String(item.contentLength??"—")),col4:cl(item.url,"—"),
-        })),[38,40,22,CW-100]);
+          col1:cl(item.title??item.mainTopic,"Untitled"),
+          col2:item.score!==null&&item.score!==undefined?`${cl(String(item.score))}/100`:"—",
+          col3:fmt(item.wordCount??item.contentLength),
+          col4:Array.isArray(item.issues)&&item.issues.length?cl(item.issues[0]):"No major issue",
+          col5:cl(item.url,"—"),
+        })),[45,18,18,40,CW-121]);
     }
   }
 
@@ -2873,45 +2811,80 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   //  SECTION 16 — RECOMMENDATIONS
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("recommendations")){
-    secHdr(nextSec(),"AI Recommendations Engine","Prioritised strategic actions generated from real audit data across all selected modules.");
+    secHdr(nextSec(),"Evidence-Backed Recommendations","Prioritised actions tied to source modules, affected URLs, validation status, and supporting evidence.");
+    const canonicalRecommendations = Array.isArray(data?.recommendations)
+      ? data.recommendations.slice(0, 10)
+      : [];
     kpiRow([
-      {label:"Recommendations",value:fmt(data?.recommendations?.length),col:C.accent},
-      {label:"Source",value:cl(data?.aiRecommendations?.source,"AI Engine"),col:C.muted},
+      {label:"Recommendations",value:fmt(canonicalRecommendations.length),col:C.accent},
+      {label:"Source",value:cl(data?.aiRecommendations?.source,"Evidence Engine"),col:C.muted},
       {label:"Primary Opportunity",value:cl(data?.unifiedOverview?.primaryOpportunity),col:C.amber},
-      {label:"Top Priority",value:"Immediate",col:C.red},
+      {label:"Suppressed Branded Gaps",value:fmt(data?.aiRecommendations?.suppressedCompetitorBrandedKeywords),col:C.blue},
     ]);
-    if(data?.recommendations?.length){
+    if(canonicalRecommendations.length){
       secTitle("Priority Recommendations");
-      data.recommendations.slice(0,10).forEach((rec:string,i:number)=>{
-        const isHigh=i<3, isMed=i<6;
-        const owner=String(rec).toLowerCase().includes("technical")||String(rec).toLowerCase().includes("speed")?"Developer":String(rec).toLowerCase().includes("content")||String(rec).toLowerCase().includes("keyword")?"SEO / Content":"Growth Team";
+      canonicalRecommendations.forEach((rawRec:any,i:number)=>{
+        const rec = typeof rawRec === "string"
+          ? { title: String(rawRec).split(".")[0], detail: rawRec }
+          : rawRec || {};
+        const evidence = Array.isArray(rec.evidence)
+          ? rec.evidence.slice(0, 3).join(" | ")
+          : "";
+        const urls = Array.isArray(rec.affectedUrls)
+          ? rec.affectedUrls.slice(0, 2).join(", ")
+          : "";
+        const meta = [
+          `Owner: ${cl(rec.owner,"Growth Team")}`,
+          `Effort: ${cl(rec.effort,"Medium")}`,
+          `Source: ${cl(rec.sourceModule,"Recommendations")}`,
+          `Validation: ${cl(rec.validationStatus,"directional")}`,
+          urls ? `URLs: ${urls}` : "",
+          evidence ? `Evidence: ${evidence}` : "",
+        ].filter(Boolean).join("  |  ");
         actCard(
-          `Priority ${i+1}: ${String(rec).split(".")[0]||`Recommendation ${i+1}`}`,
-          isHigh?"High Impact":isMed?"Medium Impact":"Quick Win",
-          isHigh?"7–30 days":isMed?"30–60 days":"60–90 days",
-          `${rec}  |  Owner: ${owner}`,
-          isHigh?"high":isMed?"medium":"low"
+          cl(rec.title,`Recommendation ${i+1}`),
+          cl(rec.impact,"Medium"),
+          cl(rec.timeline,"31–60 days"),
+          `${cl(rec.detail,"Review this recommendation against the supplied evidence.")}  |  ${meta}`,
+          String(rec.impact||"").toLowerCase().includes("high")?"high":String(rec.impact||"").toLowerCase().includes("low")?"low":"medium"
         );
       });
-    } else { body_("No recommendations were returned for this report."); }
-    simpleList(smartRecs.slice(0,5),"");
+    } else {
+      body_("No evidence-backed recommendations were generated for this report.");
+    }
   }
 
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 17 — ACTION ROADMAP
   // ════════════════════════════════════════════════════════════════════
-  secHdr(nextSec(),"30 / 60 / 90 Day Action Roadmap","A practical execution sequence for agencies, consultants, and growth teams.");
-  secTitle("Priority Execution Matrix");
-tbl(["Priority","Focus","Timeline","Actions"],[
-    {col1:"P1 — Immediate",col2:"High impact / Fast fix",col3:"0–30 days",col4:"Critical SEO, speed, metadata, crawlability, broken links"},
-    {col1:"P2 — Growth",col2:"High impact / Medium effort",col3:"30–60 days",col4:"Keyword expansion, AI visibility, content, landing pages"},
-    {col1:"P3 — Authority",col2:"Medium–high impact",col3:"60–90 days",col4:"Backlinks, topical authority, competitor coverage"},
-    {col1:"P4 — Ongoing",col2:"Continuous optimisation",col3:"Continuous",col4:"A/B testing, CRO, monitoring, structured data"},
-  ],[28,40,24,CW-92]);
-  secTitle("Roadmap Phases");
-  actCard("First 30 Days — Fix the Foundation","High Priority","0–30 days","Resolve critical SEO issues: missing metadata, heading structure, broken links, page speed, and crawl errors. Fast wins that improve indexing, UX, and conversion readiness.","high");
-  actCard("Next 30 Days — Expand Visibility","High Priority","31–60 days","Create or optimise pages around keyword gaps, commercial opportunities, competitor content, and AI-search friendly entity signals. Build content that ranks and converts.","medium");
-  actCard("Final 30 Days — Build Authority","Medium Priority","61–90 days","Strengthen topical authority, improve internal linking, earn relevant backlinks, and monitor AI visibility improvements against the benchmark scores in this report.","low");
+  secHdr(nextSec(),"30 / 60 / 90 Day Action Roadmap","An execution sequence generated from the validated recommendations in this report.");
+  const roadmap = data?.actionRoadmap || data?.aiRecommendations?.roadmap || normalized?.actionRoadmap || {};
+  const roadmapPhase = (
+    title:string,
+    timeline:string,
+    items:any[],
+    priority:"high"|"medium"|"low"
+  ) => {
+    secTitle(title);
+    if(!Array.isArray(items) || items.length===0){
+      body_("No validated actions were assigned to this phase.");
+      return;
+    }
+    items.slice(0,5).forEach((raw:any,index:number)=>{
+      const rec = typeof raw === "string" ? {title:String(raw).split(".")[0],detail:raw} : raw || {};
+      const evidence = Array.isArray(rec.evidence) ? rec.evidence.slice(0,2).join(" | ") : "";
+      actCard(
+        cl(rec.title,`Action ${index+1}`),
+        cl(rec.impact,priority==="high"?"High":"Medium"),
+        cl(rec.timeline,timeline),
+        `${cl(rec.detail,"Execute this evidence-backed action.")}  |  Owner: ${cl(rec.owner,"Growth Team")}${evidence?`  |  Evidence: ${evidence}`:""}`,
+        priority
+      );
+    });
+  };
+  roadmapPhase("First 30 Days — Fix Validated Foundations","0–30 days",roadmap?.first30Days,"high");
+  roadmapPhase("Next 30 Days — Expand Qualified Visibility","31–60 days",roadmap?.next30Days,"medium");
+  roadmapPhase("Final 30 Days — Build Authority and Coverage","61–90 days",roadmap?.final30Days,"low");
 
   // ════════════════════════════════════════════════════════════════════
   //  APPENDIX — EVIDENCE
@@ -4194,45 +4167,48 @@ value={
 )}
 {/* CONTENT QUALITY */}
 {activeTab === "content" && (
-  <Section title="Content Quality & Relevance">
+  <Section title="First-Party Content Quality">
     <p className="mb-5 text-sm text-slate-500">
-      Powered by on-page crawl signals, Crawler Que keyword data, and Content Analysis API.
+      Only pages from the audited domain are included. External SERP pages are excluded from the Content Quality score and may be used only as separate competitive evidence.
     </p>
 
-    <div className="mb-6 grid gap-4 md:grid-cols-3">
+    <div className="mb-6 grid gap-4 md:grid-cols-4">
       <MetricCard
-        label="Title Found"
-        value={data?.title ? "Yes" : "Data not available"}
+        label="Pages Requested"
+        value={data?.contentAnalysis?.requestedPages ?? "Data not available"}
       />
       <MetricCard
-        label="Meta Description"
-        value={data?.description ? "Yes" : "Data not available"}
+        label="Pages Analyzed"
+        value={data?.contentAnalysis?.analyzedPages ?? data?.contentAnalysis?.results?.length ?? "Data not available"}
       />
       <MetricCard
-        label="Content Results"
-        value={data?.contentAnalysis?.results?.length ?? "Data not available"}
+        label="Failed Pages"
+        value={data?.contentAnalysis?.failedPages ?? 0}
+      />
+      <MetricCard
+        label="Average Content Score"
+        value={
+          data?.contentAnalysis?.averageScore !== null &&
+          data?.contentAnalysis?.averageScore !== undefined
+            ? `${data.contentAnalysis.averageScore}/100`
+            : "Data not available"
+        }
       />
     </div>
 
-    <div className="mb-6 grid gap-4 lg:grid-cols-2">
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-3 font-semibold text-slate-950">Page Title</h3>
-        <p className="text-sm leading-6 text-slate-600">
-          {data?.title || "Data not available"}
-        </p>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-3 font-semibold text-slate-950">Meta Description</h3>
-        <p className="text-sm leading-6 text-slate-600">
-          {data?.description || "Data not available"}
-        </p>
-      </div>
+    <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 p-5">
+      <p className="text-sm font-semibold text-blue-900">
+        Scope: {data?.contentAnalysis?.scope || "first-party"}
+      </p>
+      <p className="mt-2 text-sm leading-6 text-blue-800">
+        {data?.contentAnalysis?.note ||
+          "Only URLs from the audited domain are included in this module."}
+      </p>
     </div>
 
     <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <h3 className="mb-4 font-semibold text-slate-950">
-        Content Opportunities
+        Validated Non-Branded Content Opportunities
       </h3>
 
       {data?.dataforseo?.keywordGap?.opportunities?.length > 0 ? (
@@ -4243,46 +4219,63 @@ value={
                 {i + 1}. {k.keyword}
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                Volume: {k.volume || "Data not available"} | Competitors:{" "}
-                {k.competitors?.join(", ") || "--"}
+                Volume: {k.volume || "Data not available"} · Page type: {k.recommendedPageType || "Data not available"}
               </p>
             </div>
           ))}
         </div>
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available from keyword gap analysis.
+          No validated non-branded content opportunities are available.
         </p>
       )}
     </div>
 
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <h3 className="mb-4 font-semibold text-slate-950">
-        Content Analysis Results
+        Audited-Site Content Results
       </h3>
 
       {data?.contentAnalysis?.results?.length > 0 ? (
         <div className="grid gap-3">
           {data.contentAnalysis.results.slice(0, 10).map((item: any, i: number) => (
             <div key={i} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-              <p className="font-semibold text-slate-950">
-                {i + 1}. {item.domain || "Unknown domain"}
-              </p>
-              <p className="mt-1 break-all text-xs text-slate-500">
-                URL: {item.url || "Data not available"}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Topic: {item.mainTopic || "Data not available"}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Content Length: {item.contentLength || "Data not available"}
-              </p>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-slate-950">
+                    {i + 1}. {item.title || item.mainTopic || "Untitled page"}
+                  </p>
+                  <p className="mt-1 break-all text-xs text-slate-500">
+                    {item.url || "Data not available"}
+                  </p>
+                </div>
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                  {item.score ?? "N/A"}/100 · {item.grade || "Unknown"}
+                </span>
+              </div>
+
+              <div className="mt-3 grid gap-2 text-xs text-slate-500 md:grid-cols-4">
+                <p>Words: {item.wordCount ?? "N/A"}</p>
+                <p>H2s: {item.h2Count ?? "N/A"}</p>
+                <p>Media: {item.mediaCount ?? "N/A"}</p>
+                <p>Missing ALT: {item.imagesMissingAlt ?? "N/A"}</p>
+              </div>
+
+              {Array.isArray(item.issues) && item.issues.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {item.issues.slice(0, 4).map((issue: string, issueIndex: number) => (
+                    <span key={issueIndex} className="rounded-full bg-amber-50 px-3 py-1 text-xs text-amber-700">
+                      {issue}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available from Crawler Que Content Analysis API.
+          No first-party content pages could be analyzed.
         </p>
       )}
     </div>
@@ -4291,9 +4284,9 @@ value={
 {/* LOCAL SEO */}
 {activeTab === "localSeo" && (
   <Section title="Local SEO & Business Listings">
-    <p className="mb-5 text-sm text-slate-500">
-      Powered by Crawler Que Business Data API. Shows Google Business listing visibility, ratings, reviews, and local presence.
-    </p>
+<p className="mb-5 text-sm text-slate-500">
+  The query combines the audited brand, service/category, and selected location. Only verified brand matches are presented as the audited business&apos;s listings; wider market results remain separate.
+</p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-3">
       <MetricCard
@@ -4309,6 +4302,12 @@ value={
         value={data?.businessData?.location || "Data not available"}
       />
     </div>
+
+    {data?.businessData?.note && (
+      <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+        {data.businessData.note}
+      </div>
+    )}
 
     <div className="grid gap-4">
       {data?.businessData?.listings?.length > 0 ? (
@@ -4351,7 +4350,7 @@ value={
         ))
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available from Crawler Que Business Data API.
+          No exact brand listing was verified for this brand + service + location query. Wider market results are not being mislabelled as the audited business.
         </p>
       )}
     </div>
@@ -5189,102 +5188,163 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 )}
 
 {/* RECOMMENDATIONS */}{activeTab === "recommendations" && (
-  <Section title="AI Recommendations Engine">
+  <Section title="Evidence-Backed Recommendations">
     <p className="mb-5 text-sm text-slate-500">
-      Recommendations generated from real audit data: SEO issues, Crawler Que keywords, SERP rankings, backlinks, content analysis, and AI visibility.
+      Every action is tied to a source module, evidence, affected URLs, validation status, owner, effort, and timeline. Competitor-branded keyword gaps are excluded from the standard roadmap.
     </p>
 
-    <div className="mb-6 grid gap-4 md:grid-cols-3">
+    <div className="mb-6 grid gap-4 md:grid-cols-4">
       <MetricCard
         label="Recommendations"
         value={data?.recommendations?.length ?? "Data not available"}
       />
       <MetricCard
         label="Source"
-        value={data?.aiRecommendations?.source || "AI Recommendation Engine"}
+        value={data?.aiRecommendations?.source || "Evidence-Backed Recommendation Engine"}
       />
       <MetricCard
         label="Primary Opportunity"
         value={data?.unifiedOverview?.primaryOpportunity || "Data not available"}
       />
+      <MetricCard
+        label="Branded Gaps Suppressed"
+        value={data?.aiRecommendations?.suppressedCompetitorBrandedKeywords ?? 0}
+      />
     </div>
 
     <div className="grid gap-5 lg:grid-cols-2">
       {data?.recommendations?.length > 0 ? (
-        data.recommendations.slice(0, 10).map((rec: string, i: number) => (
-          <div
-            key={i}
-            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-          >
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-                Priority {i + 1}
+        data.recommendations.slice(0, 10).map((rawRec: any, i: number) => {
+          const rec = typeof rawRec === "string"
+            ? {
+                title: String(rawRec).split(".")[0],
+                detail: rawRec,
+                impact: "Medium",
+                effort: "Medium",
+                owner: "Growth Team",
+                timeline: "31–60 days",
+                sourceModule: "Recommendations",
+                validationStatus: "directional",
+                evidence: [],
+                affectedUrls: [],
+              }
+            : rawRec || {};
+
+          const impact = String(rec?.impact || "Medium");
+          const impactClass = impact.toLowerCase().includes("high")
+            ? "bg-red-50 text-red-600"
+            : impact.toLowerCase().includes("low")
+              ? "bg-green-50 text-green-600"
+              : "bg-amber-50 text-amber-600";
+
+          return (
+            <div
+              key={rec?.id || i}
+              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                  Priority {i + 1} · {rec?.sourceModule || "Recommendations"}
+                </p>
+
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${impactClass}`}>
+                  {impact} Impact
+                </span>
+              </div>
+
+              <h3 className="text-lg font-bold text-slate-950">
+                {rec?.title || `Recommendation ${i + 1}`}
+              </h3>
+
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                {rec?.detail || "Review this recommendation against the attached evidence."}
               </p>
 
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  i < 3
-                    ? "bg-red-50 text-red-600"
-                    : i < 6
-                    ? "bg-amber-50 text-amber-600"
-                    : "bg-green-50 text-green-600"
-                }`}
-              >
-                {i < 3 ? "High Impact" : i < 6 ? "Medium Impact" : "Quick Win"}
-              </span>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <p className="text-[11px] font-semibold uppercase text-slate-500">Timeline</p>
+                  <p className="mt-1 text-sm font-bold text-slate-950">
+                    {rec?.timeline || "31–60 days"}
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <p className="text-[11px] font-semibold uppercase text-slate-500">Owner</p>
+                  <p className="mt-1 text-sm font-bold text-slate-950">
+                    {rec?.owner || "Growth Team"}
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <p className="text-[11px] font-semibold uppercase text-slate-500">Effort / Validation</p>
+                  <p className="mt-1 text-sm font-bold text-slate-950">
+                    {rec?.effort || "Medium"} · {rec?.validationStatus || "directional"}
+                  </p>
+                </div>
+              </div>
+
+              {Array.isArray(rec?.affectedUrls) && rec.affectedUrls.length > 0 && (
+                <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-3">
+                  <p className="text-[11px] font-semibold uppercase text-blue-700">Affected URLs</p>
+                  <div className="mt-2 space-y-1">
+                    {rec.affectedUrls.slice(0, 3).map((affectedUrl: string, urlIndex: number) => (
+                      <p key={urlIndex} className="break-all text-xs text-blue-700">
+                        {affectedUrl}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {Array.isArray(rec?.evidence) && rec.evidence.length > 0 && (
+                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-[11px] font-semibold uppercase text-slate-500">Evidence</p>
+                  <ul className="mt-2 space-y-1 text-xs text-slate-600">
+                    {rec.evidence.slice(0, 4).map((evidence: string, evidenceIndex: number) => (
+                      <li key={evidenceIndex}>• {evidence}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
-
-            <h3 className="text-lg font-bold text-slate-950">
-              {String(rec).split(".")[0] || `Recommendation ${i + 1}`}
-            </h3>
-
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              {rec}
-            </p>
-
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-[11px] font-semibold uppercase text-slate-500">
-                  Timeline
-                </p>
-                <p className="mt-1 text-sm font-bold text-slate-950">
-                  {i < 3 ? "7–30 days" : i < 6 ? "30–60 days" : "60–90 days"}
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-[11px] font-semibold uppercase text-slate-500">
-                  Owner
-                </p>
-                <p className="mt-1 text-sm font-bold text-slate-950">
-                  {String(rec).toLowerCase().includes("technical") ||
-                  String(rec).toLowerCase().includes("speed")
-                    ? "Developer"
-                    : String(rec).toLowerCase().includes("content") ||
-                      String(rec).toLowerCase().includes("keyword")
-                    ? "SEO / Content"
-                    : "Growth Team"}
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-[11px] font-semibold uppercase text-slate-500">
-                  Difficulty
-                </p>
-                <p className="mt-1 text-sm font-bold text-slate-950">
-                  {i < 3 ? "Medium" : "Low–Medium"}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))
+          );
+        })
       ) : (
         <div className="rounded-2xl border border-slate-200 bg-white p-6">
           <p className="text-sm text-slate-500">
-            Data not available from AI Recommendations Engine.
+            No evidence-backed recommendations were generated for the available data.
           </p>
         </div>
       )}
+    </div>
+
+    <div className="mt-8 grid gap-5 lg:grid-cols-3">
+      {[
+        ["First 30 Days", data?.actionRoadmap?.first30Days, "0–30 days"],
+        ["Next 30 Days", data?.actionRoadmap?.next30Days, "31–60 days"],
+        ["Final 30 Days", data?.actionRoadmap?.final30Days, "61–90 days"],
+      ].map(([label, items, timeline]: any) => (
+        <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">{timeline}</p>
+          <h3 className="mt-2 font-bold text-slate-950">{label}</h3>
+          {Array.isArray(items) && items.length > 0 ? (
+            <div className="mt-4 space-y-3">
+              {items.slice(0, 4).map((item: any, index: number) => (
+                <div key={item?.id || index} className="rounded-xl bg-slate-50 p-3">
+                  <p className="text-sm font-semibold text-slate-950">
+                    {item?.title || `Action ${index + 1}`}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {item?.owner || "Growth Team"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-slate-500">No validated actions assigned to this phase.</p>
+          )}
+        </div>
+      ))}
     </div>
   </Section>
 )}
@@ -5547,14 +5607,83 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 {activeTab === "technical" && (
   <Section title="Technical SEO Audit">
     <p className="mb-5 text-sm text-slate-500">
-      Powered by Crawler Que OnPage API. Shows crawl status, page-level issues, broken links, and technical SEO signals.
+      Powered by Crawler Que OnPage API. The crawl cap, discovered pages, completed pages, failures, remaining pages, coverage, and confidence are shown separately so partial crawls are never presented as complete.
     </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-4">
       <MetricCard
+        label="Pages Discovered"
+        value={data?.onPage?.discoveredPages ?? "Data not available"}
+      />
+      <MetricCard
         label="Pages Crawled"
         value={data?.onPage?.crawledPages ?? "Data not available"}
       />
+      <MetricCard
+        label="Coverage"
+        value={
+          data?.onPage?.coveragePercent !== null &&
+          data?.onPage?.coveragePercent !== undefined
+            ? `${data.onPage.coveragePercent}%`
+            : "Data not available"
+        }
+      />
+      <MetricCard
+        label="Crawl Page Limit"
+        value={data?.onPage?.pageLimit ?? 100}
+      />
+    </div>
+
+    <div className="mb-6 grid gap-4 md:grid-cols-4">
+      <MetricCard
+        label="Completed Pages"
+        value={data?.onPage?.completedPages ?? "Data not available"}
+      />
+      <MetricCard
+        label="Failed Pages"
+        value={data?.onPage?.failedPages ?? "Data not available"}
+      />
+      <MetricCard
+        label="Remaining Pages"
+        value={data?.onPage?.remainingPages ?? "Data not available"}
+      />
+      <MetricCard
+        label="Outside Crawl Limit"
+        value={data?.onPage?.outsideLimitPages ?? 0}
+      />
+    </div>
+
+    <div className="mb-6 grid gap-4 lg:grid-cols-2">
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 className="mb-3 font-semibold text-slate-950">Crawl Status</h3>
+        <p className="text-sm leading-6 text-slate-600">
+          {data?.onPage?.crawlStatus || "Data not available from Crawler Que OnPage API."}
+        </p>
+        <p className="mt-2 text-xs text-slate-500">
+          Confidence: {data?.onPage?.confidence || data?.reconciliation?.technical?.confidence || "unknown"}
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 className="mb-3 font-semibold text-slate-950">Coverage Meaning</h3>
+        <p className="text-sm leading-6 text-slate-600">
+          {data?.onPage?.isPartial
+            ? "This is a partial technical result. Recommendations are limited to the pages and issues that were actually inspected."
+            : "The requested in-scope crawl completed without a recorded coverage limitation."}
+        </p>
+      </div>
+    </div>
+
+    {(data?.onPage?.limitation || data?.reconciliation?.technical?.limitation) && (
+      <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+        <p className="text-sm font-semibold text-amber-900">Technical coverage limitation</p>
+        <p className="mt-2 text-sm leading-6 text-amber-800">
+          {data?.onPage?.limitation || data?.reconciliation?.technical?.limitation}
+        </p>
+      </div>
+    )}
+
+    <div className="mb-6 grid gap-4 md:grid-cols-4">
       <MetricCard
         label="Broken Links"
         value={data?.onPage?.brokenLinks ?? "Data not available"}
@@ -5567,13 +5696,10 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
         label="Missing Descriptions"
         value={data?.onPage?.missingDescription ?? "Data not available"}
       />
-    </div>
-
-    <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h3 className="mb-3 font-semibold text-slate-950">Crawl Status</h3>
-      <p className="text-sm leading-6 text-slate-600">
-        {data?.onPage?.crawlStatus || "Data not available from Crawler Que OnPage API."}
-      </p>
+      <MetricCard
+        label="Duplicate Titles"
+        value={data?.onPage?.duplicateTitle ?? "Data not available"}
+      />
     </div>
 
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -5611,7 +5737,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
         </div>
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available yet. Crawler Que OnPage crawls can take longer to complete.
+          No page-level technical evidence is available yet. The server-side finalizer will continue checking the crawl after the browser is closed.
         </p>
       )}
     </div>
