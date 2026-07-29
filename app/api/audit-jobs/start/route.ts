@@ -15,6 +15,11 @@ import {
   AuditIdentityError,
   buildAuditIdentity,
 } from "@/lib/audit-identity";
+import {
+  AuditUsageLimitError,
+  createAuditJobWithReservation,
+  failAuditAndRestoreCredit,
+} from "@/lib/audit-usage";
 
 export const runtime = "nodejs";
 
@@ -30,8 +35,8 @@ async function getSessionFromCookie() {
   }
 
   try {
-const payload =
-  await verifySessionToken(token);
+    const payload =
+      await verifySessionToken(token);
 
     if (!payload?.userId) {
       return null;
@@ -58,6 +63,33 @@ export async function POST(
       await getSessionFromCookie();
 
     if (!session) {
+      return withSecurityHeaders(
+        NextResponse.json(
+          {
+            success: false,
+            error: "Unauthorized",
+          },
+          {
+            status: 401,
+          }
+        )
+      );
+    }
+
+    const user =
+      await prisma.user.findUnique({
+        where: {
+          id: session.id,
+        },
+        include: {
+          package: true,
+        },
+      });
+
+    if (
+      !user ||
+      user.status === "suspended"
+    ) {
       return withSecurityHeaders(
         NextResponse.json(
           {
@@ -98,60 +130,117 @@ export async function POST(
       );
     }
 
-    if (
-      promoAccess &&
-      promoAccess.auditsUsed >=
-        promoAccess.auditLimit
-    ) {
-      return withSecurityHeaders(
-        NextResponse.json(
-          {
-            success: false,
-            error:
-              "This promotional link has used all available audits.",
-          },
-          {
-            status: 429,
-          }
-        )
-      );
-    }
-
     const body = await req.json();
 
     const requestedReportTypes =
       promoAccess
         ? [...PROMO_REPORT_TYPES]
-        : Array.isArray(body?.reportTypes)
-          ? body.reportTypes
+        : Array.isArray(
+              body?.reportTypes
+            )
+          ? body.reportTypes.map(
+              (type: unknown) =>
+                String(type)
+            )
           : [];
 
-    const identity = buildAuditIdentity({
-      userId: session.id,
-      url: String(body?.url || ""),
-      reportTypes: requestedReportTypes,
-    });
+    const identity =
+      buildAuditIdentity({
+        userId: session.id,
+        url: String(
+          body?.url || ""
+        ),
+        reportTypes:
+          requestedReportTypes,
+      });
+
+    const retryOfJobId =
+      body?.retryOfJobId
+        ? String(
+            body.retryOfJobId
+          ).trim()
+        : null;
+
+    if (retryOfJobId) {
+      const retrySource =
+        await prisma.auditJob.findFirst({
+          where: {
+            id: retryOfJobId,
+            userId: session.id,
+            status: {
+              in: [
+                "failed",
+                "cancelled",
+              ],
+            },
+          },
+          select: {
+            id: true,
+            normalizedDomain: true,
+          },
+        });
+
+      if (!retrySource) {
+        return withSecurityHeaders(
+          NextResponse.json(
+            {
+              success: false,
+              error:
+                "The audit selected for retry is unavailable.",
+            },
+            {
+              status: 409,
+            }
+          )
+        );
+      }
+
+      if (
+        retrySource.normalizedDomain &&
+        retrySource.normalizedDomain !==
+          identity.normalizedDomain
+      ) {
+        return withSecurityHeaders(
+          NextResponse.json(
+            {
+              success: false,
+              error:
+                "A retry must use the same domain as the failed audit.",
+            },
+            {
+              status: 409,
+            }
+          )
+        );
+      }
+    }
 
     /*
-     * Prevent accidental duplicate jobs when the user
+     * Prevent double reservations when the user
      * double-clicks Run Audit or the browser retries.
-     *
-     * Only reuse jobs created during the last 15 minutes.
      */
-    const activeJobThreshold = new Date(
-      Date.now() - 15 * 60 * 1000
-    );
+    const activeJobThreshold =
+      new Date(
+        Date.now() -
+          15 * 60 * 1000
+      );
 
     const existingActiveJob =
       await prisma.auditJob.findFirst({
         where: {
           userId: session.id,
-          inputHash: identity.inputHash,
+          inputHash:
+            identity.inputHash,
           status: {
-            in: ["pending", "running"],
+            in: [
+              "pending",
+              "running",
+              "processing_technical",
+            ],
           },
           createdAt: {
-            gte: activeJobThreshold,
+            gte:
+              activeJobThreshold,
           },
         },
         orderBy: {
@@ -159,12 +248,16 @@ export async function POST(
         },
         select: {
           id: true,
+          traceId: true,
           status: true,
           progress: true,
           currentModule: true,
           normalizedDomain: true,
           inputHash: true,
           renderReady: true,
+          usageState: true,
+          usageSource: true,
+          retryOfJobId: true,
         },
       });
 
@@ -173,53 +266,92 @@ export async function POST(
         NextResponse.json({
           success: true,
           reused: true,
-          job: existingActiveJob,
+          job:
+            existingActiveJob,
           auditJobId:
             existingActiveJob.id,
+          traceId:
+            existingActiveJob.traceId,
         })
       );
     }
 
-    const job =
-      await prisma.auditJob.create({
-        data: {
+    /*
+     * Restore credits held by abandoned jobs before
+     * reserving a new one. This is safe and idempotent.
+     */
+    const staleJobs =
+      await prisma.auditJob.findMany({
+        where: {
           userId: session.id,
-
-          domain:
-            identity.normalizedDomain,
-
-          normalizedDomain:
-            identity.normalizedDomain,
-
-          url:
-            identity.normalizedUrl,
-
-          inputHash:
-            identity.inputHash,
-
-          reportTypes:
-            identity.reportTypes,
-
-          status: "pending",
-          progress: 1,
-          currentModule:
-            "Audit queued",
-
-          moduleStatus: {},
-
-          technicalTaskId: null,
-          renderReady: false,
-          usageCounted: false,
+          usageState: "reserved",
+          status: {
+            in: [
+              "pending",
+              "running",
+              "processing_technical",
+            ],
+          },
+          updatedAt: {
+            lt:
+              activeJobThreshold,
+          },
         },
         select: {
           id: true,
-          status: true,
-          progress: true,
-          currentModule: true,
-          normalizedDomain: true,
-          inputHash: true,
-          renderReady: true,
         },
+        take: 10,
+      });
+
+    for (
+      const staleJob of staleJobs
+    ) {
+      try {
+        await failAuditAndRestoreCredit({
+          jobId: staleJob.id,
+          failureCode:
+            "ABANDONED_AUDIT",
+          internalError:
+            "The audit stopped updating for more than 15 minutes.",
+          userMessage:
+            "The previous audit expired before completion. Its audit credit was restored.",
+          currentModule:
+            "Audit expired",
+        });
+      } catch (cleanupError) {
+        console.error(
+          "Stale audit cleanup failed:",
+          cleanupError
+        );
+      }
+    }
+
+    const monthlyLimit =
+      user.package
+        ?.monthlyAudits ||
+      user.monthlyAudits ||
+      0;
+
+    const job =
+      await createAuditJobWithReservation({
+        userId: session.id,
+        role: user.role,
+        stripeStatus:
+          user.stripeStatus,
+        monthlyLimit,
+        promoAccessId:
+          promoAccess?.id || null,
+        domain:
+          identity.normalizedDomain,
+        normalizedDomain:
+          identity.normalizedDomain,
+        url:
+          identity.normalizedUrl,
+        inputHash:
+          identity.inputHash,
+        reportTypes:
+          identity.reportTypes,
+        retryOfJobId,
       });
 
     return withSecurityHeaders(
@@ -228,11 +360,13 @@ export async function POST(
         reused: false,
         job,
         auditJobId: job.id,
+        traceId: job.traceId,
       })
     );
   } catch (error) {
     if (
-      error instanceof AuditIdentityError
+      error instanceof
+      AuditIdentityError
     ) {
       return withSecurityHeaders(
         NextResponse.json(
@@ -242,6 +376,25 @@ export async function POST(
           },
           {
             status: 400,
+          }
+        )
+      );
+    }
+
+    if (
+      error instanceof
+      AuditUsageLimitError
+    ) {
+      return withSecurityHeaders(
+        NextResponse.json(
+          {
+            success: false,
+            error: error.message,
+            code: error.code,
+          },
+          {
+            status:
+              error.status,
           }
         )
       );

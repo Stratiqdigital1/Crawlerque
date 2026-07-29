@@ -67,6 +67,7 @@ export default function WebsiteAuditDashboardPage() {
   const [loading, setLoading] = useState(false);
 const [auditSeconds, setAuditSeconds] = useState(0);
 const [auditJobId, setAuditJobId] = useState<string | null>(null);
+const [auditTraceId, setAuditTraceId] = useState("");
 const [auditProgress, setAuditProgress] = useState(0);
 const [auditCurrentModule, setAuditCurrentModule] = useState("");
 const [auditModuleStatus, setAuditModuleStatus] = useState<any>({});
@@ -372,12 +373,23 @@ const pollOnPage = async (
 
       if (attempt === 20) {
         setError(
-          "The technical crawl could not be finalized. Reload the saved report before exporting its PDF."
+          pollError instanceof Error
+            ? pollError.message
+            : "The technical crawl could not be finalized."
         );
 
         setAuditCurrentModule(
           "Technical crawl finalization failed"
         );
+
+        activeAuditIdentityRef.current =
+          null;
+
+        activeAuditJobIdRef.current =
+          null;
+
+        await loadCurrentUser();
+        await loadReportHistory();
       }
     }
   }
@@ -429,11 +441,55 @@ const pollAuditJobStatus = (jobId: string) => {
       setAuditModuleStatus(job.moduleStatus || {});
 
       if (
-        job.status === "completed" ||
-        job.status === "failed" ||
-        job.status === "cancelled"
+        [
+          "completed",
+          "completed_with_limitation",
+          "failed",
+          "cancelled",
+        ].includes(
+          String(job.status)
+        )
       ) {
-        window.clearInterval(interval);
+        window.clearInterval(
+          interval
+        );
+
+        if (
+          [
+            "failed",
+            "cancelled",
+          ].includes(
+            String(job.status)
+          )
+        ) {
+          const reference =
+            job.traceId
+              ? ` Reference: ${job.traceId}.`
+              : "";
+
+          const creditMessage =
+            job.creditRestored
+              ? " Your audit credit was restored."
+              : "";
+
+          setError(
+            `${job.userMessage || job.error || "The audit did not complete."}${creditMessage}${reference}`
+          );
+
+          setLoading(false);
+          setAbortController(
+            null
+          );
+
+          activeAuditJobIdRef.current =
+            null;
+
+          activeAuditIdentityRef.current =
+            null;
+
+          void loadCurrentUser();
+          void loadReportHistory();
+        }
       }
     } catch (error) {
       console.error("Audit progress polling failed:", error);
@@ -443,17 +499,36 @@ const pollAuditJobStatus = (jobId: string) => {
   return interval;
 };
 
-const runAudit = async () => {
-  if (!url) return;
+const runAudit = async (
+  options?: {
+    url?: string;
+    reportTypes?: string[];
+    retryOfJobId?: string | null;
+  }
+) => {
+  const requestedUrl =
+    options?.url || url;
+
+  if (!requestedUrl) return;
 
   // Normalize URL before anything else
-  let normalizedUrl = url.trim();
+  let normalizedUrl =
+    requestedUrl.trim();
   if (
     !normalizedUrl.startsWith("http://") &&
     !normalizedUrl.startsWith("https://")
   ) {
     normalizedUrl = `https://${normalizedUrl}`;
-    setUrl(normalizedUrl);
+  }
+
+  setUrl(normalizedUrl);
+
+  if (
+    options?.reportTypes?.length
+  ) {
+    setSelectedReportTypes([
+      ...options.reportTypes,
+    ]);
   }
 
   const userRes = await fetch("/api/user/me", {
@@ -497,7 +572,9 @@ const runAudit = async () => {
 const effectiveReportTypes =
   currentUser?.isPromoAccess
     ? [...PROMO_REPORT_TYPES]
-    : selectedReportTypes;
+    : options?.reportTypes?.length
+      ? [...options.reportTypes]
+      : selectedReportTypes;
 
 setData(null);
 setCompareA(null);
@@ -513,6 +590,7 @@ setLoading(true);
 setError("");
 setAuditSeconds(0);
 setAuditJobId(null);
+setAuditTraceId("");
 setAuditProgress(0);
 setAuditCurrentModule("Starting audit");
 setAuditModuleStatus({});
@@ -532,7 +610,11 @@ try {
         },
 body: JSON.stringify({
           url: normalizedUrl,
-          reportTypes: effectiveReportTypes,
+          reportTypes:
+            effectiveReportTypes,
+          retryOfJobId:
+            options?.retryOfJobId ||
+            null,
         }),
       });
 
@@ -559,6 +641,15 @@ if (!startedJobId) {
 }
 
 setAuditJobId(startedJobId);
+
+setAuditTraceId(
+  String(
+    startJson.traceId ||
+      startJson?.job
+        ?.traceId ||
+      ""
+  )
+);
 
 activeAuditJobIdRef.current =
   startedJobId;
@@ -603,6 +694,15 @@ if (!res.ok || json?.success === false) {
   throw new Error(errMsg);
 }
 
+if (
+  json?.traceId &&
+  !auditTraceId
+) {
+  setAuditTraceId(
+    String(json.traceId)
+  );
+}
+
 let report = {
   ...(json?.report || json),
   reportTypes: effectiveReportTypes,
@@ -628,14 +728,17 @@ try {
       seoScore: report?.seoScore,
       uxScore: report?.uxScore,
       aiVisibilityScore:
-        report?.aiOptimization?.visibilityScore ||
-        report?.aiVisibility?.score,
+        report?.aiSearchVisibility?.overallScore ??
+        report?.aiScore ??
+        null,
 monthlyTraffic:
   report?.traffic?.rawMonthly ||
   report?.traffic?.monthly,
       organicKeywords:
-        report?.dataforseo?.organicKeywords ||
-        report?.domainAnalytics?.organicKeywords,
+        report?.traffic?.rankedKeywordCount ??
+        report?.keywordCount ??
+        report?.dataforseo?.rankedKeywordCount ??
+        null,
       competitors:
   report?.competitors?.length
     ? report.competitors
@@ -821,10 +924,14 @@ clearInterval(timer);
 setAbortController(null);
 setLoading(false);
   };
-const cancelAudit = () => {
+const cancelAudit = async () => {
   if (abortController) {
     abortController.abort();
   }
+
+  const jobIdToCancel =
+    auditJobId ||
+    activeAuditJobIdRef.current;
 
   activeAuditJobIdRef.current =
     null;
@@ -835,17 +942,80 @@ const cancelAudit = () => {
   setAbortController(null);
   setLoading(false);
 
+  if (jobIdToCancel) {
+    try {
+      const res = await fetch(
+        `/api/audit-jobs/${jobIdToCancel}/cancel`,
+        {
+          method: "POST",
+        }
+      );
+
+      const json =
+        await res.json();
+
+      if (
+        !res.ok ||
+        !json?.success
+      ) {
+        throw new Error(
+          json?.error ||
+            "The audit could not be cancelled."
+        );
+      }
+
+      const reference =
+        json?.traceId
+          ? ` Reference: ${json.traceId}.`
+          : auditTraceId
+            ? ` Reference: ${auditTraceId}.`
+            : "";
+
+      setError(
+        `Audit cancelled.${
+          json?.creditRestored
+            ? " Your audit credit was restored."
+            : ""
+        }${reference}`
+      );
+    } catch (cancelError) {
+      console.error(
+        "Audit cancellation failed:",
+        cancelError
+      );
+
+      setError(
+        cancelError instanceof Error
+          ? cancelError.message
+          : "The audit could not be cancelled."
+      );
+    }
+  } else {
+    setError(
+      "Audit cancelled."
+    );
+  }
+
   setAuditCurrentModule(
     "Cancelled"
   );
 
-  setError("Audit cancelled.");
+  await loadCurrentUser();
+  await loadReportHistory();
 };
-  const chartData =
-  data?.aiOptimization?.models?.map((m: any) => ({
-    name: m.model,
-    mentioned: m.mentioned ? 1 : 0,
-  })) || [];
+  const chartData = Object.entries(
+    data?.aiSearchVisibility?.modelBreakdown || {}
+  ).map(([model, visibility]) => ({
+    name:
+      model === "chatgpt"
+        ? "ChatGPT"
+        : model === "claude"
+          ? "Claude"
+          : model === "gemini"
+            ? "Gemini"
+            : model,
+    mentioned: Number(visibility || 0),
+  }));
   const seoCompetitorChartData =
   data?.competitors?.slice(0, 8).map((c: any) => ({
     name: c.domain,
@@ -856,19 +1026,19 @@ const cancelAudit = () => {
 ),
   })) || [];
   const competitorChartData = [
-  {
-    name: "Your Brand",
-    mentions: data?.aiOptimization?.totalMentions ?? 0,
-  },
-  {
-    name: "Competitors",
-    mentions: Math.max(
-  (data?.aiVisibility?.totalMentions ?? 0) -
-    (data?.aiOptimization?.totalMentions ?? 0),
-  0
-),
-  },
-];
+    {
+      name: "Your Brand",
+      mentions:
+        data?.aiSearchVisibility?.brandMentionCount ??
+        0,
+    },
+    {
+      name: "Competitors",
+      mentions:
+        data?.aiSearchVisibility?.competitorMentionCount ??
+        0,
+    },
+  ];
 
 const normalizeHistoryDomain = (
   item: any
@@ -1017,13 +1187,16 @@ const loadReportHistory = async () => {
 
     if (!json?.success) return;
 
-const formattedHistory =
-  json.reports.map(
+const formattedReports =
+  (json.reports || []).map(
     (item: any) => ({
+      recordType:
+        "report",
       id: item.id,
 
       auditJobId:
-        item.auditJobId || null,
+        item.auditJobId ||
+        null,
 
       domain:
         item.domain,
@@ -1031,14 +1204,19 @@ const formattedHistory =
       normalizedDomain:
         item.normalizedDomain,
 
+      url:
+        item.domain,
+
       reportTypes:
-        item.reportTypes || [],
+        item.reportTypes ||
+        [],
 
       status:
         item.status,
 
       renderReady:
-        item.renderReady === true,
+        item.renderReady ===
+        true,
 
       overallScore:
         item.overallScore,
@@ -1068,12 +1246,104 @@ const formattedHistory =
             ).toLocaleString()
           : null,
 
+      createdAtRaw:
+        item.createdAt,
+
       createdAt:
         new Date(
           item.createdAt
         ).toLocaleString(),
     })
   );
+
+const formattedAttempts =
+  (json.attempts || []).map(
+    (item: any) => ({
+      recordType:
+        "attempt",
+      id: null,
+
+      auditJobId:
+        item.id,
+
+      traceId:
+        item.traceId,
+
+      domain:
+        item.domain,
+
+      normalizedDomain:
+        item.normalizedDomain,
+
+      url:
+        item.url,
+
+      reportTypes:
+        item.reportTypes ||
+        [],
+
+      status:
+        item.status,
+
+      renderReady:
+        false,
+
+      overallScore:
+        null,
+
+      seoScore:
+        null,
+
+      uxScore:
+        null,
+
+      aiScore:
+        null,
+
+      traffic:
+        null,
+
+      keywordCount:
+        null,
+
+      failureCode:
+        item.failureCode,
+
+      userMessage:
+        item.userMessage,
+
+      error:
+        item.error,
+
+      usageState:
+        item.usageState,
+
+      creditRestored:
+        item.creditRestored ===
+        true,
+
+      createdAtRaw:
+        item.createdAt,
+
+      createdAt:
+        new Date(
+          item.createdAt
+        ).toLocaleString(),
+    })
+  );
+
+const formattedHistory = [
+  ...formattedReports,
+  ...formattedAttempts,
+].sort(
+  (a: any, b: any) =>
+    new Date(
+      b.createdAtRaw
+    ).getTime() -
+    new Date(
+      a.createdAtRaw
+    ).getTime()
+);
 
     setHistory(formattedHistory);
   } catch (error) {
@@ -1083,24 +1353,43 @@ const formattedHistory =
 
 const loadCurrentUser = async () => {
   try {
-    const res = await fetch("/api/user/me");
+    const res = await fetch(
+      "/api/user/me",
+      {
+        cache: "no-store",
+      }
+    );
 
     const json = await res.json();
 
-    if (!json?.success) {
-      window.location.href = "/login";
+    if (
+      !res.ok ||
+      !json?.success
+    ) {
+      window.location.replace(
+        "/login"
+      );
       return;
     }
 
     setCurrentUser(json.user);
 
-    if (json.user?.isPromoAccess) {
+    if (
+      json.user?.isPromoAccess
+    ) {
       setSelectedReportTypes([
         ...PROMO_REPORT_TYPES,
       ]);
     }
   } catch (error) {
-    window.location.href = "/login";
+    console.error(
+      "Current user load failed:",
+      error
+    );
+
+    window.location.replace(
+      "/login"
+    );
   }
 };
 
@@ -1300,6 +1589,40 @@ useEffect(() => {
   };
 
 }, []);
+
+const retryAuditAttempt = (
+  item: any
+) => {
+  const retryUrl =
+    item?.url ||
+    item?.domain ||
+    "";
+
+  const retryTypes =
+    Array.isArray(
+      item?.reportTypes
+    )
+      ? item.reportTypes
+      : selectedReportTypes;
+
+  setActiveTab("overview");
+  setData(null);
+  setError("");
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth",
+  });
+
+  void runAudit({
+    url: retryUrl,
+    reportTypes:
+      retryTypes,
+    retryOfJobId:
+      item?.auditJobId ||
+      null,
+  });
+};
 
 const deleteReport = async (id: string) => {
   const confirmDelete = window.confirm(
@@ -2018,22 +2341,50 @@ sub("From executive summary to action roadmap — everything your team needs to 
   let tocNo = 0;
   const tocN = () => String(++tocNo).padStart(2,"0");
   const toc = [
-    [tocN(),"Executive Snapshot","Scores, benchmarks, biggest risk & opportunity"],
-    [tocN(),"Organic Traffic Intelligence","Modelled traffic, keyword footprint, top keywords"],
-    [tocN(),"Domain Analytics","Organic vs paid traffic and keyword signals"],
-    [tocN(),"SEO Foundation","Metadata, headings, alt text, technical issues"],
-    [tocN(),"Performance & Core Web Vitals","Speed scores, LCP, CLS, FCP, TBT"],
-    [tocN(),"AI Search Visibility","Brand mentions, model coverage, GEO readiness"],
-    [tocN(),"Competitor Intelligence","Threat scores, shared keywords, winning factors"],
-    [tocN(),"Keyword Gap & Labs","Missing keywords, opportunities, content ideas"],
-    [tocN(),"Keyword Research","Seed keyword suggestions and intent signals"],
-    [tocN(),"SERP Rankings","Live Google rank positions per keyword"],
-    [tocN(),"Backlink Authority","Domain trust, referring domains, top backlinks"],
-    [tocN(),"Technical SEO Audit","Crawled pages, broken links, technical signals"],
-    [tocN(),"Content Quality","Page content, content analysis results"],
-    [tocN(),"Local SEO","Business listings, ratings, reviews"],
-    [tocN(),"Recommendations","Prioritised action cards from AI engine"],
-    [tocN(),"Action Roadmap","30/60/90 day execution plan"],
+    [tocN(),"Executive Snapshot","Reconciled scores, risks, opportunities, and confidence"],
+    ...(pdfShow("traffic")
+      ? [[tocN(),"Organic Traffic Intelligence","Canonical modeled traffic and keyword footprint"]]
+      : []),
+    ...(pdfShow("domainAnalytics")
+      ? [[tocN(),"Domain Analytics — Provider Signals","Separate provider metrics excluded from executive traffic"]]
+      : []),
+    ...(pdfShow("seo")
+      ? [[tocN(),"SEO Foundation","Resolved homepage metadata, headings, and ALT signals"]]
+      : []),
+    ...(pdfShow("technical")
+      ? [
+          [tocN(),"Performance & Core Web Vitals","PageSpeed scores, LCP, CLS, FCP, and TBT"],
+          [tocN(),"Technical SEO Audit","Final crawl state, coverage, and page-level evidence"],
+        ]
+      : []),
+    ...(pdfShow("ai")
+      ? [[tocN(),"AI Search Visibility","Unbranded prompts across ChatGPT, Claude, and Gemini"]]
+      : []),
+    ...(pdfShow("competitors")
+      ? [[tocN(),"Competitor Intelligence","Threat scores, shared keywords, and evidence"]]
+      : []),
+    ...(pdfShow("keywords") || pdfShow("labs")
+      ? [[tocN(),"Keyword Gap & Labs","Non-branded gaps, opportunities, and content ideas"]]
+      : []),
+    ...(pdfShow("keywords") && data?.keywordResearch?.suggestions?.length
+      ? [[tocN(),"Keyword Research","Seed keyword suggestions and intent signals"]]
+      : []),
+    ...(pdfShow("serp") && data?.serpData
+      ? [[tocN(),"SERP Rankings","Live Google rank positions per keyword"]]
+      : []),
+    ...(pdfShow("backlinks") && data?.backlinks
+      ? [[tocN(),"Backlink Authority","Referring domains and backlink evidence"]]
+      : []),
+    ...(pdfShow("content")
+      ? [[tocN(),"Content Quality","Audited-site content signals and evidence"]]
+      : []),
+    ...(pdfShow("local") && data?.businessData?.listings?.length
+      ? [[tocN(),"Local SEO","Business listings, ratings, and reviews"]]
+      : []),
+    ...(pdfShow("recommendations")
+      ? [[tocN(),"Recommendations","Prioritised actions from reconciled evidence"]]
+      : []),
+    [tocN(),"Action Roadmap","Issue-driven 30/60/90 day execution plan"],
     [tocN(),"Benchmark Reference","What each score means and what to aim for"],
   ];
   toc.forEach(([num,t,d],i)=>{
@@ -2061,7 +2412,7 @@ sub("From executive summary to action roadmap — everything your team needs to 
     {label:"AI Visibility",value:`${cl(String(normalized.scores.ai??"—"))}/100`,sub:sLbl(normalized.scores.ai),col:sCol(normalized.scores.ai)},
   ]);
   kpiRow([
-    {label:"Share of Voice",value:fmt(Math.round((Number(data?.aiVisibility?.totalMentions??0))/(Math.max(1,Number(data?.aiOptimization?.totalMentions??1)))*100))+"%",sub:"AI share of voice",col:C.blue},
+    {label:"Share of Voice",value:`${Number(data?.aiSearchVisibility?.shareOfVoice ?? 0)}%`,sub:"Brand vs competitor mentions",col:C.blue},
     {label:"Est. Monthly Traffic",value:fmt(data?.traffic?.rawMonthly??data?.traffic?.monthly),sub:`Confidence: ${cl(normalized.traffic.confidence)}`,col:C.accent},
     {label:"Organic Keywords",value:fmt(data?.dataforseo?.organicKeywords),sub:"Ranking keywords",col:C.amber},
     {label:"Referring Domains",value:fmt(data?.backlinks?.referringDomains),sub:"Link authority",col:C.blue},
@@ -2120,16 +2471,16 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   //  SECTION 04 — DOMAIN ANALYTICS
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("domainAnalytics")){
-    secHdr(nextSec(),"Domain Analytics","Organic and paid visibility signals from Crawler Que Domain Analytics API.");
+    secHdr(nextSec(),"Domain Analytics — Provider Signals","Separate organic and paid provider signals. These figures do not replace the canonical Traffic Intelligence estimate.");
     kpiRow([
       {label:"Organic Keywords",value:fmt(data?.domainAnalytics?.organicKeywords),col:C.accent},
-      {label:"Est. Organic Traffic",value:fmt(data?.domainAnalytics?.organicTraffic),col:C.green},
+      {label:"Organic Traffic Signal",value:fmt(data?.domainAnalytics?.organicTrafficSignal??data?.domainAnalytics?.organicTraffic),col:C.green},
       {label:"Organic Cost",value:fmtMoney(data?.domainAnalytics?.organicCost),col:C.muted},
       {label:"Paid Keywords",value:fmt(data?.domainAnalytics?.paidKeywords),col:C.blue},
     ]);
     tbl(["Metric","Organic","Paid"],[
       {col1:"Keywords",col2:fmt(data?.domainAnalytics?.organicKeywords),col3:fmt(data?.domainAnalytics?.paidKeywords)},
-      {col1:"Traffic",col2:fmt(data?.domainAnalytics?.organicTraffic),col3:fmt(data?.domainAnalytics?.paidTraffic)},
+      {col1:"Traffic Signal",col2:fmt(data?.domainAnalytics?.organicTrafficSignal??data?.domainAnalytics?.organicTraffic),col3:fmt(data?.domainAnalytics?.paidTraffic)},
       {col1:"Cost",col2:fmtMoney(data?.domainAnalytics?.organicCost),col3:fmtMoney(data?.domainAnalytics?.paidCost)},
     ],[40,50,CW-90]);
     body_("Use this section to understand whether the domain relies more on organic discovery or paid acquisition for its current visibility.");
@@ -2232,8 +2583,13 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
       if (av.topCompetitors?.length) hiBox("Top Competitors in AI Answers", (av.topCompetitors||[]).join(", "), "blue");
       if (av.missedPrompts?.length) hiBox("Missed Opportunities (Content Ideas)", (av.missedPrompts||[]).slice(0,3).join("  -  "), "amber");
     }
-    const aiScore=n(normalized.scores.ai)??0, aiConf=cl(data?.aiVisibility?.confidence??data?.aiOptimization?.confidence,"Low"), aiMent=n(data?.aiOptimization?.totalMentions)??0, aiMods=n(data?.aiOptimization?.totalModels)??0;
-    const sov=Math.round((Number(data?.aiVisibility?.totalMentions??0))/(Math.max(1,Number(data?.aiOptimization?.totalMentions??1)))*100);
+    const aiScore=n(normalized.scores.ai)??0;
+    const aiConf=cl(data?.aiSearchVisibility?.confidence,"Low");
+    const aiMent=n(data?.aiSearchVisibility?.brandMentionCount)??0;
+    const aiMods=Array.isArray(data?.aiSearchVisibility?.modelsCalled)
+      ? data.aiSearchVisibility.modelsCalled.length
+      : 0;
+    const sov=n(data?.aiSearchVisibility?.shareOfVoice)??0;
     kpiRow([
       {label:"AI Visibility Score",value:`${aiScore}/100`,sub:sLbl(aiScore),col:sCol(aiScore)},
       {label:"Brand Mentions",value:fmt(aiMent),sub:"In AI responses",col:aiMent>0?C.accent:C.red},
@@ -2254,7 +2610,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
       {col1:"Brand Mentions",col2:fmt(aiMent),col3:aiMent>0?"Brand appears in AI-generated responses":"Brand not detected in AI responses"},
       {col1:"Model Coverage",col2:fmt(aiMods),col3:"Number of AI models tested for brand visibility"},
       {col1:"Confidence",col2:aiConf,col3:"Reliability of AI visibility measurement"},
-      {col1:"Prompt Used",col2:cl(data?.aiOptimization?.prompt?cl(data.aiOptimization.prompt).slice(0,60):"—"),col3:"The prompt used to test AI visibility"},
+      {col1:"Methodology",col2:"Unbranded category prompts",col3:"Brand-named probes are evidence only and excluded from scoring"},
     ],[42,35,CW-77]);
 if(data?.aiOptimization?.models?.length){
       secTitle("Model-Level Results");
@@ -2265,7 +2621,13 @@ if(data?.aiOptimization?.models?.length){
           col3:m.responseSnippet&&m.responseSnippet!=="{}"?cl(m.responseSnippet):"No response",
         })),[38,24,CW-62],4);
     }
-    const opportunity=data?.aiOptimization?data.aiOptimization.totalMentions===0?"The brand is not currently mentioned in AI recommendations. Build entity signals, trusted citations, FAQ content, and topical authority.":(aiConf==="low"?"Brand appeared in a limited AI model sample. Treat as directional. Expand prompts, entity signals, expert content, and third-party mentions to improve confidence.":"Brand is surfaced in at least one AI result. Expand coverage across more models and prompts."):"Data not available from AI Optimization API.";
+    const opportunity=data?.aiSearchVisibility
+      ? aiMent===0
+        ? "The brand was not mentioned across the scored unbranded category prompts. Improve entity signals, trusted citations, category content, and topical authority."
+        : aiConf.toLowerCase()==="low"
+          ? "The brand appeared in a limited valid model sample. Expand evidence and model coverage before treating the score as a stable benchmark."
+          : "The brand appeared in at least one unbranded category result. Expand prompt coverage and cited authority to improve consistency."
+      : "Canonical AI visibility data was not available.";
 hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
 
     if(data?.aiVisibility?.pageGeoReadiness){
@@ -2433,14 +2795,20 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
     secHdr(nextSec(),"Technical SEO Audit","OnPage crawl status, page-level issues, broken links, and crawl signals from Crawler Que OnPage API.");
     kpiRow([
       {label:"Pages Crawled",value:fmt(data?.onPage?.crawledPages),col:C.accent},
+      {label:"Crawl Confidence",value:cl(data?.onPage?.confidence??data?.reconciliation?.technical?.confidence,"Unknown"),col:data?.onPage?.confidence==="high"?C.green:C.amber},
       {label:"Broken Links",value:fmt(data?.onPage?.brokenLinks),col:n(data?.onPage?.brokenLinks)&&n(data.onPage.brokenLinks)!==null&&(n(data.onPage.brokenLinks)??0)>0?C.red:C.green},
       {label:"Missing Titles",value:fmt(data?.onPage?.missingTitle),col:(n(data?.onPage?.missingTitle)??0)>0?C.amber:C.green},
-      {label:"Missing Descriptions",value:fmt(data?.onPage?.missingDescription),col:(n(data?.onPage?.missingDescription)??0)>0?C.amber:C.green},
     ]);
+    if(data?.onPage?.limitation||data?.reconciliation?.technical?.limitation){
+      hiBox("Technical Coverage Limitation",cl(data?.onPage?.limitation??data?.reconciliation?.technical?.limitation),"amber");
+    }
     tbl(["Check","Result","Notes"],[
-      {col1:"Crawl Status",col2:cl(data?.onPage?.crawlStatus,"—"),col3:"Completed crawl preferred"},
-      {col1:"Pages Crawled",col2:fmt(data?.onPage?.crawledPages),col3:"More pages = deeper technical inspection"},
-      {col1:"Broken Links",col2:fmt(data?.onPage?.brokenLinks),col3:"All broken links should be fixed or redirected"},
+      {col1:"Crawl Status",col2:cl(data?.onPage?.crawlStatus,"—"),col3:"Final status from the saved OnPage task"},
+      {col1:"Confidence",col2:cl(data?.onPage?.confidence??data?.reconciliation?.technical?.confidence,"—"),col3:"Limited when the crawl times out or returns partial coverage"},
+      {col1:"Pages Discovered",col2:fmt(data?.onPage?.discoveredPages),col3:"Pages identified by the crawl"},
+      {col1:"Pages Crawled",col2:fmt(data?.onPage?.crawledPages),col3:"Pages with returned technical evidence"},
+      {col1:"Pages Remaining",col2:fmt(data?.onPage?.remainingPages),col3:"Unprocessed pages at finalization"},
+      {col1:"Broken Links",col2:fmt(data?.onPage?.brokenLinks),col3:"All evidenced broken links should be fixed or redirected"},
       {col1:"Missing Titles",col2:fmt(data?.onPage?.missingTitle),col3:"Every important page needs a unique title"},
       {col1:"Missing Descriptions",col2:fmt(data?.onPage?.missingDescription),col3:"Descriptions improve search CTR"},
       {col1:"Duplicate Titles",col2:fmt(data?.onPage?.duplicateTitle),col3:"Duplicate titles reduce topical clarity"},
@@ -2603,16 +2971,23 @@ tbl(["Priority","Focus","Timeline","Actions"],[
 
   doc.save(`Crawler-Que-Growth-Intelligence-${safeDomain}.pdf`);
 };
+const brandMentions = Number(
+  data?.aiSearchVisibility?.brandMentionCount ??
+    0
+);
+
+const competitorMentions = Number(
+  data?.aiSearchVisibility?.competitorMentionCount ??
+    0
+);
+
 const totalMentions =
-  (data?.aiVisibility?.totalMentions ?? 0) || 0;
+  brandMentions + competitorMentions;
 
-const brandMentions =
-  (data?.aiOptimization?.totalMentions ?? 0) || 0;
-
-const shareOfVoice =
-  totalMentions > 0
-    ? Math.round((brandMentions / totalMentions) * 100)
-    : 0;
+const shareOfVoice = Number(
+  data?.aiSearchVisibility?.shareOfVoice ??
+    0
+);
 
 const currentReportTypes =
   data?.reportTypes || selectedReportTypes || [];
@@ -2757,6 +3132,12 @@ const isLargeSiteWarning =
           {currentUser.role === "admin"
             ? "Admin access enabled."
             : `${currentUser.auditsRemaining ?? 0} remaining.`}
+          {Number(
+            currentUser?.auditsReserved ||
+              0
+          ) > 0
+            ? ` ${currentUser.auditsReserved} audit(s) currently processing.`
+            : ""}
         </p>
 
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#222]">
@@ -2890,7 +3271,9 @@ const isLargeSiteWarning =
 )}
 
   <button
-    onClick={runAudit}
+    onClick={() => {
+      void runAudit();
+    }}
     disabled={loading || !url || selectedReportTypes.length === 0}
     className="h-12 rounded-xl bg-[#C5FF3D] px-6 font-mono text-sm font-bold uppercase tracking-[0.12em] text-black shadow-sm transition hover:opacity-90 disabled:opacity-40"
   >
@@ -3056,6 +3439,12 @@ data?.renderReady !== true
         <p className="mt-1 text-sm text-[#8A8A8A]">
           {currentUser?.auditsUsed || 0} of {currentUser?.package?.monthlyAudits || 0} audits used this month.
           {currentUser?.role !== "admin" && ` ${currentUser?.auditsRemaining ?? 0} remaining.`}
+          {Number(
+            currentUser?.auditsReserved ||
+              0
+          ) > 0
+            ? ` ${currentUser.auditsReserved} audit(s) currently processing.`
+            : ""}
         </p>
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#222]">
           <div
@@ -3306,6 +3695,65 @@ const scoreChange =
     ? item.overallScore -
       previous.overallScore
     : null;
+
+if (
+  item.recordType ===
+  "attempt"
+) {
+  return (
+    <div
+      key={`attempt-${item.auditJobId}`}
+      className="rounded-2xl border border-red-400/20 bg-red-400/5 p-5"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="font-bold text-white">
+            {item.domain}
+          </p>
+
+          <p className="mt-1 text-xs text-[#8A8A8A]">
+            {item.createdAt}
+          </p>
+        </div>
+
+        <span className="rounded-full border border-red-300/20 bg-red-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-red-300">
+          {item.status}
+        </span>
+      </div>
+
+      <p className="mt-4 text-sm leading-6 text-[#CCCCCC]">
+        {item.userMessage ||
+          "The audit did not complete."}
+      </p>
+
+      <div className="mt-4 flex flex-wrap items-center gap-3 text-xs">
+        {item.traceId && (
+          <span className="rounded-lg border border-[#2A2A2A] bg-[#151515] px-3 py-2 font-mono text-[#A0A0A0]">
+            Reference: {item.traceId}
+          </span>
+        )}
+
+        {item.creditRestored && (
+          <span className="rounded-lg border border-emerald-300/20 bg-emerald-300/10 px-3 py-2 font-semibold text-emerald-300">
+            Audit credit restored
+          </span>
+        )}
+
+        <button
+          type="button"
+          onClick={() => {
+            retryAuditAttempt(
+              item
+            );
+          }}
+          className="rounded-lg bg-[#C5FF3D] px-4 py-2 font-semibold text-black hover:opacity-90"
+        >
+          Retry Audit
+        </button>
+      </div>
+    </div>
+  );
+}
 
           return (
             <div
@@ -3697,7 +4145,11 @@ value={
 <MetricCard label="Share of Voice" value={`${shareOfVoice}%`} score={shareOfVoice} />
 <MetricCard label="SEO" value={data.seoScore ?? "Data not available"} score={Number(data.seoScore || 0)} />
 <MetricCard label="UX" value={data.uxScore ?? "Data not available"} score={Number(data.uxScore || 0)} />
-<MetricCard label="AI" value={data.aiVisibility?.score ?? "Data not available"} score={Number(data.aiVisibility?.score || 0)} />
+<MetricCard
+  label="AI"
+  value={data?.aiSearchVisibility?.overallScore ?? "Data not available"}
+  score={Number(data?.aiSearchVisibility?.overallScore || 0)}
+/>
     </div>
 
         <Section title="Priority Issues">
@@ -3989,9 +4441,9 @@ value={
 )}
 {/* DOMAIN ANALYTICS */}
 {activeTab === "domainAnalytics" && (
-  <Section title="Domain Analytics">
+  <Section title="Domain Analytics — Provider Signals">
     <p className="mb-5 text-sm text-slate-500">
-      Powered by Crawler Que Domain Analytics. Shows organic and paid visibility signals for the domain.
+      Separate provider signals for context. These figures do not replace the canonical Traffic Intelligence estimate used in the overview, history, or PDF.
     </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-3">
@@ -4000,22 +4452,20 @@ value={
         value={data?.domainAnalytics?.organicKeywords ?? "Data not available"}
       />
 <MetricCard
-  label="Estimated Organic Traffic"
+  label="Organic Traffic Signal"
   value={
+    data?.domainAnalytics?.organicTrafficSignal != null ||
     data?.domainAnalytics?.organicTraffic != null
-      ? Math.round(Number(data.domainAnalytics.organicTraffic)).toLocaleString()
+      ? Math.round(
+          Number(
+            data?.domainAnalytics?.organicTrafficSignal ??
+              data?.domainAnalytics?.organicTraffic ??
+              0
+          )
+        ).toLocaleString()
       : "Data not available"
   }
-  score={
-    Number(data?.domainAnalytics?.organicTraffic || 0) > 10000
-      ? 85
-      : Number(data?.domainAnalytics?.organicTraffic || 0) > 1000
-      ? 65
-      : Number(data?.domainAnalytics?.organicTraffic || 0) > 100
-      ? 40
-      : 15
-  }
-  tooltip="Modeled estimate based on ranking keywords, clickstream data, and CTR calculations. Actual traffic may vary."
+  tooltip="Provider signal only. It is excluded from the canonical executive traffic estimate."
 />
       <MetricCard
         label="Organic Cost"
@@ -4050,7 +4500,7 @@ value={
     <div className="mb-6 grid gap-4 lg:grid-cols-2">
 <div className="rounded-2xl border border-[#222] bg-[#111] p-5">
         <h3 className="mb-4 font-semibold text-white">
-          Estimated Organic vs Paid Traffic
+          Provider Organic vs Paid Traffic Signals
         </h3>
 
         <div className="h-[280px] w-full min-w-0">
@@ -4059,7 +4509,13 @@ value={
               data={[
                 {
                   type: "Organic",
-                  traffic: Math.round(Number(data?.domainAnalytics?.organicTraffic || 0)),
+                  traffic: Math.round(
+                    Number(
+                      data?.domainAnalytics?.organicTrafficSignal ??
+                        data?.domainAnalytics?.organicTraffic ??
+                        0
+                    )
+                  ),
                 },
                 {
                   type: "Paid",
@@ -4414,11 +4870,18 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 <div className="mb-6 grid gap-4 md:grid-cols-3">
       <MetricCard
         label="Brand Mentions"
-        value={data?.aiOptimization?.totalMentions ?? "Data not available"}
+        value={
+          data?.aiSearchVisibility?.brandMentionCount ??
+          "Data not available"
+        }
       />
       <MetricCard
         label="Models Checked"
-        value={data?.aiOptimization?.totalModels ?? "Data not available"}
+        value={
+          Array.isArray(data?.aiSearchVisibility?.modelsCalled)
+            ? data.aiSearchVisibility.modelsCalled.length
+            : "Data not available"
+        }
       />
       <MetricCard
   label="Share of Voice"
@@ -4473,10 +4936,10 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 
 <div className="mb-6 rounded-2xl border border-[#222] bg-[#111] p-5">
       <p className="text-xs font-semibold uppercase tracking-wide text-[#8A8A8A]">
-        Prompt Tested
+        Scoring Methodology
       </p>
-      <p className="mt-2 text-sm text-white">
-        {data?.aiOptimization?.prompt || "Data not available"}
+      <p className="mt-2 text-sm leading-6 text-white">
+        Only unbranded category prompts are scored. Brand-named knowledge checks and branded custom prompts are evidence only.
       </p>
     </div>
 
@@ -4512,13 +4975,13 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
     <div className="mb-6 rounded-2xl border border-[#C5FF3D]/25 bg-[#0d1500] p-5">
       <h3 className="font-semibold text-slate-950">AI Opportunity Insight</h3>
       <p className="mt-2 text-sm leading-6 text-slate-700">
-        {data?.aiOptimization
-          ? data.aiOptimization.totalMentions === 0
-            ? "The brand is not currently being mentioned in AI recommendations for the tested prompt. This indicates an opportunity to build stronger entity signals, trusted mentions, and topical authority."
-            : (data?.aiVisibility?.confidence === "low" || data?.aiOptimization?.confidence === "low")
-  ? "The brand appeared in the limited AI model sample. Treat this as a directional signal, not complete market-wide AI visibility. Improve confidence by expanding prompts, models, entity signals, expert content, reviews, and trusted third-party mentions."
-  : "The brand is being surfaced in at least one AI result. There is still room to improve coverage across more models and prompts."
-          : "Data not available from AI Optimization API."}
+        {data?.aiSearchVisibility
+          ? Number(data.aiSearchVisibility.brandMentionCount || 0) === 0
+            ? "The brand was not mentioned across the scored unbranded category prompts. Build stronger entity signals, trusted citations, category content, and topical authority."
+            : data.aiSearchVisibility.confidence === "low"
+              ? "The brand appeared in a limited valid model sample. Treat this as directional until prompt and model response coverage improves."
+              : "The brand appeared in at least one unbranded category result. Expand coverage, citations, and consistency across prompts."
+          : "Canonical AI visibility data was not available."}
       </p>
     </div>
 
@@ -4551,7 +5014,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
       .slice(0, 700)
   : item.error && item.error !== "{}"
   ? item.error
-  : "Data not available from Crawler Que AI Optimization API."}
+  : "No canonical model response snippet was available."}
             </p>
           </div>
         ))

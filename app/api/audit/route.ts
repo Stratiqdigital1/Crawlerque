@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { withSecurityHeaders } from "@/lib/security-headers";
 import { prisma } from "@/lib/prisma";
@@ -14,6 +15,15 @@ import {
   getPromoAccessForSession,
   PROMO_REPORT_TYPES,
 } from "@/lib/promo-access";
+import {
+  commitAuditUsage,
+  failAuditAndRestoreCredit,
+  refundAuditUsage,
+} from "@/lib/audit-usage";
+import { reconcileAuditReport } from "@/lib/audit-reconciliation";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 async function updateAuditJob(
   jobId: string,
@@ -53,27 +63,79 @@ async function fetchHtml(url: string) {
       headers: {
         "User-Agent": "Mozilla/5.0 Website Audit Bot",
       },
+      redirect: "follow",
       cache: "no-store",
-      signal: AbortSignal.timeout(8000), // prevent hung audits
+      signal: AbortSignal.timeout(8000),
     });
 
-    if (!res.ok) return "";
-    return await res.text();
+    if (!res.ok) {
+      return {
+        html: "",
+        resolvedUrl: res.url || url,
+      };
+    }
+
+    return {
+      html: await res.text(),
+      resolvedUrl: res.url || url,
+    };
   } catch {
-    return "";
+    return {
+      html: "",
+      resolvedUrl: url,
+    };
   }
 }
 
+function getCanonicalUrl(html: string, resolvedUrl: string) {
+  const match =
+    html.match(/<link[^>]+rel=["'][^"']*canonical[^"']*["'][^>]+href=["']([^"']+)["']/i) ||
+    html.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["'][^"']*canonical[^"']*["']/i);
+
+  if (!match?.[1]) return resolvedUrl;
+
+  try {
+    return new URL(match[1], resolvedUrl).toString();
+  } catch {
+    return resolvedUrl;
+  }
+}
+
+function decodeHtmlEntities(value: string) {
+  return String(value || "")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&#(\d+);/g, (_match, code) =>
+      String.fromCodePoint(Number(code))
+    )
+    .replace(/&#x([0-9a-f]+);/gi, (_match, code) =>
+      String.fromCodePoint(parseInt(code, 16))
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function getTitle(html: string) {
-  return html.match(/<title[^>]*>(.*?)<\/title>/i)?.[1]?.trim() || "";
+  return decodeHtmlEntities(
+    html.match(/<title[^>]*>(.*?)<\/title>/i)?.[1] || ""
+  );
 }
 
 function getDescription(html: string) {
-  return (
+  return decodeHtmlEntities(
     html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)?.[1] ||
     html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i)?.[1] ||
     ""
-  ).trim();
+  );
+}
+
+function getFirstH1(html: string) {
+  const raw = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || "";
+  return decodeHtmlEntities(raw.replace(/<[^>]+>/g, " "));
 }
 
 function countMatches(html: string, regex: RegExp) {
@@ -231,8 +293,6 @@ export async function GET() {
 
 export async function POST(req: Request) {
   let auditJob: any = null;
-  let promoCreditReserved = false;
-  let reservedPromoAccessId: string | null = null;
 
   try {
     const body = await req.json();
@@ -342,7 +402,13 @@ if (user && user.auditsResetAt && !promoAccess) {
   }
 }
 
-if (!isFreeAudit && user && !promoAccess && !hasAuditLimit(user)) {
+if (
+  !incomingAuditJobId &&
+  !isFreeAudit &&
+  user &&
+  !promoAccess &&
+  !hasAuditLimit(user)
+) {
   return withSecurityHeaders(
     NextResponse.json(
       { success: false, error: "Monthly audit limit reached." },
@@ -369,6 +435,7 @@ const todayAuditCount =
     : 0;
 
 if (
+  !incomingAuditJobId &&
   !isFreeAudit &&
   user &&
   !promoAccess &&
@@ -446,6 +513,24 @@ if (promoAccess) {
 
 
 const inputUrl = body?.url || body?.domain;
+
+if (
+  !isFreeAudit &&
+  !incomingAuditJobId
+) {
+  return withSecurityHeaders(
+    NextResponse.json(
+      {
+        success: false,
+        error:
+          "Start an audit job before running a paid, trial, or promotional audit.",
+      },
+      {
+        status: 400,
+      }
+    )
+  );
+}
 
 if (!inputUrl) {
   return withSecurityHeaders(
@@ -625,23 +710,28 @@ if (incomingAuditJobId) {
     !sameReportTypes;
 
   if (identityMismatch) {
-    await updateAuditJob(auditJob.id, {
-      status: "failed",
-      progress: 100,
+    const userMessage =
+      "The audit request did not match the reserved job. Your audit credit was restored.";
+
+    await failAuditAndRestoreCredit({
+      jobId: auditJob.id,
+      failureCode:
+        "AUDIT_IDENTITY_MISMATCH",
+      internalError:
+        "The audit URL, domain, user, or selected modules did not match the original job.",
+      userMessage,
       currentModule:
         "Audit identity validation failed",
-      error:
-        "The audit URL, domain, user, or selected modules did not match the original job.",
-      failedAt: new Date(),
-      renderReady: false,
     });
 
     return withSecurityHeaders(
       NextResponse.json(
         {
           success: false,
-          error:
-            "Audit identity mismatch. Please start a new audit.",
+          error: userMessage,
+          traceId:
+            auditJob.traceId,
+          creditRestored: true,
         },
         {
           status: 409,
@@ -699,6 +789,9 @@ if (incomingAuditJobId) {
       technicalTaskId: null,
       renderReady: false,
       usageCounted: false,
+      traceId: `CQ-FREE-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString("hex").toUpperCase()}`,
+      usageSource: "free",
+      usageState: "not_required",
     },
   });
 }
@@ -720,11 +813,20 @@ const cachedAudit =
     : null;
 
 if (cachedAudit && user) {
-  const cachedReportData =
-    cachedAudit.reportData as Record<
-      string,
-      unknown
-    >;
+  await refundAuditUsage(
+    auditJob.id
+  );
+
+  const cachedReportData = reconcileAuditReport(
+    cachedAudit.reportData,
+    {
+      renderReady: true,
+      reportStatus: cachedAudit.status,
+      completedAt:
+        cachedAudit.completedAt?.toISOString() ||
+        cachedAudit.updatedAt.toISOString(),
+    }
+  );
 
   const cachedModuleStatus =
     cachedReportData?.moduleStatus &&
@@ -743,6 +845,9 @@ if (cachedAudit && user) {
     resultReportId: cachedAudit.id,
     resultData: cachedReportData,
     renderReady: true,
+    usageState: "refunded",
+    userMessage:
+      "A verified cached report was returned. Your audit credit was restored.",
   });
 
   try {
@@ -771,8 +876,11 @@ if (cachedAudit && user) {
       success: true,
       cached: true,
       auditJobId: auditJob.id,
+      traceId:
+        auditJob.traceId,
       reportId: cachedAudit.id,
       renderReady: true,
+      creditRestored: true,
       report: {
         ...cachedReportData,
         auditJobId: auditJob.id,
@@ -798,105 +906,16 @@ const runContent = !isFreeAudit && hasModule("content");
 const runLocal = !isFreeAudit && hasModule("localSeo");
 const runSERP = !isFreeAudit && (runSEO || runTechnical || runKeywordResearch);
 
-if (incomingAuditJobId) {
-  auditJob = await prisma.auditJob.findFirst({
-    where:
-      user?.role === "admin"
-        ? { id: incomingAuditJobId }
-        : {
-            id: incomingAuditJobId,
-            userId: user?.id || "",
-          },
-  });
-
-  if (!auditJob) {
-    return withSecurityHeaders(
-      NextResponse.json(
-        { success: false, error: "Audit job not found." },
-        { status: 404 }
-      )
-    );
-  }
-
-  await updateAuditJob(auditJob.id, {
-    status: "running",
-    progress: 5,
-    currentModule: "Initializing audit",
-    startedAt: new Date(),
-    moduleStatus: {},
-  });
-} else {
-  auditJob = await prisma.auditJob.create({
-    data: {
-      userId: user?.id || null,
-      domain,
-      url,
-      reportTypes,
-      status: "running",
-      progress: 5,
-      currentModule: "Initializing audit",
-      startedAt: new Date(),
-      moduleStatus: {},
-    },
-  });
-}
-
-if (
-  promoAccess &&
-  !isFreeAudit
-) {
-  const reservation =
-    await prisma.promoAccess.updateMany({
-      where: {
-        id: promoAccess.id,
-        status: "ACTIVE",
-        auditsUsed: {
-          lt: promoAccess.auditLimit,
-        },
-      },
-      data: {
-        auditsUsed: {
-          increment: 1,
-        },
-        lastUsedAt: new Date(),
-      },
-    });
-
-  if (reservation.count !== 1) {
-    await updateAuditJob(auditJob.id, {
-      status: "failed",
-      progress: 100,
-      currentModule: "Audit limit reached",
-      error:
-        "This promotional link has used all available audits.",
-      failedAt: new Date(),
-    });
-
-    return withSecurityHeaders(
-      NextResponse.json(
-        {
-          success: false,
-          error:
-            "This promotional link has used all available audits.",
-        },
-        {
-          status: 429,
-        }
-      )
-    );
-  }
-
-  promoCreditReserved = true;
-  reservedPromoAccessId =
-    promoAccess.id;
-}
-
 await updateAuditJob(auditJob.id, {
   progress: 15,
   currentModule: "Fetching website HTML",
 });
 
-    const html = await fetchHtml(url);
+    const htmlResult = await fetchHtml(url);
+    const html = htmlResult.html;
+    const resolvedUrl = htmlResult.resolvedUrl || url;
+    const canonicalUrl = getCanonicalUrl(html, resolvedUrl);
+    const auditTargetUrl = canonicalUrl || resolvedUrl || url;
     const title = getTitle(html);
     const description = getDescription(html);
 
@@ -916,6 +935,7 @@ await updateAuditJob(auditJob.id, {
       domain.replace(/\.(com|co|net|org|io|pk|us)$/i, "");
 
     const h1Count = countMatches(html, /<h1[\s>]/gi);
+    const h1 = getFirstH1(html);
     const imageCount = countMatches(html, /<img[\s>]/gi);
     const imagesWithAlt = countMatches(
       html,
@@ -950,15 +970,22 @@ const imagesMissingAlt = Math.max(0, imageCount - imagesWithAlt);
     const pageGeoScore = geoFactors.reduce((s, f) => s + (f.pass ? f.weight : 0), 0);
     const pageGeoGrade = pageGeoScore >= 75 ? "Strong" : pageGeoScore >= 45 ? "Moderate" : "Needs Work";
     const pageGeoTopIssue = geoFactors.filter((f) => !f.pass).sort((a, b) => b.weight - a.weight)[0]?.label || null;
-    const pageGeoReadiness = { url, score: pageGeoScore, grade: pageGeoGrade, topIssue: pageGeoTopIssue, wordCount: bodyWordCount, factors: geoFactors };
+    const pageGeoReadiness = {
+      url: auditTargetUrl,
+      score: pageGeoScore,
+      grade: pageGeoGrade,
+      topIssue: pageGeoTopIssue,
+      wordCount: bodyWordCount,
+      factors: geoFactors,
+    };
 
 await updateAuditJob(auditJob.id, {
   progress: 25,
   currentModule: "Running PageSpeed checks",
 });
 
-const mobileSpeed = await getPageSpeed(url, "mobile");
-const desktopSpeed = await getPageSpeed(url, "desktop");
+const mobileSpeed = await getPageSpeed(auditTargetUrl, "mobile");
+const desktopSpeed = await getPageSpeed(auditTargetUrl, "desktop");
 
     const tabletScore =
       mobileSpeed.score && desktopSpeed.score
@@ -1088,55 +1115,92 @@ try {
 }
 
     if (runAI) {
-
-await updateAuditJob(auditJob.id, {
-  progress: 60,
-  currentModule: "Running AI visibility analysis",
-});
-
-try {
-  const aiRes = await fetch(`${origin}/api/dataforseo/ai-optimization`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-          url,
-          industry: cleanSeedKeyword || title || description || domain,
-          customPrompts,
-        }),
-        cache: "no-store",
+      await updateAuditJob(auditJob.id, {
+        progress: 60,
+        currentModule: "Running AI visibility analysis",
       });
 
-const aiJson = await aiRes.json();
-      aiOptimization = aiJson?.aiOptimization || null;
-
-      // 🆕 LIVE AI MODELS — ChatGPT, Claude, Gemini (30s timeout; audit ko block nahi karta)
       try {
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 110000);
-        const realRes = await fetch(`${origin}/api/ai-visibility`, {
+        const categoryKeywords = (dataforseo?.topKeywords || [])
+          .filter((keyword: any) => keyword?.branded !== true)
+          .map((keyword: any) => String(keyword?.keyword || "").trim())
+          .filter(Boolean)
+          .slice(0, 8);
+
+        const detectedBrandName =
+          title
+            ?.split(/[|–—]/)[0]
+            ?.trim() ||
+          domain.split(".")[0].replace(/[-_]+/g, " ");
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 110000);
+
+        const aiResponse = await fetch(`${origin}/api/ai-visibility`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            url: auditTargetUrl,
             domain,
-            brandName: domain,
-            industry: cleanSeedKeyword || title || description || domain,
-            competitors: (dataforseo?.competitors || []).map((c: any) => c.domain),
+            brandName: detectedBrandName,
+            industry: dataforseo?.detectedNiche || "",
+            categoryKeywords,
+            country: locationName,
+            locationName,
+            competitors: (dataforseo?.competitors || []).map(
+              (competitor: any) => competitor.domain
+            ),
             customPrompts,
           }),
-          signal: ctrl.signal,
+          signal: controller.signal,
           cache: "no-store",
         });
-        clearTimeout(t);
-        aiSearchVisibility = (await realRes.json())?.aiSearchVisibility || null;
-      } catch {
-        aiSearchVisibility = null;
-      }
-    } catch (error) {
-  console.error("AI Optimization inside audit failed:", error);
 
-  moduleStatus.aiOptimization = "not_available";
-}
-}
+        clearTimeout(timeout);
+
+        const aiJson = await aiResponse.json();
+
+        if (!aiResponse.ok || !aiJson?.success) {
+          throw new Error(
+            aiJson?.error || "AI visibility analysis could not be completed."
+          );
+        }
+
+        aiSearchVisibility = aiJson?.aiSearchVisibility || null;
+
+        // Compatibility object only. It uses the same canonical v2 result and
+        // does not trigger the old duplicate AI Optimization request.
+        aiOptimization = aiSearchVisibility
+          ? {
+              canonical: true,
+              methodologyVersion:
+                aiSearchVisibility.methodologyVersion || "2.0",
+              visibilityScore: aiSearchVisibility.overallScore,
+              rawVisibilityScore: aiSearchVisibility.overallScore,
+              confidence: aiSearchVisibility.confidence,
+              scoreLabel: "Canonical AI Search Visibility",
+              totalMentions: aiSearchVisibility.brandMentionCount || 0,
+              totalModels: Array.isArray(aiSearchVisibility.modelsExpected)
+                ? aiSearchVisibility.modelsExpected.length
+                : 3,
+              validModelCount: Array.isArray(aiSearchVisibility.modelsCalled)
+                ? aiSearchVisibility.modelsCalled.length
+                : 0,
+              brandName: aiSearchVisibility.brand,
+              industry: aiSearchVisibility.industry,
+              aiCompetitors: aiSearchVisibility.topCompetitors || [],
+              competitors: aiSearchVisibility.topCompetitors || [],
+              promptResults: aiSearchVisibility.promptResults || [],
+            }
+          : null;
+      } catch (error) {
+        console.error("Canonical AI visibility inside audit failed:", error);
+        aiSearchVisibility = null;
+        aiOptimization = null;
+        moduleStatus.aiOptimization = "not_available";
+        moduleStatus.aiSearchVisibility = "not_available";
+      }
+    }
 
 if (runTechnical) {
   try {
@@ -1164,7 +1228,7 @@ if (runTechnical) {
             onPageHeaders,
 
           body: JSON.stringify({
-            url,
+            url: auditTargetUrl,
             maxCrawlPages: 100,
 
             auditJobId:
@@ -1210,6 +1274,8 @@ if (runTechnical) {
 
       crawledPages: 0,
 
+      pageLimit: 100,
+
       pages: [],
     };
 
@@ -1241,7 +1307,12 @@ try {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url, locationName, languageName }),
+          body: JSON.stringify({
+            url: auditTargetUrl,
+            locationName,
+            languageName,
+            locationCode,
+          }),
           cache: "no-store",
         }
       );
@@ -1395,11 +1466,15 @@ try {
       )
     );
 
-const aiVisibilityScore = aiOptimization?.visibilityScore ?? 0;
-const aiVisibilityRawScore = aiOptimization?.rawVisibilityScore ?? aiVisibilityScore;
-const aiVisibilityConfidence = aiOptimization?.confidence || "low";
-const aiVisibilityLabel =
-  aiOptimization?.scoreLabel || "Directional AI Visibility Signal";
+const aiVisibilityScore = Number(
+  aiSearchVisibility?.overallScore ?? 0
+);
+const aiVisibilityRawScore = aiVisibilityScore;
+const aiVisibilityConfidence =
+  aiSearchVisibility?.confidence || "low";
+const aiVisibilityLabel = aiSearchVisibility
+  ? "Canonical AI Search Visibility"
+  : "AI visibility unavailable";
 
 const dfsTraffic = Number(dataforseo?.organicTraffic || 0);
 
@@ -1413,8 +1488,9 @@ let organicTraffic: number | null =
 let trafficCapped = false;
 
 const organicKeywordCount = Number(
-  dataforseo?.organicKeywords ||
-    domainAnalytics?.organicKeywords ||
+  dataforseo?.rankedKeywordCount ||
+    dataforseo?.totalRankedKeywordsFetched ||
+    dataforseo?.organicKeywords ||
     0
 );
 
@@ -1669,7 +1745,7 @@ trafficSource,
       sourceCoverage: [
         dataforseo ? "DataForSEO Labs / Domain Data" : null,
         domainAnalytics ? "Domain Analytics" : null,
-        aiOptimization ? "AI Optimization" : null,
+        aiSearchVisibility ? "AI Visibility v2" : null,
         contentAnalysis ? "Content Analysis" : null,
         serpData ? "SERP" : null,
         onPage ? "OnPage" : null,
@@ -1723,23 +1799,28 @@ trafficSource,
     : dataforseo?.topKeywords || [],
 };
 
-const aiVisibility = {
-  score: aiVisibilityScore,
-  rawScore: aiVisibilityRawScore,
-  confidence: aiVisibilityConfidence,
-  label: aiVisibilityLabel,
-  totalMentions: aiOptimization?.totalMentions || 0,
-  totalModels: aiOptimization?.totalModels || 0,
-  validModelCount: aiOptimization?.validModelCount || 0,
-  brand: aiOptimization?.brandName || domain,
-  industry: aiOptimization?.industry || title || "",
-  competitors:
-    aiOptimization?.aiCompetitors ||
-    aiOptimization?.competitors ||
-    dataforseo?.competitors?.map((c: any) => c.domain) ||
-    [],
-  pageGeoReadiness,
-};
+const aiVisibility = aiSearchVisibility
+  ? {
+      score: aiVisibilityScore,
+      rawScore: aiVisibilityRawScore,
+      confidence: aiVisibilityConfidence,
+      label: aiVisibilityLabel,
+      totalMentions: aiSearchVisibility?.brandMentionCount || 0,
+      totalModels: Array.isArray(aiSearchVisibility?.modelsExpected)
+        ? aiSearchVisibility.modelsExpected.length
+        : 3,
+      validModelCount: Array.isArray(aiSearchVisibility?.modelsCalled)
+        ? aiSearchVisibility.modelsCalled.length
+        : 0,
+      shareOfVoice: aiSearchVisibility?.shareOfVoice || 0,
+      brand: aiSearchVisibility?.brand || domain,
+      industry: aiSearchVisibility?.industry || "",
+      competitors: aiSearchVisibility?.topCompetitors || [],
+      pageGeoReadiness,
+      canonical: true,
+      methodologyVersion: aiSearchVisibility?.methodologyVersion || "2.0",
+    }
+  : null;
 
 moduleStatus = {
   seo: runSEO ? "completed" : "skipped",
@@ -1839,7 +1920,7 @@ await updateAuditJob(auditJob.id, {
   moduleStatus,
 });
 
-const report = {
+const draftReport = {
   auditJobId: auditJob.id,
   inputHash,
   normalizedDomain: domain,
@@ -1847,11 +1928,23 @@ const report = {
 
   reportTypes,
   url,
+  submittedUrl: url,
+  resolvedUrl,
+  canonicalUrl,
   domain,
   moduleStatus,
       unifiedOverview,
       title,
       description,
+      h1,
+      h1Count,
+      imagesMissingAlt,
+      searchContext: {
+        country: locationName,
+        language: languageName,
+        locationCode,
+        device: body?.device || "mobile-and-desktop",
+      },
 
       overallScore,
       seoScore,
@@ -1874,6 +1967,9 @@ const report = {
       serpData,
       keywordResearch,
       domainAnalytics,
+      providerSignals: {
+        domainAnalytics,
+      },
       contentAnalysis,
 
       competitors: dataforseo?.competitors || [],
@@ -1906,170 +2002,176 @@ aiVisibility,
 
     };
 
-    let savedReport = null;
+    const waitingForTechnicalCrawl =
+      runTechnical &&
+      Boolean(onPage?.taskId) &&
+      onPage?.crawlStatus !==
+        "completed";
 
-    if (user && !isFreeAudit) {
-    try {
-      savedReport = await prisma.auditReport.create({
-data: {
-  userId: user.id,
-  domain: report?.domain || domain,
-  normalizedDomain: domain,
+    const completedWithLimitation =
+      !waitingForTechnicalCrawl &&
+      runTechnical &&
+      ["failed", "timed_out"].includes(
+        String(
+          moduleStatus?.technical ||
+            moduleStatus?.onPage ||
+            ""
+        )
+      );
 
-  auditJobId: auditJob.id,
-  inputHash,
-  status: "processing",
-  renderReady: false,
-  moduleStatus,
+    const finalJobStatus =
+      waitingForTechnicalCrawl
+        ? "processing_technical"
+        : completedWithLimitation
+          ? "completed_with_limitation"
+          : "completed";
 
-  reportTypes,
-  reportData: report,
+    const renderReady =
+      !waitingForTechnicalCrawl;
 
-          overallScore: Number(report?.overallScore || 0),
-          seoScore: Number(report?.seoScore || 0),
-          uxScore: Number(report?.uxScore || 0),
-          aiScore: Number(
-            report?.aiVisibility?.score ||
-              report?.aiOptimization?.visibilityScore ||
-              0
-          ),
+    const completedAt =
+      renderReady
+        ? new Date()
+        : null;
 
-estimatedTraffic: Number(
-            report?.traffic?.rawMonthly ||
-              report?.traffic?.monthly ||
-              0
-          ),
-
-          keywordCount: Number(
-            report?.traffic?.rankedKeywordCount ||
-              report?.dataforseo?.organicKeywords ||
-              0
-          ),
-        },
-      });
-       } catch (saveError) {
-      console.error("Audit report database save failed:", saveError);
-    }
-    }
-
-if (
-  user &&
-  !isFreeAudit &&
-  user.role !== "admin"
-) {
-  try {
-    if (promoAccess) {
-      await prisma.user.update({
-        where: {
-          id: user.id,
-        },
-        data: {
-          auditsUsed: {
-            increment: 1,
-          },
-        },
-      });
-
-      /*
-       * Promo usage was reserved before the
-       * expensive APIs ran. Mark it as consumed
-       * so the catch block does not release it.
-       */
-      promoCreditReserved = false;
-    } else {
-      await prisma.user.update({
-        where: {
-          id: user.id,
-        },
-        data:
-          user.stripeStatus ===
-          "trialing"
-            ? {
-                trialAuditsUsed: {
-                  increment: 1,
-                },
-              }
-            : {
-                auditsUsed: {
-                  increment: 1,
-                },
-              },
-      });
-    }
-  } catch (error) {
-    console.error(
-      "Audit usage increment failed:",
-      error
+    const report = reconcileAuditReport(
+      draftReport,
+      {
+        renderReady,
+        reportStatus: finalJobStatus,
+        completedAt:
+          completedAt?.toISOString() ||
+          null,
+      }
     );
 
-    /*
-     * The completed promotional audit still
-     * consumes its already-reserved credit even
-     * when the mirror User counter fails.
-     */
-    if (promoAccess) {
-      promoCreditReserved = false;
+    const reportForStorage = report;
+
+    let savedReport:
+      | {
+          id: string;
+        }
+      | null = null;
+
+    if (
+      user &&
+      !isFreeAudit
+    ) {
+      savedReport =
+        await prisma.auditReport.upsert({
+          where: {
+            auditJobId:
+              auditJob.id,
+          },
+          create: {
+            userId: user.id,
+            domain:
+              report?.domain ||
+              domain,
+            normalizedDomain:
+              domain,
+            auditJobId:
+              auditJob.id,
+            inputHash,
+            status:
+              finalJobStatus,
+            renderReady,
+            moduleStatus: report.moduleStatus,
+            completedAt,
+            reportTypes,
+            reportData:
+              reportForStorage,
+            overallScore:
+              report?.overallScore ?? null,
+            seoScore:
+              report?.seoScore ?? null,
+            uxScore:
+              report?.uxScore ?? null,
+            aiScore:
+              report?.aiScore ?? null,
+            estimatedTraffic:
+              report?.estimatedTraffic ?? null,
+            keywordCount:
+              report?.keywordCount ?? null,
+          },
+          update: {
+            domain:
+              report?.domain ||
+              domain,
+            normalizedDomain:
+              domain,
+            inputHash,
+            status:
+              finalJobStatus,
+            renderReady,
+            moduleStatus: report.moduleStatus,
+            completedAt,
+            reportTypes,
+            reportData:
+              reportForStorage,
+            overallScore:
+              report?.overallScore ?? null,
+            seoScore:
+              report?.seoScore ?? null,
+            uxScore:
+              report?.uxScore ?? null,
+            aiScore:
+              report?.aiScore ?? null,
+            estimatedTraffic:
+              report?.estimatedTraffic ?? null,
+            keywordCount:
+              report?.keywordCount ?? null,
+          },
+          select: {
+            id: true,
+          },
+        });
     }
-  }
-}
 
-if (auditJob?.id) {
-  const waitingForTechnicalCrawl =
-    runTechnical &&
-    Boolean(onPage?.taskId) &&
-    onPage?.crawlStatus !== "completed";
+    await updateAuditJob(
+      auditJob.id,
+      {
+        status:
+          finalJobStatus,
+        progress:
+          waitingForTechnicalCrawl
+            ? 92
+            : 100,
+        currentModule:
+          waitingForTechnicalCrawl
+            ? "Waiting for technical crawl"
+            : completedWithLimitation
+              ? "Completed with a technical limitation"
+              : "Completed",
+        moduleStatus: report.moduleStatus,
+        completedAt,
+        failedAt: null,
+        technicalTaskId:
+          onPage?.taskId ||
+          null,
+        resultReportId:
+          savedReport?.id ||
+          null,
+        resultData:
+          reportForStorage,
+        renderReady,
+        userMessage:
+          waitingForTechnicalCrawl
+            ? "The main audit is complete. The technical crawl is still being finalized."
+            : completedWithLimitation
+              ? "The audit is ready, but the technical crawl ended with a limitation."
+              : "Audit completed successfully.",
+      }
+    );
 
-  await updateAuditJob(auditJob.id, {
-    status: waitingForTechnicalCrawl
-      ? "running"
-      : "completed",
-
-    progress: waitingForTechnicalCrawl
-      ? 92
-      : 100,
-
-    currentModule:
-      waitingForTechnicalCrawl
-        ? "Waiting for technical crawl"
-        : "Completed",
-
-    completedAt:
-      waitingForTechnicalCrawl
-        ? null
-        : new Date(),
-
-    technicalTaskId:
-      onPage?.taskId || null,
-
-    resultReportId:
-      savedReport?.id || null,
-
-    resultData: report,
-
-    renderReady:
-      !waitingForTechnicalCrawl,
-  });
-
-  if (
-    savedReport?.id &&
-    !waitingForTechnicalCrawl
-  ) {
-    await prisma.auditReport.update({
-      where: {
-        id: savedReport.id,
-      },
-      data: {
-        status: "completed",
-        renderReady: true,
-        completedAt: new Date(),
-        reportData: {
-          ...report,
-          renderReady: true,
-        },
-      },
-    });
-  }
-}
+    if (
+      renderReady &&
+      !isFreeAudit
+    ) {
+      await commitAuditUsage(
+        auditJob.id
+      );
+    }
 
    // Log every successful audit for observability and usage tracking.
     try {
@@ -2088,12 +2190,20 @@ if (auditJob?.id) {
               ? "free"
               : "paid",
           reportTypes,
-          status: "success",
-          message: promoAccess
-            ? "Promotional full audit completed"
-            : isFreeAudit
-              ? "Free audit completed"
-              : "Paid audit completed",
+          status:
+            waitingForTechnicalCrawl
+              ? "processing"
+              : "success",
+          message:
+            waitingForTechnicalCrawl
+              ? "Audit saved while the technical crawl is still processing"
+              : completedWithLimitation
+                ? "Audit completed with a technical limitation"
+                : promoAccess
+                  ? "Promotional full audit completed"
+                  : isFreeAudit
+                    ? "Free audit completed"
+                    : "Paid audit completed",
         },
       });
     } catch (logError) {
@@ -2101,17 +2211,26 @@ if (auditJob?.id) {
       console.error("AuditLog write failed:", logError);
     }
 
-const renderReady =
-  !runTechnical ||
-  !onPage?.taskId ||
-  onPage?.crawlStatus === "completed";
-
 return withSecurityHeaders(
   NextResponse.json({
     success: true,
-    auditJobId: auditJob?.id || null,
-    reportId: savedReport?.id || null,
+    auditJobId:
+      auditJob?.id || null,
+    traceId:
+      auditJob?.traceId ||
+      null,
+    reportId:
+      savedReport?.id ||
+      null,
     renderReady,
+    usageState:
+      renderReady
+        ? isFreeAudit
+          ? "not_required"
+          : "committed"
+        : auditJob
+            ?.usageState ||
+          "reserved",
     report: {
       ...report,
       auditJobId: auditJob?.id || null,
@@ -2121,59 +2240,89 @@ return withSecurityHeaders(
   })
 );
 } catch (error) {
-  console.error("Audit API failed:", error);
+  console.error(
+    "Audit API failed:",
+    error
+  );
 
-  if (
-    promoCreditReserved &&
-    reservedPromoAccessId
-  ) {
+  const internalError =
+    error instanceof Error
+      ? error.message
+      : typeof error ===
+          "string"
+        ? error
+        : "Unknown audit failure";
+
+  const traceId =
+    auditJob?.traceId ||
+    `CQ-UNTRACKED-${Date.now()
+      .toString(36)
+      .toUpperCase()}`;
+
+  const hadReservedCredit =
+    auditJob?.usageState ===
+    "reserved";
+
+  const userMessage =
+    hadReservedCredit
+      ? `Audit could not be completed. Your audit credit was restored. Reference: ${traceId}`
+      : `Audit could not be completed. Reference: ${traceId}`;
+
+  if (auditJob?.id) {
     try {
-      await prisma.promoAccess.updateMany({
+      await failAuditAndRestoreCredit({
+        jobId:
+          auditJob.id,
+        failureCode:
+          "AUDIT_EXECUTION_FAILED",
+        internalError,
+        userMessage,
+        currentModule:
+          "Audit failed",
+      });
+
+      await prisma.auditReport.updateMany({
         where: {
-          id: reservedPromoAccessId,
-          auditsUsed: {
-            gt: 0,
-          },
+          auditJobId:
+            auditJob.id,
         },
         data: {
-          auditsUsed: {
-            decrement: 1,
+          status:
+            "failed",
+          renderReady:
+            false,
+          completedAt:
+            null,
+          moduleStatus: {
+            failed:
+              true,
           },
         },
       });
-    } catch (releaseError) {
+    } catch (
+      finalizationError
+    ) {
       console.error(
-        "Promo audit credit release failed:",
-        releaseError
+        "Audit failure finalization failed:",
+        finalizationError
       );
     }
-  }
-
-  const errorMessage =
-    error instanceof Error
-      ? error.message
-      : typeof error === "string"
-      ? error
-      : "Audit API failed. Please try again.";
-
-  if (auditJob?.id) {
-    await updateAuditJob(auditJob.id, {
-      status: "failed",
-      progress: 100,
-      currentModule: "Failed",
-      error: errorMessage,
-      failedAt: new Date(),
-    });
   }
 
   return withSecurityHeaders(
     NextResponse.json(
       {
         success: false,
-        error: errorMessage,
+        error:
+          userMessage,
+        traceId,
+        creditRestored:
+          hadReservedCredit,
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     )
   );
-  }
+}
 }

@@ -1,127 +1,313 @@
-// lib/ai-visibility-parser.ts  (V2 — adds citation detection + brand-knowledge)
 export interface ParsedResponse {
   promptText: string;
   model: string;
+  responseAvailable: boolean;
   brandMentioned: boolean;
   brandPosition: number | null;
   sentiment: "positive" | "neutral" | "negative" | null;
   competitorsMentioned: string[];
   sourcesCited: string[];
-  brandCitations: string[]; // brand's own URLs/domain found in the AI answer
+  brandCitations: string[];
   rawSnippet: string;
 }
 
-const STOP_WORDS = new Set([
-  "the","a","an","best","top","this","that","these","those","it","its","however","overall",
-  "for","with","and","or","but","you","your","they","their","what","which","when","where","why",
-  "how","here","there","small","businesses","business","companies","company","startups","teams",
-  "free","plan","plans","we","our","us","one","two","three","also","some","many","most","more",
-  "less","good","great","popular","options","pros","cons","note","tip","key","gps","while","known",
+const GENERIC_WORDS = new Set([
+  "the", "a", "an", "and", "or", "but", "for", "with", "from", "into",
+  "best", "top", "leading", "popular", "recommended", "trusted", "quality",
+  "company", "companies", "business", "businesses", "provider", "providers",
+  "service", "services", "solution", "solutions", "platform", "platforms",
+  "option", "options", "alternative", "alternatives", "competitor", "competitors",
+  "use", "using", "used", "keep", "keeping", "maintain", "maintaining",
+  "invest", "investing", "trim", "trimming", "choose", "choosing", "consider",
+  "include", "including", "offer", "offers", "offering", "provides", "provide",
+  "recommend", "recommends", "select", "selecting", "build", "building", "improve", "improving",
+  "here", "are", "what", "which", "who", "where", "when", "why", "how",
+  "these", "those", "this", "that", "they", "their", "your", "you",
+  "overall", "however", "while", "known", "note", "tip", "key", "review",
+  "reviews", "pricing", "price", "features", "feature", "pros", "cons",
 ]);
-const IGNORE_BRANDS = ["google","youtube","facebook","wikipedia","reddit","amazon","gmail","linkedin"];
 
-function brandVariations(brandName: string): string[] {
-  const b = String(brandName || "").toLowerCase().trim();
+const IGNORED_DOMAINS = [
+  "google.com", "youtube.com", "facebook.com", "wikipedia.org", "reddit.com",
+  "amazon.com", "linkedin.com", "instagram.com", "x.com", "twitter.com",
+  "tiktok.com", "pinterest.com",
+];
+
+const POSITIVE_WORDS = [
+  "best", "leading", "excellent", "great", "recommended", "trusted", "reliable",
+  "strong", "ideal", "robust", "affordable", "quality", "valuable", "well-known",
+];
+
+const NEGATIVE_WORDS = [
+  "worst", "poor", "weak", "expensive", "limited", "outdated", "difficult",
+  "unreliable", "buggy", "slow", "avoid", "drawback", "downside", "lacking",
+];
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeText(value: string) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9.\s-]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function normalizeDomain(value: string) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .split(/[/?#]/)[0]
+    .replace(/\.$/, "");
+}
+
+function brandVariations(brandName: string, domain = "") {
+  const cleanBrand = normalizeText(brandName);
+  const cleanDomain = normalizeDomain(domain);
+  const rootDomain = cleanDomain.split(".")[0] || "";
+
   return Array.from(new Set([
-    b, b.replace(/\s+/g,""), b.replace(/-/g," "), b.replace(/\s+/g,"-"),
-    b.replace(/\.(com|net|org|io|co|ai|us|pk)$/i,""),
-  ].filter(Boolean)));
+    cleanBrand,
+    cleanBrand.replace(/\s+/g, ""),
+    cleanBrand.replace(/\s+/g, "-"),
+    cleanBrand.replace(/-/g, " "),
+    cleanDomain,
+    rootDomain,
+    rootDomain.replace(/-/g, " "),
+    rootDomain.replace(/-/g, ""),
+  ].filter((value) => value.length >= 3)));
 }
-function brandTokens(brandName: string): string[] {
-  return String(brandName || "").toLowerCase().split(/[\s.-]+/).filter((t) => t.length >= 4);
+
+function containsBrand(text: string, brandName: string, domain = "") {
+  const normalized = normalizeText(text);
+  return brandVariations(brandName, domain).some((variation) => {
+    if (variation.includes(".")) {
+      return normalized.includes(variation);
+    }
+
+    const pattern = new RegExp(`\\b${escapeRegExp(variation)}\\b`, "i");
+    return pattern.test(normalized);
+  });
 }
-function splitSentences(text: string): string[] {
-  return String(text||"").replace(/\n+/g," ").split(/(?<=[.!?])\s+/).map((s)=>s.trim()).filter(Boolean);
+
+function splitSentences(text: string) {
+  return String(text || "")
+    .replace(/\n+/g, " ")
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
 }
-function escapeRe(s: string) { return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
+
+function isGenericCandidate(value: string) {
+  const normalized = normalizeText(value);
+  if (!normalized || normalized.length < 3 || normalized.length > 60) return true;
+
+  const words = normalized.split(" ").filter(Boolean);
+  if (words.length > 5) return true;
+  if (words.every((word) => GENERIC_WORDS.has(word))) return true;
+  if (words.length === 1 && GENERIC_WORDS.has(words[0])) return true;
+  if (/^(yes|no|none|unknown|various|several|other)$/i.test(normalized)) return true;
+
+  return false;
+}
 
 export function extractBrandLikeNames(text: string): string[] {
   const found = new Set<string>();
-  const t = String(text||"");
-  (t.match(/\b([a-z0-9-]+\.(com|net|org|io|co|ai|us|pk))\b/gi)||[]).forEach((d)=>found.add(d.toLowerCase()));
-const NOISE = new Set(["amoled","oled","excellent","wear os","gps","wear","display","battery","wireless","bluetooth","premium","budget","amazing","awesome","quality","known","while","series"]);
-  (t.match(/\b([A-Z][a-zA-Z0-9]+(?:\s[A-Z][a-zA-Z0-9]+){0,2})\b/g)||[]).forEach((w)=>{
-    const lw = w.toLowerCase();
-    const allCaps = /^[A-Z0-9]+$/.test(w); // AMOLED, GPS, OLED
-    if (!STOP_WORDS.has(lw) && !NOISE.has(lw) && !allCaps && w.length > 2) found.add(w.trim());
+  const raw = String(text || "");
+
+  const domains = raw.match(/\b(?:https?:\/\/)?(?:www\.)?([a-z0-9-]+\.(?:com|net|org|io|co|ai|us|pk|uk|ca|ae|au|in))\b/gi) || [];
+  domains.forEach((domain) => {
+    const normalized = normalizeDomain(domain);
+    if (normalized && !IGNORED_DOMAINS.some((ignored) => normalized.endsWith(ignored))) {
+      found.add(normalized);
+    }
   });
+
+  const capitalized = raw.match(/\b([A-Z][A-Za-z0-9&'’-]+(?:\s+[A-Z][A-Za-z0-9&'’-]+){0,3})\b/g) || [];
+  capitalized.forEach((candidate) => {
+    const cleaned = candidate.trim().replace(/[,:;.!?]+$/, "");
+    if (!isGenericCandidate(cleaned)) found.add(cleaned);
+  });
+
   return Array.from(found);
 }
 
-export function detectBrand(response: string, brandName: string) {
-  const lower = String(response||"").toLowerCase();
-  const variations = brandVariations(brandName);
-  const tokens = brandTokens(brandName);
-  const mentioned = variations.some((v)=>v&&lower.includes(v)) ||
-    (tokens.length>0 && tokens.every((t)=>lower.includes(t)));
-  if (!mentioned) return { mentioned:false, position:null as number|null, snippet:null as string|null };
-  let brandIndex = Infinity;
-  for (const v of [...variations, ...tokens]) { const i = lower.indexOf(v); if (i>=0 && i<brandIndex) brandIndex=i; }
-  const namesBefore = extractBrandLikeNames(response.slice(0, brandIndex===Infinity?0:brandIndex));
-  const sentences = splitSentences(response);
-  const snippet = sentences.find((s)=> variations.some((v)=>v&&s.toLowerCase().includes(v)) ||
-    (tokens.length>0 && tokens.every((t)=>s.toLowerCase().includes(t)))) || null;
-  return { mentioned:true, position: namesBefore.length+1, snippet };
+export function detectBrand(response: string, brandName: string, domain = "") {
+  const raw = String(response || "");
+  if (!containsBrand(raw, brandName, domain)) {
+    return {
+      mentioned: false,
+      position: null as number | null,
+      snippet: null as string | null,
+    };
+  }
+
+  const normalizedResponse = normalizeText(raw);
+  const variations = brandVariations(brandName, domain);
+  let firstIndex = Number.POSITIVE_INFINITY;
+
+  variations.forEach((variation) => {
+    const index = normalizedResponse.indexOf(variation);
+    if (index >= 0) firstIndex = Math.min(firstIndex, index);
+  });
+
+  const beforeBrand = Number.isFinite(firstIndex)
+    ? raw.slice(0, firstIndex)
+    : "";
+
+  const distinctNamesBefore = extractBrandLikeNames(beforeBrand)
+    .filter((name) => !containsBrand(name, brandName, domain));
+
+  // The product displays rank on a 1-5 scale. Anything beyond fifth place is
+  // treated as position five rather than creating impossible values such as 13.2/5.
+  const position = Math.min(5, Math.max(1, distinctNamesBefore.length + 1));
+
+  const snippet = splitSentences(raw).find((sentence) =>
+    containsBrand(sentence, brandName, domain)
+  ) || null;
+
+  return { mentioned: true, position, snippet };
 }
 
-// Brand's OWN urls/domain cited in the AI answer (the "which page" signal).
 export function extractBrandCitations(response: string, domain: string): string[] {
-  const out = new Set<string>();
-  const d = String(domain||"").toLowerCase().replace(/^www\./,"");
-  if (!d) return [];
-  (response.match(/https?:\/\/[^\s)]+/gi)||[]).forEach((u)=>{ if (u.toLowerCase().includes(d)) out.add(u.replace(/[).,]+$/,"")); });
-  const re = new RegExp(`\\b(?:www\\.)?${escapeRe(d)}(?:/[\\w\\-/]*)?`, "gi");
-  (response.match(re)||[]).forEach((m)=>out.add(m.replace(/[).,]+$/,"")));
-  return Array.from(out).slice(0,5);
+  const normalizedDomain = normalizeDomain(domain);
+  if (!normalizedDomain) return [];
+
+  const output = new Set<string>();
+  const raw = String(response || "");
+
+  const urls = raw.match(/https?:\/\/[^\s)\]}>,]+/gi) || [];
+  urls.forEach((url) => {
+    if (normalizeDomain(url).endsWith(normalizedDomain)) {
+      output.add(url.replace(/[).,;]+$/, ""));
+    }
+  });
+
+  const domainPattern = new RegExp(
+    `\\b(?:www\\.)?${escapeRegExp(normalizedDomain)}(?:/[\\w%./?=&-]*)?`,
+    "gi"
+  );
+
+  const bareMatches = raw.match(domainPattern) || [];
+  bareMatches.forEach((match) => output.add(match.replace(/[).,;]+$/, "")));
+
+  return Array.from(output).slice(0, 5);
 }
 
-// Does the AI actually KNOW this brand (vs disclaim)?
 export function knowsBrand(response: string, brandName: string, domain: string): boolean {
-  const r = String(response||"").toLowerCase();
-  if (r.length < 50) return false;
-  const disclaimers = ["i couldn't find","i could not find","i don't have","i do not have",
-    "not aware of","no information","unable to find","i'm not familiar","i am not familiar",
-    "doesn't appear to be","does not appear","i cannot find","no specific information","i'm unable"];
-  const mentioned = brandVariations(brandName).some((v)=>v&&r.includes(v)) || r.includes(domain.toLowerCase());
-  const disclaimed = disclaimers.some((d)=>r.includes(d));
-  return mentioned && !disclaimed;
+  const raw = String(response || "");
+  const normalized = normalizeText(raw);
+  if (normalized.length < 50) return false;
+
+  const disclaimers = [
+    "i could not find", "i couldn't find", "i do not have", "i don't have",
+    "not aware of", "no information", "unable to find", "not familiar",
+    "does not appear", "doesn't appear", "cannot find", "no specific information",
+  ];
+
+  return containsBrand(raw, brandName, domain) &&
+    !disclaimers.some((disclaimer) => normalized.includes(disclaimer));
 }
 
-export function extractCompetitors(response: string, brandName: string, knownCompetitors: string[]=[]): string[] {
-  const out = new Set<string>();
-  const brandVars = brandVariations(brandName);
-  const tokens = brandTokens(brandName);
-  const isBrand = (s:string)=>{ const ls=s.toLowerCase(); return brandVars.some((v)=>v&&ls.includes(v))||tokens.some((t)=>ls.includes(t)); };
-  const lowerResp = String(response||"").toLowerCase();
-  knownCompetitors.forEach((c)=>{ if (c && lowerResp.includes(String(c).toLowerCase()) && !isBrand(c)) out.add(String(c)); });
-  extractBrandLikeNames(response).forEach((n)=>{ const ln=n.toLowerCase(); if (!isBrand(n) && !IGNORE_BRANDS.some((g)=>ln.includes(g)) && n.length>2) out.add(n); });
-  return Array.from(out).slice(0,15);
+function normalizeKnownCompetitor(value: string) {
+  const domain = normalizeDomain(value);
+  if (domain.includes(".")) return domain;
+  return String(value || "").trim();
+}
+
+export function extractCompetitors(
+  response: string,
+  brandName: string,
+  knownCompetitors: string[] = [],
+  domain = ""
+): string[] {
+  const raw = String(response || "");
+  const normalizedResponse = normalizeText(raw);
+  const output = new Map<string, string>();
+
+  const addCandidate = (candidate: string) => {
+    const normalizedCandidate = normalizeKnownCompetitor(candidate);
+    const key = normalizeText(normalizedCandidate);
+
+    if (!key || isGenericCandidate(normalizedCandidate)) return;
+    if (containsBrand(normalizedCandidate, brandName, domain)) return;
+    if (IGNORED_DOMAINS.some((ignored) => normalizeDomain(normalizedCandidate).endsWith(ignored))) return;
+
+    output.set(key, normalizedCandidate);
+  };
+
+  knownCompetitors.forEach((competitor) => {
+    const normalizedCompetitor = normalizeKnownCompetitor(competitor);
+    const root = normalizeDomain(normalizedCompetitor).split(".")[0];
+    const candidateText = normalizeText(normalizedCompetitor);
+
+    if (
+      candidateText &&
+      (normalizedResponse.includes(candidateText) || (root.length >= 4 && normalizedResponse.includes(root)))
+    ) {
+      addCandidate(normalizedCompetitor);
+    }
+  });
+
+  extractBrandLikeNames(raw).forEach(addCandidate);
+
+  return Array.from(output.values()).slice(0, 12);
 }
 
 export function extractSources(response: string): string[] {
-  const urls = String(response||"").match(/https?:\/\/[^\s)]+/g)||[];
-  const domains = String(response||"").match(/\b([a-z0-9-]+\.(com|net|org|io|co|ai|gov|edu|pk))\b/gi)||[];
-  return Array.from(new Set([...urls, ...domains.map((d)=>d.toLowerCase())])).slice(0,10);
+  const raw = String(response || "");
+  const output = new Set<string>();
+
+  const urls = raw.match(/https?:\/\/[^\s)\]}>,]+/gi) || [];
+  urls.forEach((url) => output.add(url.replace(/[).,;]+$/, "")));
+
+  const domains = raw.match(/\b(?:www\.)?[a-z0-9-]+\.(?:com|net|org|io|co|ai|gov|edu|pk|uk|ca|ae|au|in)\b/gi) || [];
+  domains.forEach((domain) => output.add(normalizeDomain(domain)));
+
+  return Array.from(output).slice(0, 10);
 }
 
-const POSITIVE=["best","leading","top","excellent","great","popular","recommended","trusted","powerful","reliable","strong","favorite","ideal","robust","affordable","versatile","quality","value"];
-const NEGATIVE=["worst","poor","weak","expensive","limited","lacking","outdated","difficult","unreliable","buggy","slow","avoid","drawback","downside"];
-export function detectSentiment(snippet: string|null): "positive"|"neutral"|"negative"|null {
-  if (!snippet) return null; const s=snippet.toLowerCase(); let sc=0;
-  POSITIVE.forEach((w)=>{ if (s.includes(w)) sc++; }); NEGATIVE.forEach((w)=>{ if (s.includes(w)) sc--; });
-  return sc>0?"positive":sc<0?"negative":"neutral";
+export function detectSentiment(snippet: string | null): "positive" | "neutral" | "negative" | null {
+  if (!snippet) return null;
+
+  const normalized = normalizeText(snippet);
+  let score = 0;
+
+  POSITIVE_WORDS.forEach((word) => {
+    if (normalized.includes(word)) score += 1;
+  });
+
+  NEGATIVE_WORDS.forEach((word) => {
+    if (normalized.includes(word)) score -= 1;
+  });
+
+  return score > 0 ? "positive" : score < 0 ? "negative" : "neutral";
 }
 
-export function parseResponse(rawResponse: string, promptText: string, model: string, brandName: string, domain: string, knownCompetitors: string[]=[]): ParsedResponse {
-  const { mentioned, position, snippet } = detectBrand(rawResponse, brandName);
+export function parseResponse(
+  rawResponse: string,
+  promptText: string,
+  model: string,
+  brandName: string,
+  domain: string,
+  knownCompetitors: string[] = []
+): ParsedResponse {
+  const responseAvailable = String(rawResponse || "").trim().length >= 20;
+  const { mentioned, position, snippet } = responseAvailable
+    ? detectBrand(rawResponse, brandName, domain)
+    : { mentioned: false, position: null, snippet: null };
+
   return {
-    promptText, model,
+    promptText,
+    model,
+    responseAvailable,
     brandMentioned: mentioned,
     brandPosition: position,
     sentiment: mentioned ? detectSentiment(snippet) : null,
-    competitorsMentioned: extractCompetitors(rawResponse, brandName, knownCompetitors),
-    sourcesCited: extractSources(rawResponse),
-    brandCitations: extractBrandCitations(rawResponse, domain),
+    competitorsMentioned: responseAvailable
+      ? extractCompetitors(rawResponse, brandName, knownCompetitors, domain)
+      : [],
+    sourcesCited: responseAvailable ? extractSources(rawResponse) : [],
+    brandCitations: responseAvailable ? extractBrandCitations(rawResponse, domain) : [],
     rawSnippet: snippet || "",
   };
 }

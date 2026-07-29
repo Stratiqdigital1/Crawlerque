@@ -76,18 +76,14 @@ function getKeywordIntent(keyword: string) {
   return "general";
 }
 
-function getRecommendedPageType(keyword: string, intent: string) {
+function getRecommendedPageType(
+  keyword: string,
+  intent: string,
+  niche = "general"
+) {
   const value = String(keyword || "").toLowerCase();
 
   if (/vs|versus|comparison|alternative|alternatives/.test(value)) {
-    return "Comparison Page";
-  }
-
-  if (intent === "commercial") {
-    return "Service / Landing Page";
-  }
-
-  if (intent === "comparison") {
     return "Comparison Page";
   }
 
@@ -95,7 +91,45 @@ function getRecommendedPageType(keyword: string, intent: string) {
     return "Blog / Guide";
   }
 
-  return "Supporting Content";
+  if (intent === "commercial") {
+    if (niche === "ecommerce") {
+      return /buy|price|shop|product/.test(value)
+        ? "Product / Collection Page"
+        : "Category Page";
+    }
+
+    if (niche === "saas") {
+      return /software|platform|app|tool|solution/.test(value)
+        ? "Feature / Solution Page"
+        : "Commercial Landing Page";
+    }
+
+    if (niche === "real_estate") {
+      return /near me|city|area|location|property/.test(value)
+        ? "Location / Property Page"
+        : "Service Page";
+    }
+
+    if (["local_service", "legal", "healthcare"].includes(niche)) {
+      return /near me|city|area|location/.test(value)
+        ? "Service Location Page"
+        : "Service Page";
+    }
+
+    if (niche === "restaurant") {
+      return /menu|delivery|order|near me/.test(value)
+        ? "Menu / Location Page"
+        : "Category Page";
+    }
+
+    return "Commercial Landing Page";
+  }
+
+  if (intent === "comparison") {
+    return "Comparison Page";
+  }
+
+  return niche === "ecommerce" ? "Category Content" : "Supporting Content";
 }
 
 function getOpportunityAction(score: number, pageType: string) {
@@ -506,8 +540,9 @@ const getKeywordCTRVisits = (k: any) => {
   return Math.round(searchVolume * getCTR(position));
 };
 
-// SINGLE SOURCE OF TRUTH — CTR curve traffic model.
-// Traffic = keyword search volume × CTR(position). No ETV blending.
+// SINGLE SOURCE OF TRUTH — Traffic Intelligence.
+// Use keyword-level clickstream ETV when returned; otherwise fall back to
+// search volume × CTR(position). Domain Analytics is never blended into this.
 const trafficEligibleKeywords = topKeywords.filter((k: any) => {
   const searchVolume = Number(k.volume || k.search_volume || 0);
   return searchVolume >= 10;
@@ -516,21 +551,27 @@ const trafficEligibleKeywords = topKeywords.filter((k: any) => {
 const filteredKeywordCount =
   topKeywords.length - trafficEligibleKeywords.length;
 
-let trafficConfidence =
+const trafficConfidence =
   topKeywords.length < 50
     ? "insufficient-data"
     : topKeywords.length <= 500
-    ? "low"
-    : topKeywords.length <= 2000
-    ? "moderate"
-    : "high";
+      ? "low"
+      : topKeywords.length <= 2000
+        ? "moderate"
+        : "high";
 
-let organicTraffic: number | null =
+const organicTraffic: number | null =
   trafficConfidence === "insufficient-data"
     ? null
-    : trafficEligibleKeywords.reduce((sum: number, k: any) => {
-        return sum + getKeywordCTRVisits(k);
-      }, 0);
+    : trafficEligibleKeywords.reduce(
+        (sum: number, keyword: any) => {
+          return (
+            sum +
+            getKeywordCTRVisits(keyword)
+          );
+        },
+        0
+      );
 
 const organicTrafficRaw = organicTraffic;
 
@@ -977,6 +1018,37 @@ topCompetitors = Array.from(
       .filter(Boolean)
       .slice(0, 3);
 
+    const competitorBrandTokens: string[] = Array.from(
+      new Set<string>(
+        competitorDomains.flatMap((competitorDomain: string) => {
+          const root = String(competitorDomain || "")
+            .toLowerCase()
+            .replace(/^www\./, "")
+            .split(".")[0]
+            .replace(/[^a-z0-9-]/g, "");
+
+          return [
+            root,
+            root.replace(/-/g, " "),
+            root.replace(/-/g, ""),
+          ].filter((token) => token.length >= 4);
+        })
+      )
+    );
+
+    const isCompetitorBrandedKeyword = (keyword: string) => {
+      const normalizedKeyword = String(keyword || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      return competitorBrandTokens.some((token) => {
+        const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return new RegExp(`\\b${escaped}\\b`, "i").test(normalizedKeyword);
+      });
+    };
+
     const competitorKeywordTasks = competitorDomains.map((competitorDomain: string) => ({
   target: competitorDomain,
   location_code: effectiveLocationCode,
@@ -1103,7 +1175,11 @@ const missingKeywords = Array.from(competitorKeywordMap.values())
   .map((k: any) => {
     const intent = getKeywordIntent(k.keyword);
     const opportunityScore = calculateKeywordOpportunityScore(k);
-    const recommendedPageType = getRecommendedPageType(k.keyword, intent);
+    const recommendedPageType = getRecommendedPageType(
+      k.keyword,
+      intent,
+      detectedNiche
+    );
 
     return {
       ...k,
@@ -1123,6 +1199,10 @@ const missingKeywords = Array.from(competitorKeywordMap.values())
     const keyword = String(k.keyword || "").toLowerCase().trim();
 
     if (keyword.length < 4) return false;
+
+    // Standard opportunity mode excludes competitor-branded demand. Those
+    // terms can be surfaced later in a separately labelled Conquest Mode.
+    if (isCompetitorBrandedKeyword(keyword)) return false;
 
     const isBadKeyword = badKeywordPatterns.some((pattern) =>
       pattern.test(keyword)
@@ -1238,6 +1318,9 @@ const keywordGap = {
   keywordClusters,
   contentIdeas,
   quality: keywordGapQuality,
+  mode: "standard-non-branded",
+  competitorBrandTermsExcluded: competitorBrandTokens,
+  conquestModeAvailable: false,
 };
 
     const backlinksData = {

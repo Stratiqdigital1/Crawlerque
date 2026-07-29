@@ -8,6 +8,11 @@ import { verifySessionToken } from "@/lib/auth";
 import {
   withSecurityHeaders,
 } from "@/lib/security-headers";
+import {
+  commitAuditUsage,
+  failAuditAndRestoreCredit,
+} from "@/lib/audit-usage";
+import { reconcileAuditReport } from "@/lib/audit-reconciliation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -290,6 +295,38 @@ function buildOnPageResult(
       pagesResponse
     );
 
+  const crawledPages =
+    pages.length ||
+    readNumber(
+      firstDefined(
+        summary.crawled_pages,
+        summary.pages_crawled
+      )
+    );
+
+  const discoveredPages =
+    readNumber(
+      firstDefined(
+        summary.total_pages,
+        summary.pages_found,
+        summary.discovered_pages,
+        summary.pages_in_queue
+      )
+    ) || crawledPages;
+
+  const failedPages = readNumber(
+    firstDefined(
+      summary.failed_pages,
+      summary.pages_failed,
+      checks.failed_pages
+    )
+  );
+
+  const remainingPages = Math.max(
+    0,
+    discoveredPages - crawledPages - failedPages
+  );
+
   return {
     taskId,
 
@@ -306,14 +343,21 @@ function buildOnPageResult(
         "pending"
       ),
 
-    crawledPages:
-      pages.length ||
-      readNumber(
-        firstDefined(
-          summary.crawled_pages,
-          summary.pages_crawled
-        )
-      ),
+    crawledPages,
+    pagesCrawled: crawledPages,
+    discoveredPages,
+    completedPages: crawledPages,
+    failedPages,
+    remainingPages,
+    pageLimit: 100,
+    confidence:
+      technicalState === "completed"
+        ? "high"
+        : crawledPages > 0
+          ? "limited"
+          : technicalState === "running"
+            ? "processing"
+            : "unavailable",
 
     internalLinks:
       readNumber(
@@ -547,6 +591,12 @@ function determineTechnicalState(
 export async function GET(
   req: Request
 ) {
+  let finalAttemptForFailure =
+    false;
+
+  let auditJobIdForFailure =
+    "";
+
   try {
     const user =
       await getUserFromCookie();
@@ -603,6 +653,12 @@ export async function GET(
       searchParams.get(
         "finalAttempt"
       ) === "true";
+
+    finalAttemptForFailure =
+      finalAttempt;
+
+    auditJobIdForFailure =
+      auditJobId;
 
     if (
       !taskId ||
@@ -674,9 +730,21 @@ export async function GET(
      * report data without calling DataForSEO again.
      */
     if (
-      job.status === "completed" &&
+      [
+        "completed",
+        "completed_with_limitation",
+      ].includes(job.status) &&
       job.renderReady
     ) {
+      if (
+        job.usageState ===
+        "reserved"
+      ) {
+        await commitAuditUsage(
+          job.id
+        );
+      }
+
       const storedResult =
         toPrismaJsonObject(
           job.resultData
@@ -690,9 +758,16 @@ export async function GET(
           auditJobId: job.id,
           reportId:
             job.resultReportId,
+          report:
+            storedResult,
           onPage:
             storedResult.onPage ||
             null,
+          usageState:
+            job.usageState ===
+            "reserved"
+              ? "committed"
+              : job.usageState,
         })
       );
     }
@@ -816,12 +891,30 @@ export async function GET(
           });
 
     if (!savedReport) {
+      const userMessage =
+        `The audit could not be finalized because its saved report was missing. Your audit credit was restored. Reference: ${job.traceId}`;
+
+      await failAuditAndRestoreCredit({
+        jobId: job.id,
+        failureCode:
+          "SAVED_REPORT_MISSING",
+        internalError:
+          "Saved audit report was not found during technical finalization.",
+        userMessage,
+        currentModule:
+          "Technical finalization failed",
+      });
+
       return withSecurityHeaders(
         NextResponse.json(
           {
             success: false,
             error:
-              "Saved audit report was not found.",
+              userMessage,
+            traceId:
+              job.traceId,
+            creditRestored:
+              true,
           },
           {
             status: 409,
@@ -835,7 +928,25 @@ export async function GET(
         savedReport.reportData
       );
 
-    const finalReportData =
+    const finalStatus =
+      technicalState ===
+      "completed"
+        ? "completed"
+        : "completed_with_limitation";
+
+    const finalUserMessage =
+      technicalState ===
+      "completed"
+        ? "Audit completed successfully."
+        : technicalState ===
+            "timed_out"
+          ? "The audit is ready, but the technical crawl reached its safe timeout."
+          : "The audit is ready, but the technical crawl ended with a limitation.";
+
+    const completedAt =
+      new Date();
+
+    const finalReportData = reconcileAuditReport(
       {
         ...baseReportData,
 
@@ -848,24 +959,18 @@ export async function GET(
         normalizedDomain:
           job.normalizedDomain,
 
-        onPage:
-          onPage as Prisma.InputJsonObject,
+        onPage,
 
         moduleStatus:
           nextModuleStatus,
-
-        renderReady:
-          true,
-
-        reportStatus:
-          "completed",
-
+      },
+      {
+        renderReady: true,
+        reportStatus: finalStatus,
         completedAt:
-          new Date().toISOString(),
-      } as Prisma.InputJsonObject;
-
-    const completedAt =
-      new Date();
+          completedAt.toISOString(),
+      }
+    ) as Prisma.InputJsonObject;
 
     await prisma.$transaction([
       prisma.auditReport.update({
@@ -876,18 +981,45 @@ export async function GET(
 
         data: {
           status:
-            "completed",
+            finalStatus,
 
           renderReady:
             true,
 
           moduleStatus:
-            nextModuleStatus,
+            finalReportData.moduleStatus as Prisma.InputJsonObject,
 
           completedAt,
 
           reportData:
             finalReportData,
+
+          overallScore:
+            Number(finalReportData.overallScore ?? 0),
+
+          seoScore:
+            Number(finalReportData.seoScore ?? 0),
+
+          uxScore:
+            Number(finalReportData.uxScore ?? 0),
+
+          aiScore:
+            finalReportData.aiScore === null ||
+            finalReportData.aiScore === undefined
+              ? null
+              : Number(finalReportData.aiScore),
+
+          estimatedTraffic:
+            finalReportData.estimatedTraffic === null ||
+            finalReportData.estimatedTraffic === undefined
+              ? null
+              : Number(finalReportData.estimatedTraffic),
+
+          keywordCount:
+            finalReportData.keywordCount === null ||
+            finalReportData.keywordCount === undefined
+              ? null
+              : Number(finalReportData.keywordCount),
         },
       }),
 
@@ -898,7 +1030,7 @@ export async function GET(
 
         data: {
           status:
-            "completed",
+            finalStatus,
 
           progress:
             100,
@@ -907,10 +1039,10 @@ export async function GET(
             technicalState ===
             "completed"
               ? "Completed"
-              : `Completed with technical crawl ${technicalState}`,
+              : "Completed with a technical limitation",
 
           moduleStatus:
-            nextModuleStatus,
+            finalReportData.moduleStatus as Prisma.InputJsonObject,
 
           completedAt,
 
@@ -924,10 +1056,20 @@ export async function GET(
             true,
 
           error:
-            null,
+            technicalState ===
+            "completed"
+              ? null
+              : `Technical crawl ${technicalState}`,
+
+          userMessage:
+            finalUserMessage,
         },
       }),
     ]);
+
+    await commitAuditUsage(
+      job.id
+    );
 
     return withSecurityHeaders(
       NextResponse.json({
@@ -936,9 +1078,15 @@ export async function GET(
         renderReady: true,
         auditJobId:
           job.id,
+        traceId:
+          job.traceId,
         reportId:
           savedReport.id,
         technicalState,
+        status:
+          finalStatus,
+        usageState:
+          "committed",
         report:
           finalReportData,
         onPage,
@@ -950,15 +1098,91 @@ export async function GET(
       error
     );
 
+    const internalError =
+      error instanceof Error
+        ? error.message
+        : "OnPage status failed.";
+
+    if (
+      finalAttemptForFailure &&
+      auditJobIdForFailure
+    ) {
+      try {
+        const failedJob =
+          await prisma.auditJob.findUnique({
+            where: {
+              id:
+                auditJobIdForFailure,
+            },
+            select: {
+              id: true,
+              traceId: true,
+            },
+          });
+
+        if (failedJob) {
+          const userMessage =
+            `The technical crawl could not be finalized safely. Your audit credit was restored. Reference: ${failedJob.traceId}`;
+
+          await failAuditAndRestoreCredit({
+            jobId:
+              failedJob.id,
+            failureCode:
+              "TECHNICAL_FINALIZATION_FAILED",
+            internalError,
+            userMessage,
+            currentModule:
+              "Technical finalization failed",
+          });
+
+          await prisma.auditReport.updateMany({
+            where: {
+              auditJobId:
+                failedJob.id,
+            },
+            data: {
+              status:
+                "failed",
+              renderReady:
+                false,
+              completedAt:
+                null,
+            },
+          });
+
+          return withSecurityHeaders(
+            NextResponse.json(
+              {
+                success: false,
+                error:
+                  userMessage,
+                traceId:
+                  failedJob.traceId,
+                creditRestored:
+                  true,
+              },
+              {
+                status: 500,
+              }
+            )
+          );
+        }
+      } catch (
+        failureFinalizationError
+      ) {
+        console.error(
+          "Technical failure finalization failed:",
+          failureFinalizationError
+        );
+      }
+    }
+
     return withSecurityHeaders(
       NextResponse.json(
         {
           success: false,
-
           error:
-            error instanceof Error
-              ? error.message
-              : "OnPage status failed.",
+            "Technical crawl status could not be loaded. Please try again.",
         },
         {
           status: 500,

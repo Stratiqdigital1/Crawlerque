@@ -165,6 +165,18 @@ model AuditJob {
   technicalTaskId  String?
   renderReady      Boolean   @default(false)
   usageCounted     Boolean   @default(false)
+
+  traceId          String    @unique @default(cuid())
+  usageSource      String?
+  usageState       String    @default("legacy")
+  usageReservedAt  DateTime?
+  usageCommittedAt DateTime?
+  usageRefundedAt  DateTime?
+  failureCode      String?
+  userMessage      String?
+  retryOfJobId     String?
+  cancelledAt      DateTime?
+
   reportTypes      Json?
   status           String    @default("pending")
   progress         Int       @default(0)
@@ -189,6 +201,9 @@ model AuditJob {
   @@index([createdAt])
   @@index([userId, normalizedDomain, createdAt])
   @@index([inputHash])
+  @@index([usageState])
+  @@index([retryOfJobId])
+  @@index([userId, status, createdAt])
 }
 
 enum PromoAccessStatus {

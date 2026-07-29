@@ -3,6 +3,9 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { verifySessionToken } from "@/lib/auth";
 import { withSecurityHeaders } from "@/lib/security-headers";
+import {
+  cancelAuditAndRestoreCredit,
+} from "@/lib/audit-usage";
 
 async function getUserFromCookie() {
   const cookieStore =
@@ -40,7 +43,7 @@ async function getUserFromCookie() {
   }
 }
 
-export async function GET(
+export async function POST(
   _req: Request,
   {
     params,
@@ -85,35 +88,9 @@ export async function GET(
               },
         select: {
           id: true,
-          traceId: true,
-          domain: true,
-          normalizedDomain: true,
-          url: true,
-          reportTypes: true,
           status: true,
-          progress: true,
-          currentModule: true,
-          moduleStatus: true,
-          error: true,
-          failureCode: true,
-          userMessage: true,
-          resultReportId: true,
-          retryOfJobId: true,
-          retryCount: true,
-          maxRetries: true,
-          renderReady: true,
+          traceId: true,
           usageState: true,
-          usageSource: true,
-          usageCounted: true,
-          usageReservedAt: true,
-          usageCommittedAt: true,
-          usageRefundedAt: true,
-          startedAt: true,
-          completedAt: true,
-          failedAt: true,
-          cancelledAt: true,
-          createdAt: true,
-          updatedAt: true,
         },
       });
 
@@ -123,7 +100,7 @@ export async function GET(
           {
             success: false,
             error:
-              "Audit job not found",
+              "Audit job not found.",
           },
           {
             status: 404,
@@ -132,20 +109,51 @@ export async function GET(
       );
     }
 
+    if (
+      [
+        "completed",
+        "completed_with_limitation",
+        "failed",
+        "cancelled",
+      ].includes(job.status)
+    ) {
+      return withSecurityHeaders(
+        NextResponse.json({
+          success: true,
+          alreadyFinal: true,
+          job,
+        })
+      );
+    }
+
+    const cancelled =
+      await cancelAuditAndRestoreCredit(
+        job.id
+      );
+
     return withSecurityHeaders(
       NextResponse.json({
         success: true,
+        creditRestored:
+          cancelled.usageState ===
+          "refunded",
+        traceId:
+          cancelled.traceId,
         job: {
-          ...job,
-          creditRestored:
-            job.usageState ===
-            "refunded",
+          id:
+            cancelled.id,
+          status:
+            cancelled.status,
+          usageState:
+            cancelled.usageState,
+          userMessage:
+            cancelled.userMessage,
         },
       })
     );
   } catch (error) {
     console.error(
-      "Audit job status failed:",
+      "Audit cancellation failed:",
       error
     );
 
@@ -154,7 +162,7 @@ export async function GET(
         {
           success: false,
           error:
-            "Failed to load audit job status",
+            "The audit could not be cancelled.",
         },
         {
           status: 500,

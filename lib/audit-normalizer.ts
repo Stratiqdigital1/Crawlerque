@@ -1,7 +1,16 @@
 export function normalizeAuditData(report: any) {
-  const seoScore = toNumber(report?.seoScore);
-  const uxScore = toNumber(report?.uxScore || report?.performanceScore);
-  const overallScore = toNumber(report?.overallScore);
+  const seoScore = firstNumber([
+    report?.seoScore,
+    report?.canonicalSeo?.score,
+  ]);
+  const uxScore = firstNumber([
+    report?.uxScore,
+    report?.performanceScore,
+  ]);
+  const overallScore = firstNumber([
+    report?.overallScore,
+    report?.unifiedOverview?.overallScore,
+  ]);
 
   const mobileScore =
     toNumber(report?.pageSpeed?.mobile?.score) ||
@@ -13,53 +22,56 @@ export function normalizeAuditData(report: any) {
     toNumber(report?.performance?.desktopScore) ||
     toNumber(report?.coreWebVitals?.desktopScore);
 
-const aiScore =
-    toNumber(report?.aiSearchVisibility?.overallScore) ||
-    toNumber(report?.aiVisibility?.score) ||
-    toNumber(report?.aiOptimization?.visibilityScore);
+const aiScore = firstNumber([
+  report?.aiScore,
+  report?.aiSearchVisibility?.overallScore,
+]);
 
-const traffic =
-  firstNumber([
-    report?.traffic?.rawMonthly,
-    report?.traffic?.monthly,
-    report?.domainAnalytics?.organicTraffic,
-    report?.domainAnalytics?.organicTrafficMonthly,
-    report?.organicTraffic,
-  ]);
+// Canonical executive traffic comes only from Traffic Intelligence. Domain
+// Analytics is a separately labelled provider signal and must not silently
+// replace this figure.
+const traffic = firstNumber([
+  report?.estimatedTraffic,
+  report?.traffic?.rawMonthly,
+  report?.traffic?.monthly,
+]);
 
-const keywordCount =
-  firstNumber([
-    report?.traffic?.rankedKeywordCount,
-    report?.traffic?.keywordCount,
-    report?.domainAnalytics?.organicKeywords,
-    report?.keywords?.count,
-    report?.topKeywords?.length,
-  ]);
+const keywordCount = firstNumber([
+  report?.keywordCount,
+  report?.traffic?.rankedKeywordCount,
+  report?.traffic?.keywordCount,
+  report?.dataforseo?.rankedKeywordCount,
+  report?.dataforseo?.totalRankedKeywordsFetched,
+]);
 
   const title =
-    report?.seoChecks?.title ||
+    report?.canonicalSeo?.title ||
     report?.title ||
+    report?.seoChecks?.title ||
     report?.metadata?.title ||
     null;
 
   const metaDescription =
+    report?.canonicalSeo?.metaDescription ||
+    report?.description ||
     report?.seoChecks?.metaDescription ||
     report?.metaDescription ||
     report?.metadata?.description ||
     null;
 
   const h1 =
-    report?.seoChecks?.h1 ||
+    report?.canonicalSeo?.h1 ||
     report?.h1 ||
-    report?.h1Count ||
+    report?.seoChecks?.h1 ||
     report?.content?.h1 ||
     null;
 
-  const missingAlt =
-    report?.seoChecks?.missingAlt ||
-    report?.missingAltCount ||
-    report?.images?.missingAlt ||
-    null;
+  const missingAlt = firstNumber([
+    report?.canonicalSeo?.imagesMissingAlt,
+    report?.seoChecks?.missingAlt,
+    report?.missingAltCount,
+    report?.images?.missingAlt,
+  ]);
 
   const competitors =
     asArray(report?.competitors)
@@ -133,20 +145,31 @@ technicalCrawl: getTechnicalCrawl(report),
       keywordCount,
       confidence:
         report?.traffic?.confidence ||
-        report?.domainAnalytics?.confidence ||
         "insufficient-data",
+      providerSignal:
+        report?.providerSignals?.domainAnalytics ||
+        report?.domainAnalytics ||
+        null,
     },
 
 ai: {
   score: aiScore,
-  brandMentions:
-    report?.aiVisibility?.brandMentions ||
-    report?.aiOptimization?.brandMentions ||
-    null,
+  confidence:
+    report?.aiSearchVisibility?.confidence ||
+    report?.aiVisibility?.confidence ||
+    "low",
+  brandMentions: firstNumber([
+    report?.aiSearchVisibility?.brandMentionCount,
+    report?.aiVisibility?.totalMentions,
+  ]),
   modelCoverage:
-    report?.aiVisibility?.validModelCount ||
-    report?.aiOptimization?.validModelCount ||
-    null,
+    Array.isArray(report?.aiSearchVisibility?.modelsCalled)
+      ? report.aiSearchVisibility.modelsCalled.length
+      : null,
+  shareOfVoice: firstNumber([
+    report?.aiSearchVisibility?.shareOfVoice,
+    report?.aiVisibility?.shareOfVoice,
+  ]),
   prompts: getAiPromptResults(report),
   pageInsights: getAiPageInsights(report),
 },
@@ -182,6 +205,10 @@ dataQuality: getDataQuality({
   competitors,
   keywordGaps,
   aiScore,
+  aiConfidence:
+    report?.aiSearchVisibility?.confidence ||
+    report?.aiVisibility?.confidence ||
+    "low",
 }),
 
 executiveCards: buildExecutiveCards({
@@ -218,44 +245,67 @@ export function buildSmartRecommendations(normalized: any) {
   const aiScore = normalized?.scores?.ai;
   const traffic = normalized?.traffic?.monthly;
   const keywordCount = normalized?.traffic?.keywordCount;
+  const technicalConfidence = String(
+    normalized?.technicalCrawl?.confidence || "unknown"
+  ).toLowerCase();
+
+  const add = (recommendation: any) => {
+    recommendations.push({
+      owner: recommendation.owner || "Growth Team",
+      evidence: recommendation.evidence || [],
+      validationStatus: recommendation.validationStatus || "reconciled",
+      ...recommendation,
+    });
+  };
 
   if (seoScore !== null && seoScore < 80) {
-    recommendations.push({
+    add({
       title: "Improve SEO foundation score",
       impact: "High",
       timeline: "0–30 days",
+      owner: "SEO",
       detail:
-        "SEO score is below the recommended 80+ benchmark. Improve title tags, meta descriptions, heading structure, internal linking, and page-level relevance.",
+        "The reconciled SEO score is below 80. Improve the resolved homepage title, meta description, heading structure, internal linking, and page relevance.",
+      evidence: [
+        normalized?.seo?.title ? `Title: ${normalized.seo.title}` : "Resolved homepage title is missing",
+        normalized?.seo?.metaDescription ? "Meta description detected" : "Resolved homepage meta description is missing",
+      ],
     });
   }
 
   if (!normalized?.seo?.metaDescription) {
-    recommendations.push({
-      title: "Add or improve meta descriptions",
+    add({
+      title: "Add a meta description to the resolved homepage",
       impact: "Medium",
       timeline: "0–14 days",
+      owner: "SEO / Content",
       detail:
-        "Important pages should have unique meta descriptions around 140–160 characters to improve search snippet quality and click-through rate.",
+        "The final resolved homepage does not expose a usable meta description. Add a unique 140–160 character description.",
+      evidence: [normalized?.seo?.title || "Resolved homepage"],
     });
   }
 
-  if (normalized?.seo?.missingAlt && Number(normalized.seo.missingAlt) > 0) {
-    recommendations.push({
+  if (Number(normalized?.seo?.missingAlt || 0) > 0) {
+    add({
       title: "Fix missing image ALT text",
       impact: "Medium",
       timeline: "0–14 days",
+      owner: "Content / Development",
       detail:
-        "Images without ALT text weaken accessibility and image SEO signals. Add descriptive ALT text to important visual assets.",
+        "Important images are missing ALT text, which weakens accessibility and image-search signals.",
+      evidence: [`Missing ALT count: ${Number(normalized.seo.missingAlt)}`],
     });
   }
 
   if (mobileScore !== null && mobileScore < 75) {
-    recommendations.push({
+    add({
       title: "Improve mobile performance",
       impact: "High",
       timeline: "0–30 days",
+      owner: "Development",
       detail:
-        "Mobile performance is below the recommended 75+ benchmark. Reduce heavy scripts, optimize images, improve caching, and address Core Web Vitals issues.",
+        "Mobile performance is below 75. Reduce heavy scripts, optimize images, improve caching, and address Core Web Vitals.",
+      evidence: [`Mobile PageSpeed score: ${mobileScore}/100`],
     });
   }
 
@@ -263,59 +313,95 @@ export function buildSmartRecommendations(normalized: any) {
     const lcpNumber = parseFloat(String(normalized.performance.lcp));
 
     if (Number.isFinite(lcpNumber) && lcpNumber > 2.5) {
-      recommendations.push({
+      add({
         title: "Reduce Largest Contentful Paint",
         impact: "High",
         timeline: "0–30 days",
+        owner: "Development",
         detail:
-          "LCP should generally be under 2.5 seconds. A slow LCP means the main page content loads too slowly, which can hurt user experience and SEO.",
+          "LCP is above the 2.5 second target. Optimize the largest above-the-fold element and its delivery path.",
+        evidence: [`Mobile LCP: ${normalized.performance.lcp}`],
       });
     }
   }
 
-  if (aiScore === null || aiScore < 70) {
-    recommendations.push({
-      title: "Strengthen AI search visibility",
+  if (aiScore !== null && aiScore < 70) {
+    add({
+      title: "Strengthen unbranded AI search visibility",
       impact: "High",
       timeline: "30–60 days",
+      owner: "SEO / Content / PR",
       detail:
-        "AI visibility should ideally be 70+ for strong answer-engine readiness. Improve entity clarity, topical authority, authoritativeness, FAQs, and structured content.",
+        "The canonical AI visibility score is below 70 across unbranded category prompts. Improve entity clarity, topical authority, citations, and structured content.",
+      evidence: [
+        `AI visibility score: ${aiScore}/100`,
+        `Confidence: ${normalized?.ai?.confidence || "low"}`,
+      ],
     });
   }
 
-  if (!traffic || traffic <= 0) {
-    recommendations.push({
+  if (traffic === null || traffic <= 0) {
+    add({
       title: "Build measurable organic visibility",
       impact: "High",
       timeline: "30–90 days",
+      owner: "SEO / Content",
       detail:
-        "Organic traffic data is weak or unavailable. Build pages around commercial keyword gaps, improve indexing, and strengthen topical coverage.",
+        "Canonical modeled organic traffic is weak or unavailable. Expand relevant non-branded keyword coverage and improve indexing.",
+      evidence: [`Traffic confidence: ${normalized?.traffic?.confidence || "insufficient-data"}`],
     });
   }
 
-  if (!keywordCount || keywordCount < 500) {
-    recommendations.push({
-      title: "Expand keyword footprint",
+  if (keywordCount !== null && keywordCount < 500) {
+    add({
+      title: "Expand the non-branded keyword footprint",
       impact: "Medium",
       timeline: "30–60 days",
+      owner: "SEO / Content",
       detail:
-        "A stronger keyword footprint usually creates more organic growth surface area. Build supporting content and optimize service/product pages around relevant search demand.",
+        "The ranking footprint is below 500 keywords. Build supporting pages around validated category and commercial demand.",
+      evidence: [`Ranked keywords: ${keywordCount}`],
     });
   }
 
-  normalized?.issues?.slice(0, 3).forEach((issue: any) => {
-    recommendations.push({
-      title: issue?.title || issue?.issue || "Resolve priority audit issue",
-      impact: issue?.impact || "Medium",
+  normalized?.issues?.slice(0, 5).forEach((issue: any) => {
+    const issueTitle = issue?.title || issue?.issue || "Resolve priority audit issue";
+    const looksTechnical = /(crawl|broken link|duplicate|status code|redirect)/i.test(issueTitle);
+
+    if (
+      looksTechnical &&
+      ["unavailable", "processing", "not-selected"].includes(technicalConfidence)
+    ) {
+      return;
+    }
+
+    add({
+      title: issueTitle,
+      impact: issue?.severity || issue?.impact || "Medium",
       timeline: issue?.timeline || "0–30 days",
+      owner: looksTechnical ? "Development" : "SEO / Content",
       detail:
         issue?.description ||
+        issue?.impact ||
+        issue?.fix ||
         issue?.recommendation ||
-        "This issue should be reviewed and fixed based on business impact.",
+        "Review and resolve this reconciled audit issue.",
+      evidence: [
+        issue?.affectedUrl ||
+          issue?.url ||
+          normalized?.seo?.title ||
+          "Reconciled audit evidence",
+      ],
     });
   });
 
-  return recommendations.slice(0, 10);
+  const deduped = new Map<string, any>();
+  recommendations.forEach((recommendation) => {
+    const key = String(recommendation.title || "").toLowerCase().trim();
+    if (key && !deduped.has(key)) deduped.set(key, recommendation);
+  });
+
+  return Array.from(deduped.values()).slice(0, 10);
 }
 
 function firstNumber(values: any[]) {
@@ -443,63 +529,57 @@ function getBacklinkSamples(report: any) {
 }
 
 function getAiPromptResults(report: any) {
-  const prompts =
-    asArray(report?.aiVisibility?.prompts)
-      .concat(asArray(report?.aiVisibility?.results))
-      .concat(asArray(report?.aiOptimization?.prompts))
-      .concat(asArray(report?.aiOptimization?.results))
-      .filter(Boolean);
+  const promptRows = asArray(report?.aiSearchVisibility?.promptResults);
 
-  return prompts.slice(0, 8).map((item: any) => ({
-    prompt:
-      item?.prompt ||
-      item?.query ||
-      item?.question ||
-      "AI visibility prompt",
+  const output: any[] = [];
 
-    result:
-      item?.result ||
-      item?.answer ||
-      item?.response ||
-      item?.summary ||
-      "Result not available",
+  promptRows.forEach((row: any) => {
+    const models = row?.models && typeof row.models === "object"
+      ? Object.entries(row.models)
+      : [];
 
-    mentioned:
-      item?.mentioned === true ||
-      item?.brandMentioned === true ||
-      item?.brand_mentioned === true
-        ? "Mentioned"
-        : "Not mentioned",
-  }));
+    models.forEach(([model, rawResult]: [string, any]) => {
+      const result = rawResult || {};
+      output.push({
+        prompt: row?.prompt || "AI visibility prompt",
+        model,
+        result:
+          result?.snippet ||
+          (result?.available === false ? "Model response unavailable" : "No brand mention detected"),
+        mentioned: result?.mentioned === true ? "Mentioned" : "Not mentioned",
+        position: result?.position ?? null,
+        sentiment: result?.sentiment ?? null,
+        scored: row?.scored !== false,
+      });
+    });
+  });
+
+  return output.slice(0, 15);
 }
 
 function getAiPageInsights(report: any) {
-  const insights = report?.aiOptimization?.pageInsights;
-  if (!insights) return null;
+  const rankedPages = asArray(report?.aiSearchVisibility?.rankedPages);
+  const citations = asArray(report?.aiSearchVisibility?.citations);
 
-  const formatPage = (p: any) => ({
-    url: p?.url || "URL not available",
-    title: p?.title || p?.url || "Untitled page",
-    score: p?.score ?? null,
-    grade: p?.grade || "Needs Work",
-    topIssue: p?.topIssue || null,
+  if (!rankedPages.length && !citations.length) return null;
+
+  const formatPage = (page: any) => ({
+    url: page?.url || page?.path || "URL not available",
+    title: page?.title || page?.path || page?.url || "Untitled page",
+    score: page?.score ?? null,
+    grade: page?.grade || null,
+    topIssue: page?.topIssue || null,
   });
 
-  // "Likely source (inferred)" guesses, one per AI model that mentioned the brand
-  const sourceSuggestions = asArray(report?.aiOptimization?.models)
-    .filter((m: any) => m?.mentioned && m?.likelySourcePage)
-    .map((m: any) => ({
-      model: m?.model || "AI model",
-      url: m.likelySourcePage?.url,
-      title: m.likelySourcePage?.title,
-      overlap: m.likelySourcePage?.overlap,
-    }));
-
   return {
-    totalPagesAnalyzed: insights.totalPagesAnalyzed ?? 0,
-    topPerformingPages: asArray(insights.topPerformingPages).slice(0, 5).map(formatPage),
-    pagesNeedingOptimization: asArray(insights.pagesNeedingOptimization).slice(0, 5).map(formatPage),
-    likelySourcePages: sourceSuggestions, // label as "inferred" wherever rendered
+    totalPagesAnalyzed: rankedPages.length,
+    topPerformingPages: rankedPages.slice(0, 5).map(formatPage),
+    pagesNeedingOptimization: [],
+    citedPages: citations.slice(0, 10).map((citation: any) => ({
+      url: citation?.url || "URL not available",
+      models: asArray(citation?.models),
+    })),
+    likelySourcePages: [],
   };
 }
 
@@ -517,26 +597,40 @@ function getTechnicalCrawl(report: any) {
       .concat(asArray(report?.crawl?.issues))
       .filter(Boolean);
 
+  const pagesCrawled = firstNumber([
+    report?.onPage?.crawledPages,
+    report?.onPage?.pagesCrawled,
+    report?.technicalAudit?.pagesCrawled,
+    report?.crawl?.pagesCrawled,
+    pages.length,
+  ]);
+
   return {
     status:
-      report?.onPage?.status ||
+      report?.onPage?.crawlStatus ||
+      report?.moduleStatus?.technical ||
       report?.technicalAudit?.status ||
       report?.crawl?.status ||
       "Data not available",
 
-    pagesCrawled:
-      report?.onPage?.pagesCrawled ||
-      report?.technicalAudit?.pagesCrawled ||
-      report?.crawl?.pagesCrawled ||
-      pages.length ||
+    confidence:
+      report?.onPage?.confidence ||
+      report?.reconciliation?.technical?.confidence ||
+      "unknown",
+
+    limitation:
+      report?.onPage?.limitation ||
+      report?.reconciliation?.technical?.limitation ||
       null,
 
-    issuesFound:
-      report?.onPage?.issuesFound ||
-      report?.technicalAudit?.issuesFound ||
-      report?.crawl?.issuesFound ||
-      issues.length ||
-      null,
+    pagesCrawled,
+
+    issuesFound: firstNumber([
+      report?.onPage?.issuesFound,
+      report?.technicalAudit?.issuesFound,
+      report?.crawl?.issuesFound,
+      issues.length,
+    ]),
 
     pages: pages.slice(0, 10).map((page: any) => ({
       url: page?.url || page?.page || page?.target || "URL not available",
@@ -653,105 +747,105 @@ function getModuleStatus(report: any) {
     {
       module: "SEO Foundation",
       status: status?.seo || "completed",
-      detail: "Title, metadata, headings, image ALT, and SEO basics.",
+      detail: "Resolved homepage title, metadata, headings, ALT text, and SEO basics.",
     },
     {
       module: "Technical / PageSpeed",
-      status: status?.pagespeed || status?.technical || "completed",
-      detail: "Mobile, desktop, Core Web Vitals, and technical health.",
+      status: status?.technical || status?.onPage || status?.pagespeed || "skipped",
+      detail: "PageSpeed plus final OnPage crawl state and coverage.",
     },
     {
       module: "Traffic Intelligence",
-      status: status?.dataforseo || status?.traffic || "not_available",
-      detail: "Estimated organic visibility, traffic signal, and keyword footprint.",
+      status: status?.traffic || status?.dataforseo || "not_available",
+      detail: "Canonical modeled organic traffic and ranked keyword footprint.",
     },
     {
       module: "Keyword Intelligence",
       status: status?.keywords || status?.keywordResearch || "not_available",
-      detail: "Ranking keywords, keyword gaps, and content opportunities.",
+      detail: "Ranking keywords, non-branded gaps, and content opportunities.",
     },
     {
       module: "Competitor Intelligence",
-      status: status?.competitors || "not_available",
-      detail: "Organic competitors, shared keywords, and threat signals.",
+      status: status?.competitors || status?.dataforseo || "not_available",
+      detail: "Commercial competitors, shared keywords, and threat signals.",
     },
     {
       module: "Backlink Authority",
-      status: status?.backlinks || "not_available",
+      status: status?.backlinks || status?.dataforseo || "not_available",
       detail: "Referring domains, backlinks, and authority signals.",
     },
     {
       module: "AI Visibility",
-      status: status?.aiOptimization || status?.ai || "not_available",
-      detail: "AI search visibility, brand mentions, and GEO readiness.",
+      status: status?.aiSearchVisibility || status?.ai || "not_available",
+      detail: "Unbranded category prompts across ChatGPT, Claude, and Gemini.",
     },
     {
       module: "Recommendations",
-      status: report?.recommendations || report?.aiRecommendations ? "completed" : "not_available",
-      detail: "Prioritized growth recommendations and action plan.",
+      status:
+        Array.isArray(report?.recommendations) && report.recommendations.length > 0
+          ? "completed"
+          : status?.aiRecommendations || "not_available",
+      detail: "Prioritized actions generated from reconciled audit evidence.",
     },
   ];
 }
 
 function buildExecutiveCards(data: any) {
-  const cards = [];
+  const cards: any[] = [];
 
-  if (data.seoScore >= 85) {
-    cards.push({
-      title: "Strong SEO Foundation",
-      impact: "Positive",
-      detail:
-        "The website has a strong SEO structure and is positioned above many average websites in foundational optimization.",
-    });
-  } else {
-    cards.push({
-      title: "SEO Foundation Needs Improvement",
-      impact: "High",
-      detail:
-        "Core SEO elements should be improved to compete more effectively in organic search.",
-    });
+  if (data.seoScore !== null) {
+    cards.push(
+      data.seoScore >= 85
+        ? {
+            title: "Strong SEO Foundation",
+            impact: "Positive",
+            detail: "The resolved homepage has a strong foundational SEO score.",
+          }
+        : {
+            title: "SEO Foundation Needs Improvement",
+            impact: "High",
+            detail: "The reconciled title, metadata, headings, and image signals need improvement.",
+          }
+    );
   }
 
-  if (data.uxScore < 75) {
+  if (data.uxScore !== null && data.uxScore < 75) {
     cards.push({
       title: "Performance Risk Detected",
       impact: "High",
-      detail:
-        "Performance and Core Web Vitals may be affecting user experience, rankings, and conversion efficiency.",
+      detail: "Performance and Core Web Vitals may be affecting user experience and conversion efficiency.",
     });
   }
 
-  if (data.aiScore >= 70) {
-    cards.push({
-      title: "AI Visibility Opportunity",
-      impact: "Medium",
-      detail:
-        "The website shows signs of AI-search readiness and can strengthen visibility further through entity and topical optimization.",
-    });
-  } else {
-    cards.push({
-      title: "Low AI Discoverability",
-      impact: "High",
-      detail:
-        "The brand has weak visibility signals for AI-generated discovery and answer engines.",
-    });
+  if (data.aiScore !== null) {
+    cards.push(
+      data.aiScore >= 70
+        ? {
+            title: "AI Visibility Strength",
+            impact: "Positive",
+            detail: "The brand has measurable visibility across unbranded category prompts.",
+          }
+        : {
+            title: "Low AI Discoverability",
+            impact: "High",
+            detail: "The brand is weak or absent across unbranded category prompts in the tested AI models.",
+          }
+    );
   }
 
-  if (data.keywordCount < 500) {
+  if (data.keywordCount !== null && data.keywordCount < 500) {
     cards.push({
       title: "Keyword Coverage Gap",
       impact: "Medium",
-      detail:
-        "The website appears to have limited ranking keyword coverage compared to stronger competitors.",
+      detail: "The website has a limited ranking keyword footprint compared with stronger sites.",
     });
   }
 
-  if (!data.traffic || data.traffic <= 0) {
+  if (data.traffic === null || data.traffic <= 0) {
     cards.push({
       title: "Low Organic Visibility",
       impact: "High",
-      detail:
-        "Organic traffic visibility appears weak or unavailable, suggesting growth opportunities in content and SEO.",
+      detail: "Canonical modeled organic traffic is weak or unavailable.",
     });
   }
 
@@ -803,11 +897,15 @@ function getDataQuality(data: any) {
     {
       area: "AI Visibility",
       confidence:
-        data.aiScore >= 70
-          ? "Moderate"
-          : "Directional",
+        data.aiScore === null
+          ? "Unavailable"
+          : String(data.aiConfidence || "low").toLowerCase() === "high"
+            ? "High"
+            : String(data.aiConfidence || "low").toLowerCase() === "moderate"
+              ? "Moderate"
+              : "Low",
       note:
-        "AI visibility is a directional signal based on available prompt and model coverage.",
+        "AI visibility uses unbranded category prompts across the canonical ChatGPT, Claude, and Gemini roster.",
     },
   ];
 }

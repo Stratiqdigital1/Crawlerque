@@ -107,6 +107,23 @@ export async function GET() {
       );
     }
 
+    const auditsReserved =
+      await prisma.auditJob.count({
+        where: {
+          userId:
+            user.id,
+          usageState:
+            "reserved",
+          status: {
+            in: [
+              "pending",
+              "running",
+              "processing_technical",
+            ],
+          },
+        },
+      });
+
     const isPromoSession = Boolean(
       payload?.promoAccessId
     );
@@ -179,6 +196,7 @@ export async function GET() {
           monthlyAudits:
             auditLimit,
           auditsUsed,
+          auditsReserved,
           auditsRemaining,
           usagePercent,
           allowPdf: true,
@@ -360,6 +378,7 @@ export async function GET() {
       user: {
         ...user,
         isPromoAccess: false,
+        auditsReserved,
         auditsRemaining:
           isTrialing
             ? trialInfo.auditsRemaining

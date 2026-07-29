@@ -3,6 +3,7 @@ import { withSecurityHeaders } from "@/lib/security-headers";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { verifySessionToken } from "@/lib/auth";
+import { reconcileAuditReport } from "@/lib/audit-reconciliation";
 
 async function getUserFromCookie() {
   const cookieStore = await cookies();
@@ -61,12 +62,46 @@ const report = await prisma.auditReport.findFirst({
 );
     }
 
+    const reportData = report.renderReady
+      ? reconcileAuditReport(
+          report.reportData,
+          {
+            renderReady: true,
+            reportStatus: report.status,
+            completedAt:
+              report.completedAt?.toISOString() ||
+              report.updatedAt.toISOString(),
+          }
+        )
+      : report.reportData;
+
     return withSecurityHeaders(
-  NextResponse.json({
-    success: true,
-    report,
-  })
-);
+      NextResponse.json({
+        success: true,
+        report: {
+          ...report,
+          reportData,
+          overallScore:
+            (reportData as any)?.overallScore ??
+            report.overallScore,
+          seoScore:
+            (reportData as any)?.seoScore ??
+            report.seoScore,
+          uxScore:
+            (reportData as any)?.uxScore ??
+            report.uxScore,
+          aiScore:
+            (reportData as any)?.aiScore ??
+            report.aiScore,
+          estimatedTraffic:
+            (reportData as any)?.estimatedTraffic ??
+            report.estimatedTraffic,
+          keywordCount:
+            (reportData as any)?.keywordCount ??
+            report.keywordCount,
+        },
+      })
+    );
   } catch (error) {
     console.error("Single report fetch failed:", error);
 
