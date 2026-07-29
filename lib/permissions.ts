@@ -12,9 +12,31 @@ export function canUseModule(user: any, module: string) {
     backlinks: pkg.allowBacklinks,
     localSeo: pkg.allowLocalSeo,
     whiteLabel: pkg.allowWhiteLabel,
+    reportReview:
+      canReviewAuditReports(user),
   };
 
   return Boolean(permissions[module]);
+}
+
+export function canReviewAuditReports(user: any) {
+  if (!user) return false;
+  if (user.role === "admin") return true;
+
+  const packageName = String(
+    user?.package?.name ||
+      user?.packageName ||
+      ""
+  )
+    .trim()
+    .toLowerCase();
+
+  return Boolean(
+    user?.package?.allowWhiteLabel === true ||
+      user?.allowWhiteLabel === true ||
+      packageName === "agency" ||
+      packageName === "enterprise"
+  );
 }
 
 export function hasAuditLimit(user: any) {

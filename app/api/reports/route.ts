@@ -117,6 +117,23 @@ export async function GET() {
           completedAt: true,
           createdAt: true,
           updatedAt: true,
+          review: {
+            select: {
+              id: true,
+              status: true,
+              version: true,
+              approvedVersion: true,
+              approvedAt: true,
+              updatedAt: true,
+              approvedBy: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
         },
       }),
 
@@ -162,7 +179,27 @@ export async function GET() {
     return withSecurityHeaders(
       NextResponse.json({
         success: true,
-        reports,
+        reports: reports.map(
+          (report) => ({
+            ...report,
+            reviewStatus:
+              report.review?.status ||
+              "draft",
+            reviewVersion:
+              report.review?.version ||
+              null,
+            approvedVersion:
+              report.review
+                ?.approvedVersion ||
+              null,
+            approvedAt:
+              report.review
+                ?.approvedAt || null,
+            approvedBy:
+              report.review
+                ?.approvedBy || null,
+          })
+        ),
         attempts: attempts.map(
           (attempt) => ({
             ...attempt,

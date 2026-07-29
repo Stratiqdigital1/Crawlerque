@@ -105,6 +105,10 @@ const [error, setError] = useState("");
   const [compareA, setCompareA] = useState<any>(null);
 const [compareB, setCompareB] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [reportReview, setReportReview] = useState<any>(null);
+  const [reviewDraft, setReviewDraft] = useState<any>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewSaving, setReviewSaving] = useState(false);
   const activeAuditJobIdRef =
   useRef<string | null>(null);
 
@@ -632,6 +636,8 @@ const effectiveAuditConfig: DashboardAuditConfig = {
 setData(null);
 setCompareA(null);
 setCompareB(null);
+setReportReview(null);
+setReviewDraft(null);
 
 activeAuditJobIdRef.current =
   null;
@@ -1272,6 +1278,26 @@ const formattedReports =
       pdfGenerated:
         item.pdfGenerated,
 
+      reviewStatus:
+        item.reviewStatus ||
+        item.review?.status ||
+        "draft",
+
+      reviewVersion:
+        item.reviewVersion ||
+        item.review?.version ||
+        null,
+
+      approvedAt:
+        item.approvedAt ||
+        item.review?.approvedAt ||
+        null,
+
+      approvedBy:
+        item.approvedBy ||
+        item.review?.approvedBy ||
+        null,
+
       completedAt:
         item.completedAt
           ? new Date(
@@ -1430,10 +1456,259 @@ const loadCurrentUser = async () => {
   }
 };
 
+const loadReportReview = async (
+  reportId: string
+) => {
+  if (!reportId) return;
+
+  setReviewLoading(true);
+
+  try {
+    const res = await fetch(
+      `/api/reports/${reportId}/review`,
+      {
+        cache: "no-store",
+      }
+    );
+
+    const json = await res.json();
+
+    if (!res.ok || !json?.success) {
+      throw new Error(
+        json?.error ||
+          "Failed to load client review."
+      );
+    }
+
+    setReportReview(
+      json?.review || null
+    );
+
+    setReviewDraft(
+      json?.review?.draftData ||
+        json?.review?.approvedData ||
+        null
+    );
+  } catch (reviewError) {
+    console.error(
+      "Report review load failed:",
+      reviewError
+    );
+
+    setError(
+      reviewError instanceof Error
+        ? reviewError.message
+        : "Failed to load client review."
+    );
+  } finally {
+    setReviewLoading(false);
+  }
+};
+
+const updateReviewItem = (
+  group: "issues" | "recommendations",
+  itemId: string,
+  updater: (item: any) => any
+) => {
+  setReviewDraft((previous: any) => {
+    if (!previous) return previous;
+
+    const items = Array.isArray(
+      previous?.[group]
+    )
+      ? previous[group]
+      : [];
+
+    return {
+      ...previous,
+      [group]: items.map(
+        (item: any) =>
+          item?.id === itemId
+            ? updater(item)
+            : item
+      ),
+    };
+  });
+};
+
+const moveReviewItem = (
+  group: "issues" | "recommendations",
+  itemId: string,
+  direction: -1 | 1
+) => {
+  setReviewDraft((previous: any) => {
+    if (!previous) return previous;
+
+    const items = [
+      ...(Array.isArray(
+        previous?.[group]
+      )
+        ? previous[group]
+        : []),
+    ].sort(
+      (a: any, b: any) =>
+        Number(a?.order || 0) -
+        Number(b?.order || 0)
+    );
+
+    const index = items.findIndex(
+      (item: any) =>
+        item?.id === itemId
+    );
+
+    const targetIndex =
+      index + direction;
+
+    if (
+      index < 0 ||
+      targetIndex < 0 ||
+      targetIndex >= items.length
+    ) {
+      return previous;
+    }
+
+    const [moved] = items.splice(
+      index,
+      1
+    );
+
+    items.splice(
+      targetIndex,
+      0,
+      moved
+    );
+
+    return {
+      ...previous,
+      [group]: items.map(
+        (item: any, order: number) => ({
+          ...item,
+          order,
+        })
+      ),
+    };
+  });
+};
+
+const saveReportReview = async (
+  action:
+    | "save"
+    | "submit"
+    | "approve"
+    | "request_changes"
+) => {
+  const reportId =
+    data?.reportId;
+
+  if (!reportId) {
+    setError(
+      "Open a saved report before starting client review."
+    );
+    return;
+  }
+
+  if (
+    currentUser?.canReviewReports !==
+    true
+  ) {
+    setError(
+      "Client review editing is available on Agency and Enterprise access."
+    );
+    return;
+  }
+
+  setReviewSaving(true);
+  setError("");
+
+  try {
+    const res = await fetch(
+      `/api/reports/${reportId}/review`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+        body: JSON.stringify({
+          action,
+          reviewData:
+            reviewDraft,
+        }),
+      }
+    );
+
+    const json = await res.json();
+
+    if (!res.ok || !json?.success) {
+      throw new Error(
+        json?.error ||
+          "Failed to update client review."
+      );
+    }
+
+    setReportReview(
+      json.review || null
+    );
+
+    setReviewDraft(
+      json?.review?.draftData ||
+        reviewDraft
+    );
+
+    setData((previous: any) =>
+      previous
+        ? {
+            ...previous,
+            clientReview:
+              json?.review || null,
+          }
+        : previous
+    );
+
+    await loadReportHistory();
+  } catch (reviewError) {
+    console.error(
+      "Report review update failed:",
+      reviewError
+    );
+
+    setError(
+      reviewError instanceof Error
+        ? reviewError.message
+        : "Failed to update client review."
+    );
+  } finally {
+    setReviewSaving(false);
+  }
+};
+
 useEffect(() => {
   loadCurrentUser();
   loadReportHistory();
 }, []);
+
+useEffect(() => {
+  if (
+    activeTab !== "review" ||
+    !data?.reportId
+  ) {
+    return;
+  }
+
+  const reportId =
+    String(data.reportId);
+
+  const timer =
+    window.setTimeout(() => {
+      void loadReportReview(
+        reportId
+      );
+    }, 0);
+
+  return () => {
+    window.clearTimeout(timer);
+  };
+}, [activeTab, data?.reportId]);
 const clearHistory = async () => {
   setError("Bulk history clear is disabled. Delete reports one by one from the database.");
 };
@@ -1505,6 +1780,10 @@ const loadSavedReport = async (id: string) => {
     };
 
     setData(hydratedReport);
+    setReportReview(
+      json.report?.review || null
+    );
+    setReviewDraft(null);
 
     const savedAuditConfig =
       hydratedReport?.auditConfig ||
@@ -1850,8 +2129,10 @@ const comparisonBrandName = canWhiteLabel
 const exportPDF = async () => {
   if (!data) return;
 
+  let pdfData: any = data;
+
   if (
-    data?.renderReady !== true
+    pdfData?.renderReady !== true
   ) {
     setError(
       "The report is still being finalized. PDF export will unlock after every selected module reaches a final status."
@@ -1870,6 +2151,61 @@ const exportPDF = async () => {
     return;
   }
 
+  if (pdfUser?.canReviewReports === true) {
+    const reportId = String(
+      pdfData?.reportId || ""
+    );
+
+    if (!reportId) {
+      setError(
+        "Save and open the completed report before exporting an agency PDF."
+      );
+      return;
+    }
+
+    const reviewRes = await fetch(
+      `/api/reports/${reportId}`,
+      {
+        cache: "no-store",
+      }
+    );
+
+    const reviewJson =
+      await reviewRes.json();
+
+    if (
+      !reviewRes.ok ||
+      !reviewJson?.success
+    ) {
+      setError(
+        reviewJson?.error ||
+          "The approved client report could not be loaded."
+      );
+      return;
+    }
+
+    if (
+      reviewJson?.report?.review?.status !==
+        "approved" ||
+      !reviewJson?.report
+        ?.clientReportData
+    ) {
+      setError(
+        "Approve the current client-facing review before exporting the PDF."
+      );
+      setActiveTab("review");
+      return;
+    }
+
+    pdfData =
+      reviewJson.report
+        .clientReportData;
+
+    setReportReview(
+      reviewJson.report.review
+    );
+  }
+
   const doc    = new jsPDF("p", "mm", "a4");
   const PW     = doc.internal.pageSize.getWidth();
   const PH     = doc.internal.pageSize.getHeight();
@@ -1881,10 +2217,10 @@ const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligenc
     const accentHex = canWL && pdfUser?.brandColor ? pdfUser.brandColor : "#00D4AA";
 
   // ── DATA ──────────────────────────────────────────────────────────────
-  const normalized         = normalizeAuditData(data);
-  const domain             = normalized.domain || data?.domain || "—";
+  const normalized         = normalizeAuditData(pdfData);
+  const domain             = normalized.domain || pdfData?.domain || "—";
   const generatedDate      = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
-  const selectedModules    = data?.reportTypes?.length > 0 ? data.reportTypes : selectedReportTypes;
+  const selectedModules    = pdfData?.reportTypes?.length > 0 ? pdfData.reportTypes : selectedReportTypes;
 
   // parse hex accent → RGB
   const hexToRgb = (h: string): [number,number,number] => {
@@ -2442,19 +2778,19 @@ sub("From executive summary to action roadmap — everything your team needs to 
     ...(pdfShow("keywords") || pdfShow("labs")
       ? [[tocN(),"Keyword Gap & Labs","Non-branded gaps, opportunities, and content ideas"]]
       : []),
-    ...(pdfShow("keywords") && data?.keywordResearch?.suggestions?.length
+    ...(pdfShow("keywords") && pdfData?.keywordResearch?.suggestions?.length
       ? [[tocN(),"Keyword Research","Seed keyword suggestions and intent signals"]]
       : []),
-    ...(pdfShow("serp") && data?.serpData
+    ...(pdfShow("serp") && pdfData?.serpData
       ? [[tocN(),"SERP Rankings","Live Google rank positions per keyword"]]
       : []),
-    ...(pdfShow("backlinks") && data?.backlinks
+    ...(pdfShow("backlinks") && pdfData?.backlinks
       ? [[tocN(),"Backlink Authority","Referring domains and backlink evidence"]]
       : []),
     ...(pdfShow("content")
       ? [[tocN(),"Content Quality","Audited-site content signals and evidence"]]
       : []),
-    ...(pdfShow("local") && data?.businessData?.listings?.length
+    ...(pdfShow("local") && pdfData?.businessData?.listings?.length
       ? [[tocN(),"Local SEO","Business listings, ratings, and reviews"]]
       : []),
     ...(pdfShow("recommendations")
@@ -2475,7 +2811,7 @@ sub("From executive summary to action roadmap — everything your team needs to 
     y+=9;
   });
   gap(5); divLine();
-  body_("Traffic, keyword, and AI visibility estimates are directional intelligence derived from keyword visibility and CTR modelling. They should not be read as exact analytics data.");
+  body_("Traffic, keyword, and AI visibility estimates are directional intelligence derived from keyword visibility and CTR modelling. They should not be read as exact analytics pdfData.");
 
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 01 — EXECUTIVE SNAPSHOT
@@ -2488,10 +2824,10 @@ sub("From executive summary to action roadmap — everything your team needs to 
     {label:"AI Visibility",value:`${cl(String(normalized.scores.ai??"—"))}/100`,sub:sLbl(normalized.scores.ai),col:sCol(normalized.scores.ai)},
   ]);
   kpiRow([
-    {label:"Share of Voice",value:`${Number(data?.aiSearchVisibility?.shareOfVoice ?? 0)}%`,sub:"Brand vs competitor mentions",col:C.blue},
-    {label:"Est. Monthly Traffic",value:fmt(data?.traffic?.rawMonthly??data?.traffic?.monthly),sub:`Confidence: ${cl(normalized.traffic.confidence)}`,col:C.accent},
-    {label:"Organic Keywords",value:fmt(data?.dataforseo?.organicKeywords),sub:"Ranking keywords",col:C.amber},
-    {label:"Referring Domains",value:fmt(data?.backlinks?.referringDomains),sub:"Link authority",col:C.blue},
+    {label:"Share of Voice",value:`${Number(pdfData?.aiSearchVisibility?.shareOfVoice ?? 0)}%`,sub:"Brand vs competitor mentions",col:C.blue},
+    {label:"Est. Monthly Traffic",value:fmt(pdfData?.traffic?.rawMonthly??pdfData?.traffic?.monthly),sub:`Confidence: ${cl(normalized.traffic.confidence)}`,col:C.accent},
+    {label:"Organic Keywords",value:fmt(pdfData?.dataforseo?.organicKeywords),sub:"Ranking keywords",col:C.amber},
+    {label:"Referring Domains",value:fmt(pdfData?.backlinks?.referringDomains),sub:"Link authority",col:C.blue},
   ]);
   secTitle("Visual Score Breakdown");
   scoreBar("Overall Growth Score",normalized.scores.overall,"Benchmark: 80+ recommended");
@@ -2504,6 +2840,13 @@ sub("From executive summary to action roadmap — everything your team needs to 
   ensure(50); secTitle("Biggest Risk & Opportunity");
 hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   hiBox("Biggest Opportunity",cl(normalized.summary.biggestOpportunity),"green");
+  if (pdfData?.clientReview?.clientNote) {
+    hiBox(
+      "Client Note",
+      cl(pdfData.clientReview.clientNote),
+      "blue"
+    );
+  }
 
   // ════════════════════════════════════════════════════════════════════
   //  AUDIT METHODOLOGY & SCOPE
@@ -2516,15 +2859,15 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   tbl(
     ["Setting", "Value", "Meaning"],
     [
-      { col1: "Submitted URL", col2: cl(data?.submittedUrl || data?.url), col3: "The URL entered when the audit started" },
-      { col1: "Resolved URL", col2: cl(data?.resolvedUrl), col3: "The final URL after HTTP redirects" },
-      { col1: "Canonical URL", col2: cl(data?.canonicalUrl), col3: "The canonical page declared by the resolved page" },
-      { col1: "Redirect Count", col2: cl(String(data?.redirectCount ?? 0)), col3: "Redirect hops followed before analysis" },
-      { col1: "Country", col2: cl(data?.auditConfig?.countryName || data?.searchContext?.country), col3: "Market used for keyword, SERP, local, and AI context" },
-      { col1: "Language", col2: cl(data?.auditConfig?.languageName || data?.searchContext?.language), col3: "Language used for search and prompt context" },
-      { col1: "Primary Device", col2: cl(data?.auditConfig?.device || data?.searchContext?.device), col3: "Device used for SERP and primary scope interpretation" },
-      { col1: "Search Engine", col2: cl(data?.auditConfig?.searchEngine || "google"), col3: "Primary search engine used by supported search modules" },
-      { col1: "Crawl Limit", col2: `${fmt(data?.auditConfig?.maxCrawlPages || data?.onPage?.pageLimit || 100)} pages`, col3: "Maximum pages requested from the technical crawler" },
+      { col1: "Submitted URL", col2: cl(pdfData?.submittedUrl || pdfData?.url), col3: "The URL entered when the audit started" },
+      { col1: "Resolved URL", col2: cl(pdfData?.resolvedUrl), col3: "The final URL after HTTP redirects" },
+      { col1: "Canonical URL", col2: cl(pdfData?.canonicalUrl), col3: "The canonical page declared by the resolved page" },
+      { col1: "Redirect Count", col2: cl(String(pdfData?.redirectCount ?? 0)), col3: "Redirect hops followed before analysis" },
+      { col1: "Country", col2: cl(pdfData?.auditConfig?.countryName || pdfData?.searchContext?.country), col3: "Market used for keyword, SERP, local, and AI context" },
+      { col1: "Language", col2: cl(pdfData?.auditConfig?.languageName || pdfData?.searchContext?.language), col3: "Language used for search and prompt context" },
+      { col1: "Primary Device", col2: cl(pdfData?.auditConfig?.device || pdfData?.searchContext?.device), col3: "Device used for SERP and primary scope interpretation" },
+      { col1: "Search Engine", col2: cl(pdfData?.auditConfig?.searchEngine || "google"), col3: "Primary search engine used by supported search modules" },
+      { col1: "Crawl Limit", col2: `${fmt(pdfData?.auditConfig?.maxCrawlPages || pdfData?.onPage?.pageLimit || 100)} pages`, col3: "Maximum pages requested from the technical crawler" },
     ],
     [42, 72, CW - 114]
   );
@@ -2533,25 +2876,25 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   //  SECTION 03 — ORGANIC TRAFFIC
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("traffic")){
-    secHdr(nextSec(),"Organic Traffic Intelligence","Modelled from ranked keyword visibility and CTR curves. Treat as directional organic visibility, not exact analytics data.");
+    secHdr(nextSec(),"Organic Traffic Intelligence","Modelled from ranked keyword visibility and CTR curves. Treat as directional organic visibility, not exact analytics pdfData.");
     kpiRow([
-      {label:"Est. Monthly Visits",value:fmt(data?.traffic?.rawMonthly??data?.traffic?.monthly),sub:`Confidence: ${cl(normalized.traffic.confidence)}`,col:C.accent},
+      {label:"Est. Monthly Visits",value:fmt(pdfData?.traffic?.rawMonthly??pdfData?.traffic?.monthly),sub:`Confidence: ${cl(normalized.traffic.confidence)}`,col:C.accent},
       {label:"Daily Visits",value:fmt(normalized.traffic.daily),sub:"Monthly ÷ 30",col:C.blue},
       {label:"Keyword Footprint",value:fmt(normalized.traffic.keywordCount),sub:"Ranked keywords",col:C.amber},
-      {label:"Traffic Score",value:cl(String(data?.traffic?.score??"—")),sub:"High / Medium / Low",col:sCol(data?.traffic?.score==="High"?85:data?.traffic?.score==="Medium"?60:30)},
+      {label:"Traffic Score",value:cl(String(pdfData?.traffic?.score??"—")),sub:"High / Medium / Low",col:sCol(pdfData?.traffic?.score==="High"?85:pdfData?.traffic?.score==="Medium"?60:30)},
     ]);
-    if(data?.traffic?.confidence==="insufficient-data"){
+    if(pdfData?.traffic?.confidence==="insufficient-data"){
       hiBox("Insufficient Traffic Data","Fewer than 50 ranked keywords found. Increase keyword visibility to improve confidence.","amber");
     }
     secTitle("Traffic Intelligence Summary");
     tbl(["Metric","Value","Notes"],[
-      {col1:"Est. Monthly Visits",col2:fmt(data?.traffic?.rawMonthly??data?.traffic?.monthly),col3:"Organic visibility estimate"},
+      {col1:"Est. Monthly Visits",col2:fmt(pdfData?.traffic?.rawMonthly??pdfData?.traffic?.monthly),col3:"Organic visibility estimate"},
       {col1:"Est. Daily Visits",col2:fmt(normalized.traffic.daily),col3:"Monthly ÷ 30"},
       {col1:"Keyword Footprint",col2:fmt(normalized.traffic.keywordCount),col3:"500+ moderate, 2,000+ strong"},
-      {col1:"Filtered Keywords",col2:fmt(data?.traffic?.filteredKeywordCount),col3:"Low-volume (<10) removed"},
+      {col1:"Filtered Keywords",col2:fmt(pdfData?.traffic?.filteredKeywordCount),col3:"Low-volume (<10) removed"},
       {col1:"Confidence",col2:cl(normalized.traffic.confidence),col3:"High requires 2,000+ ranked keywords"},
-      {col1:"Data Method",col2:cl(data?.traffic?.method??"CTR curve"),col3:"Clickstream ETV → CTR fallback"},
-      {col1:"Traffic Note",col2:cl(data?.traffic?.note??"Modelled estimate").slice(0,80),col3:"Directional, not analytics data"},
+      {col1:"Data Method",col2:cl(pdfData?.traffic?.method??"CTR curve"),col3:"Clickstream ETV → CTR fallback"},
+      {col1:"Traffic Note",col2:cl(pdfData?.traffic?.note??"Modelled estimate").slice(0,80),col3:"Directional, not analytics data"},
     ],[50,35,CW-85]);
     if(normalized.topKeywords?.length){
       secTitle("Top Ranking Keywords");
@@ -2573,15 +2916,15 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   if(pdfShow("domainAnalytics")){
     secHdr(nextSec(),"Domain Analytics — Provider Signals","Separate organic and paid provider signals. These figures do not replace the canonical Traffic Intelligence estimate.");
     kpiRow([
-      {label:"Organic Keywords",value:fmt(data?.domainAnalytics?.organicKeywords),col:C.accent},
-      {label:"Organic Traffic Signal",value:fmt(data?.domainAnalytics?.organicTrafficSignal??data?.domainAnalytics?.organicTraffic),col:C.green},
-      {label:"Organic Cost",value:fmtMoney(data?.domainAnalytics?.organicCost),col:C.muted},
-      {label:"Paid Keywords",value:fmt(data?.domainAnalytics?.paidKeywords),col:C.blue},
+      {label:"Organic Keywords",value:fmt(pdfData?.domainAnalytics?.organicKeywords),col:C.accent},
+      {label:"Organic Traffic Signal",value:fmt(pdfData?.domainAnalytics?.organicTrafficSignal??pdfData?.domainAnalytics?.organicTraffic),col:C.green},
+      {label:"Organic Cost",value:fmtMoney(pdfData?.domainAnalytics?.organicCost),col:C.muted},
+      {label:"Paid Keywords",value:fmt(pdfData?.domainAnalytics?.paidKeywords),col:C.blue},
     ]);
     tbl(["Metric","Organic","Paid"],[
-      {col1:"Keywords",col2:fmt(data?.domainAnalytics?.organicKeywords),col3:fmt(data?.domainAnalytics?.paidKeywords)},
-      {col1:"Traffic Signal",col2:fmt(data?.domainAnalytics?.organicTrafficSignal??data?.domainAnalytics?.organicTraffic),col3:fmt(data?.domainAnalytics?.paidTraffic)},
-      {col1:"Cost",col2:fmtMoney(data?.domainAnalytics?.organicCost),col3:fmtMoney(data?.domainAnalytics?.paidCost)},
+      {col1:"Keywords",col2:fmt(pdfData?.domainAnalytics?.organicKeywords),col3:fmt(pdfData?.domainAnalytics?.paidKeywords)},
+      {col1:"Traffic Signal",col2:fmt(pdfData?.domainAnalytics?.organicTrafficSignal??pdfData?.domainAnalytics?.organicTraffic),col3:fmt(pdfData?.domainAnalytics?.paidTraffic)},
+      {col1:"Cost",col2:fmtMoney(pdfData?.domainAnalytics?.organicCost),col3:fmtMoney(pdfData?.domainAnalytics?.paidCost)},
     ],[40,50,CW-90]);
     body_("Use this section to understand whether the domain relies more on organic discovery or paid acquisition for its current visibility.");
   }
@@ -2592,10 +2935,10 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   if(pdfShow("seo")){
     secHdr(nextSec(),"SEO Foundation Audit","Core SEO elements: metadata, heading structure, alt text, and basic on-page signals.");
     kpiRow([
-      {label:"SEO Score",value:`${cl(String(data?.seoScore??"—"))}/100`,sub:sLbl(data?.seoScore),col:sCol(data?.seoScore)},
-      {label:"UX Score",value:`${cl(String(data?.uxScore??"—"))}/100`,sub:sLbl(data?.uxScore),col:sCol(data?.uxScore)},
-      {label:"Page Title",value:data?.title?"Found":"Missing",sub:data?.title?"Detected":"Not detected",col:data?.title?C.accent:C.red},
-      {label:"Meta Description",value:data?.description?"Found":"Missing",sub:data?.description?"Detected":"Not detected",col:data?.description?C.accent:C.red},
+      {label:"SEO Score",value:`${cl(String(pdfData?.seoScore??"—"))}/100`,sub:sLbl(pdfData?.seoScore),col:sCol(pdfData?.seoScore)},
+      {label:"UX Score",value:`${cl(String(pdfData?.uxScore??"—"))}/100`,sub:sLbl(pdfData?.uxScore),col:sCol(pdfData?.uxScore)},
+      {label:"Page Title",value:pdfData?.title?"Found":"Missing",sub:pdfData?.title?"Detected":"Not detected",col:pdfData?.title?C.accent:C.red},
+      {label:"Meta Description",value:pdfData?.description?"Found":"Missing",sub:pdfData?.description?"Detected":"Not detected",col:pdfData?.description?C.accent:C.red},
     ]);
     secTitle("On-Page SEO Check");
     tbl(["Element","Status","Recommendation"],[
@@ -2604,19 +2947,19 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
       {col1:"H1 Heading",col2:cl(normalized.seo.h1,"Not detected"),col3:"One clear H1 defining main topic or offer"},
       {col1:"Image ALT Text",col2:cl(normalized.seo.missingAlt,"Not checked"),col3:"Descriptive ALT on all important images"},
     ],[38,60,CW-98]);
-    if(data?.title){
+    if(pdfData?.title){
       secTitle("Detected Page Title");
-      hiBox("Page Title",cl(data.title),"blue");
+      hiBox("Page Title",cl(pdfData.title),"blue");
     }
-    if(data?.description){
+    if(pdfData?.description){
       secTitle("Detected Meta Description");
-      hiBox("Meta Description",cl(data.description),"blue");
+      hiBox("Meta Description",cl(pdfData.description),"blue");
     }
-    if(data?.issues?.length){
+    if(pdfData?.issues?.length){
 
 
       secTitle("Priority SEO Issues");
-      simpleList(data.issues.slice(0,8),"No SEO issues returned.");
+      simpleList(pdfData.issues.slice(0,8),"No SEO issues returned.");
     }
   }
 
@@ -2625,7 +2968,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("technical")){
     secHdr(nextSec(),"Performance & Core Web Vitals","PageSpeed scores and Core Web Vitals from Google PageSpeed Insights API.");
-    const mob=data?.pageSpeed?.mobile||{}, dsk=data?.pageSpeed?.desktop||{};
+    const mob=pdfData?.pageSpeed?.mobile||{}, dsk=pdfData?.pageSpeed?.desktop||{};
     kpiRow([
       {label:"Mobile Score",value:`${cl(String(mob.score??"—"))}/100`,sub:sLbl(mob.score),col:sCol(mob.score)},
       {label:"Desktop Score",value:`${cl(String(dsk.score??"—"))}/100`,sub:sLbl(dsk.score),col:sCol(dsk.score)},
@@ -2648,11 +2991,11 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 07 — AI VISIBILITY
   // ════════════════════════════════════════════════════════════════════
-    if(pdfShow("ai")&&(data?.aiSearchVisibility||data?.aiOptimization||data?.aiVisibility)){
+    if(pdfShow("ai")&&(pdfData?.aiSearchVisibility||pdfData?.aiOptimization||pdfData?.aiVisibility)){
     secHdr(nextSec(),"AI Search Visibility & GEO Readiness","Brand discoverability in AI-generated responses, generative search, and answer engines.");
     // 🆕 LIVE AI MODEL VISIBILITY (ChatGPT, Claude, Gemini)
-    if (data?.aiSearchVisibility) {
-      const av = data.aiSearchVisibility;
+    if (pdfData?.aiSearchVisibility) {
+      const av = pdfData.aiSearchVisibility;
       secTitle("Live AI Model Visibility", `Market: ${cl(av.country, "US")} · Models: ${cl((av.modelsCalled||[]).join(", "), "—")}`);
       kpiRow([
         { label: "AI Awareness", value: `${av.brandKnowledge?.score ?? 0}/100`, sub: "Do AI models know you?", col: C.accent },
@@ -2684,12 +3027,12 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
       if (av.missedPrompts?.length) hiBox("Missed Opportunities (Content Ideas)", (av.missedPrompts||[]).slice(0,3).join("  -  "), "amber");
     }
     const aiScore=n(normalized.scores.ai)??0;
-    const aiConf=cl(data?.aiSearchVisibility?.confidence,"Low");
-    const aiMent=n(data?.aiSearchVisibility?.brandMentionCount)??0;
-    const aiMods=Array.isArray(data?.aiSearchVisibility?.modelsCalled)
-      ? data.aiSearchVisibility.modelsCalled.length
+    const aiConf=cl(pdfData?.aiSearchVisibility?.confidence,"Low");
+    const aiMent=n(pdfData?.aiSearchVisibility?.brandMentionCount)??0;
+    const aiMods=Array.isArray(pdfData?.aiSearchVisibility?.modelsCalled)
+      ? pdfData.aiSearchVisibility.modelsCalled.length
       : 0;
-    const sov=n(data?.aiSearchVisibility?.shareOfVoice)??0;
+    const sov=n(pdfData?.aiSearchVisibility?.shareOfVoice)??0;
     kpiRow([
       {label:"AI Visibility Score",value:`${aiScore}/100`,sub:sLbl(aiScore),col:sCol(aiScore)},
       {label:"Brand Mentions",value:fmt(aiMent),sub:"In AI responses",col:aiMent>0?C.accent:C.red},
@@ -2712,16 +3055,16 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
       {col1:"Confidence",col2:aiConf,col3:"Reliability of AI visibility measurement"},
       {col1:"Methodology",col2:"Unbranded category prompts",col3:"Brand-named probes are evidence only and excluded from scoring"},
     ],[42,35,CW-77]);
-if(data?.aiOptimization?.models?.length){
+if(pdfData?.aiOptimization?.models?.length){
       secTitle("Model-Level Results");
       tblWrap(["Model","Mentioned","Response Snippet"],
-        data.aiOptimization.models.slice(0,10).map((m:any)=>({
+        pdfData.aiOptimization.models.slice(0,10).map((m:any)=>({
           col1:cl(m.model),
           col2:m.mentioned?"Yes":"No",
           col3:m.responseSnippet&&m.responseSnippet!=="{}"?cl(m.responseSnippet):"No response",
         })),[38,24,CW-62],4);
     }
-    const opportunity=data?.aiSearchVisibility
+    const opportunity=pdfData?.aiSearchVisibility
       ? aiMent===0
         ? "The brand was not mentioned across the scored unbranded category prompts. Improve entity signals, trusted citations, category content, and topical authority."
         : aiConf.toLowerCase()==="low"
@@ -2730,8 +3073,8 @@ if(data?.aiOptimization?.models?.length){
       : "Canonical AI visibility data was not available.";
 hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
 
-    if(data?.aiVisibility?.pageGeoReadiness){
-      const geo=data.aiVisibility.pageGeoReadiness;
+    if(pdfData?.aiVisibility?.pageGeoReadiness){
+      const geo=pdfData.aiVisibility.pageGeoReadiness;
       secTitle("AI Citation Readiness — Audited Page");
       kpiRow([{label:"Readiness Score",value:`${geo.score}/100`,sub:geo.grade,col:sCol(geo.score)}]);
       tbl(["Factor","Status"],geo.factors.map((f:any)=>({col1:cl(f.label),col2:f.pass?"Pass":"Needs work"})));
@@ -2743,22 +3086,22 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 08 — COMPETITOR INTELLIGENCE
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("competitors")&&data?.competitors?.length){
+  if(pdfShow("competitors")&&pdfData?.competitors?.length){
     secHdr(nextSec(),"Competitor Threat Intelligence","Domains capturing organic visibility through stronger content, authority, or keyword coverage.");
     kpiRow([
-      {label:"Competitors Found",value:String(data.competitors.length),sub:"Organic overlap",col:C.accent},
-      {label:"Top Competitor",value:cl(data.competitors[0]?.domain),sub:"Highest overlap",col:C.amber},
-      {label:"Top Shared Keywords",value:fmt(Math.max(...data.competitors.map((c:any)=>Number(c.sharedKeywords||c.intersections||0)))),sub:"With top competitor",col:C.blue},
-      {label:"Top Threat Score",value:cl(String(data.competitors[0]?.threatScore??"—")),sub:"Risk level",col:sCol(100-(n(data.competitors[0]?.threatScore)??50))},
+      {label:"Competitors Found",value:String(pdfData.competitors.length),sub:"Organic overlap",col:C.accent},
+      {label:"Top Competitor",value:cl(pdfData.competitors[0]?.domain),sub:"Highest overlap",col:C.amber},
+      {label:"Top Shared Keywords",value:fmt(Math.max(...pdfData.competitors.map((c:any)=>Number(c.sharedKeywords||c.intersections||0)))),sub:"With top competitor",col:C.blue},
+      {label:"Top Threat Score",value:cl(String(pdfData.competitors[0]?.threatScore??"—")),sub:"Risk level",col:sCol(100-(n(pdfData.competitors[0]?.threatScore)??50))},
     ]);
     secTitle("Competitor Overview Table");
     tbl(["Domain","Traffic","Shared KWs","Threat","Winning Factor"],
-      data.competitors.slice(0,12).map((c:any)=>({
+      pdfData.competitors.slice(0,12).map((c:any)=>({
         col1:cl(c.domain),col2:fmt(c.traffic),col3:fmt(c.sharedKeywords??c.intersections),
         col4:cl(String(c.threatScore??"—")),col5:cl(c.likelyWinningFactor??c.winningFactor,"—"),
       })),[48,28,25,20,CW-121]);
     secTitle("Competitor Intelligence Details");
-    data.competitors.slice(0,6).forEach((c:any)=>{
+    pdfData.competitors.slice(0,6).forEach((c:any)=>{
       hiBox(cl(c.domain),`Shared KWs: ${fmt(c.sharedKeywords??c.intersections)}  ·  Traffic: ${fmt(c.traffic)}  ·  Threat: ${cl(String(c.threatScore??"—"))}  ·  Strength: ${cl(c.competitiveStrength,"—")}  ·  AI Risk: ${cl(c.aiRisk,"—")}  ·  Winning: ${cl(c.likelyWinningFactor??c.winningFactor,"—")}`,"amber");
     });
   }
@@ -2768,45 +3111,45 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("keywords")||pdfShow("labs")){
     secHdr(nextSec(),"Keyword Gap & SEO Labs Intelligence","Missing keywords competitors rank for, plus ranked keyword intelligence from Crawler Que Labs.");
-    if(data?.dataforseo?.keywordGap){
+    if(pdfData?.dataforseo?.keywordGap){
       kpiRow([
-        {label:"Own Keywords",value:fmt(data?.dataforseo?.keywordGap?.ownKeywords),col:C.accent},
-        {label:"Competitors Checked",value:fmt(data?.dataforseo?.keywordGap?.competitorCount),col:C.blue},
-        {label:"Missing Keywords",value:fmt(data?.dataforseo?.keywordGap?.missingKeywords?.length),col:C.amber},
-        {label:"Gap Quality",value:cl(data?.dataforseo?.keywordGap?.quality==="available"?"Verified":"Limited"),col:data?.dataforseo?.keywordGap?.quality==="available"?C.accent:C.amber},
+        {label:"Own Keywords",value:fmt(pdfData?.dataforseo?.keywordGap?.ownKeywords),col:C.accent},
+        {label:"Competitors Checked",value:fmt(pdfData?.dataforseo?.keywordGap?.competitorCount),col:C.blue},
+        {label:"Missing Keywords",value:fmt(pdfData?.dataforseo?.keywordGap?.missingKeywords?.length),col:C.amber},
+        {label:"Gap Quality",value:cl(pdfData?.dataforseo?.keywordGap?.quality==="available"?"Verified":"Limited"),col:pdfData?.dataforseo?.keywordGap?.quality==="available"?C.accent:C.amber},
       ]);
     }
-    if(data?.dataforseo?.keywordGap?.missingKeywords?.length){
+    if(pdfData?.dataforseo?.keywordGap?.missingKeywords?.length){
       secTitle("Missing Keyword Opportunities");
       tbl(["Keyword","Volume","Intent","Page Type","Opportunity","Priority"],
-        data.dataforseo.keywordGap.missingKeywords.slice(0,15).map((k:any)=>({
+        pdfData.dataforseo.keywordGap.missingKeywords.slice(0,15).map((k:any)=>({
           col1:cl(k.keyword),col2:fmt(k.volume??k.search_volume),
           col3:cl(k.intent,"general"),col4:cl(k.recommendedPageType,"Supporting Content"),
           col5:cl(String(k.opportunityScore??"—")),col6:cl(k.priority,"Low"),
         })),[55,22,20,38,20,CW-155]);
       secTitle("Keyword Gap — Action Guidance");
-      data.dataforseo.keywordGap.missingKeywords.slice(0,8).forEach((k:any)=>{
+      pdfData.dataforseo.keywordGap.missingKeywords.slice(0,8).forEach((k:any)=>{
         actCard(cl(k.keyword),cl(k.priority,"Medium"),cl(k.action,"Add to content roadmap"),`Volume: ${fmt(k.volume)}  |  Intent: ${cl(k.intent)}  |  Competitors: ${Array.isArray(k.competitors)?k.competitors.join(", "):cl(k.competitors)}`,cl(k.priority,"medium").toLowerCase().includes("high")?"high":"medium");
       });
     }
-    if(data?.dataforseo?.keywordGap?.contentIdeas?.length){
+    if(pdfData?.dataforseo?.keywordGap?.contentIdeas?.length){
       secTitle("AI Content Cluster Ideas");
       tbl(["Cluster","Headline","Keywords"],
-        data.dataforseo.keywordGap.contentIdeas.slice(0,8).map((idea:any)=>({
+        pdfData.dataforseo.keywordGap.contentIdeas.slice(0,8).map((idea:any)=>({
           col1:cl(idea.cluster),col2:cl(idea.headline),
           col3:idea.keywords?.slice(0,4).map((kk:any)=>kk.keyword).join(", ")||"—",
         })),[35,70,CW-105]);
     }
-    if(data?.dataforseo?.topKeywords?.length){
+    if(pdfData?.dataforseo?.topKeywords?.length){
       secTitle("Crawler Que Labs — Ranked Keywords");
       kpiRow([
-        {label:"Organic Keywords",value:fmt(data?.dataforseo?.organicKeywords),col:C.accent},
-        {label:"Top Keywords Fetched",value:fmt(data?.dataforseo?.topKeywords?.length),col:C.blue},
-        {label:"Competitors Found",value:fmt(data?.dataforseo?.competitors?.length),col:C.amber},
-        {label:"Fetch Iterations",value:cl(String(data?.dataforseo?.keywordFetchIterations??"—")),col:C.muted},
+        {label:"Organic Keywords",value:fmt(pdfData?.dataforseo?.organicKeywords),col:C.accent},
+        {label:"Top Keywords Fetched",value:fmt(pdfData?.dataforseo?.topKeywords?.length),col:C.blue},
+        {label:"Competitors Found",value:fmt(pdfData?.dataforseo?.competitors?.length),col:C.amber},
+        {label:"Fetch Iterations",value:cl(String(pdfData?.dataforseo?.keywordFetchIterations??"—")),col:C.muted},
       ]);
       tbl(["Keyword","Position","Volume","CPC","Intent","KD","Opportunity"],
-        data.dataforseo.topKeywords.slice(0,15).map((k:any)=>({
+        pdfData.dataforseo.topKeywords.slice(0,15).map((k:any)=>({
           col1:cl(k.keyword),col2:cl(String(k.position??"—")),col3:fmt(k.volume),
           col4:cl(k.cpc?`$${Number(k.cpc).toFixed(2)}`:"—"),col5:cl(k.intent,"—"),
           col6:cl(String(k.difficulty??"—")),col7:cl(String(k.opportunity??"—")),
@@ -2817,16 +3160,16 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 10 — KEYWORD RESEARCH
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("keywords")&&data?.keywordResearch?.suggestions?.length){
+  if(pdfShow("keywords")&&pdfData?.keywordResearch?.suggestions?.length){
     secHdr(nextSec(),"Keyword Research","Seed keyword suggestions from Crawler Que Keyword Suggestions API with intent and CPC signals.");
     kpiRow([
-      {label:"Seed Keyword",value:cl(data?.keywordResearch?.seedKeyword),col:C.accent},
-      {label:"Suggestions Found",value:fmt(data?.keywordResearch?.suggestions?.length),col:C.blue},
-      {label:"Source",value:cl(data?.keywordResearch?.source,"Crawler Que"),col:C.muted},
-      {label:"Location",value:cl(data?.traffic?.country,"—"),col:C.muted},
+      {label:"Seed Keyword",value:cl(pdfData?.keywordResearch?.seedKeyword),col:C.accent},
+      {label:"Suggestions Found",value:fmt(pdfData?.keywordResearch?.suggestions?.length),col:C.blue},
+      {label:"Source",value:cl(pdfData?.keywordResearch?.source,"Crawler Que"),col:C.muted},
+      {label:"Location",value:cl(pdfData?.traffic?.country,"—"),col:C.muted},
     ]);
     tbl(["Keyword","Volume","CPC","Competition","Intent","KD"],
-      data.keywordResearch.suggestions.slice(0,20).map((k:any)=>({
+      pdfData.keywordResearch.suggestions.slice(0,20).map((k:any)=>({
         col1:cl(k.keyword),col2:fmt(k.volume),col3:cl(k.cpc?`$${Number(k.cpc).toFixed(2)}`:"—"),
         col4:fmtCompetition(k.competition),col5:cl(k.intent,"—"),col6:cl(String(k.difficulty??"—")),
       })),[65,22,18,22,18,CW-145]);
@@ -2835,18 +3178,18 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 11 — SERP RANKINGS
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("serp")&&data?.serpData){
+  if(pdfShow("serp")&&pdfData?.serpData){
     secHdr(nextSec(),"Live SERP Rankings","Google rank positions checked by Crawler Que SERP API for tracked keywords.");
     kpiRow([
-      {label:"Keywords Checked",value:cl(String(data?.serpData?.checkedKeywords??"—")),col:C.accent},
-      {label:"Keywords Found",value:cl(String(data?.serpData?.foundCount??"—")),col:C.green},
-      {label:"Keywords Not Found",value:cl(String(Math.max(0,(data?.serpData?.checkedKeywords??0)-(data?.serpData?.foundCount??0)))),col:C.red},
-      {label:"Average Rank",value:cl(String(data?.serpData?.avgRank??"—")),col:C.blue},
+      {label:"Keywords Checked",value:cl(String(pdfData?.serpData?.checkedKeywords??"—")),col:C.accent},
+      {label:"Keywords Found",value:cl(String(pdfData?.serpData?.foundCount??"—")),col:C.green},
+      {label:"Keywords Not Found",value:cl(String(Math.max(0,(pdfData?.serpData?.checkedKeywords??0)-(pdfData?.serpData?.foundCount??0)))),col:C.red},
+      {label:"Average Rank",value:cl(String(pdfData?.serpData?.avgRank??"—")),col:C.blue},
     ]);
-    if(data?.serpData?.results?.length){
+    if(pdfData?.serpData?.results?.length){
       secTitle("Keyword Rank Results");
       tbl(["Keyword","Found","Google Rank","Ranking URL"],
-        data.serpData.results.map((r:any)=>({
+        pdfData.serpData.results.map((r:any)=>({
           col1:cl(r.keyword),col2:r.found?"Yes":"No",
           col3:r.found?`#${cl(String(r.rank),"—")}`:"Not found",col4:r.found?cl(r.url,"—"):"Not in top 100",
         })),[55,14,18,CW-87]);
@@ -2856,25 +3199,25 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 12 — BACKLINK AUTHORITY
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("backlinks")&&data?.backlinks){
+  if(pdfShow("backlinks")&&pdfData?.backlinks){
     secHdr(nextSec(),"Backlink Authority & Trust Signals","Domain trust, referring domains, and top backlink sources from Crawler Que Backlinks API.");
     kpiRow([
-      {label:"Backlink Rank",value:cl(String(data?.dataforseo?.backlinkRank??normalized.backlinks.rank??"—")),sub:"Authority signal",col:sCol(n(normalized.backlinks.rank))},
-      {label:"Total Backlinks",value:fmt(data?.backlinks?.backlinks??normalized.backlinks.total),col:C.accent},
-      {label:"Referring Domains",value:fmt(data?.backlinks?.referringDomains??normalized.backlinks.referringDomains),col:C.blue},
-      {label:"Referring Pages",value:fmt(data?.backlinks?.referringPages??normalized.backlinks.referringDomains),col:C.amber},
+      {label:"Backlink Rank",value:cl(String(pdfData?.dataforseo?.backlinkRank??normalized.backlinks.rank??"—")),sub:"Authority signal",col:sCol(n(normalized.backlinks.rank))},
+      {label:"Total Backlinks",value:fmt(pdfData?.backlinks?.backlinks??normalized.backlinks.total),col:C.accent},
+      {label:"Referring Domains",value:fmt(pdfData?.backlinks?.referringDomains??normalized.backlinks.referringDomains),col:C.blue},
+      {label:"Referring Pages",value:fmt(pdfData?.backlinks?.referringPages??normalized.backlinks.referringDomains),col:C.amber},
     ]);
     scoreBar("Backlink Authority Signal",normalized.backlinks.rank,"50+ referring domains = moderate authority");
     tbl(["Metric","Value","Benchmark"],[
       {col1:"Backlink Rank",col2:cl(String(normalized.backlinks.rank??"—")),col3:"Higher = better; compare vs direct competitors"},
-      {col1:"Total Backlinks",col2:fmt(data?.backlinks?.backlinks),col3:"Quality matters more than raw count"},
-      {col1:"Referring Domains",col2:fmt(data?.backlinks?.referringDomains),col3:"50+ moderate, 200+ strong authority"},
-      {col1:"Referring Pages",col2:fmt(data?.backlinks?.referringPages),col3:"More pages = broader link surface"},
+      {col1:"Total Backlinks",col2:fmt(pdfData?.backlinks?.backlinks),col3:"Quality matters more than raw count"},
+      {col1:"Referring Domains",col2:fmt(pdfData?.backlinks?.referringDomains),col3:"50+ moderate, 200+ strong authority"},
+      {col1:"Referring Pages",col2:fmt(pdfData?.backlinks?.referringPages),col3:"More pages = broader link surface"},
     ],[45,35,CW-80]);
-    if(data?.backlinks?.topBacklinks?.length){
+    if(pdfData?.backlinks?.topBacklinks?.length){
       secTitle("Top Backlinks");
       tbl(["Domain","Anchor","Rank","Source URL"],
-        data.backlinks.topBacklinks.slice(0,12).map((b:any)=>({
+        pdfData.backlinks.topBacklinks.slice(0,12).map((b:any)=>({
           col1:cl(b.domainFrom,"Unknown"),col2:cl(b.anchor,"No anchor"),
           col3:cl(String(b.rank??"—")),col4:cl(b.sourceUrl,"—"),
         })),[42,42,14,CW-98]);
@@ -2885,47 +3228,47 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
         normalized.backlinks.samples.slice(0,10).map((l:any)=>({col1:cl(l.anchor,"No anchor"),col2:cl(l.source,"—"),col3:cl(l.target,"—")})),
         [42,68,CW-110]);
     }
-    hiBox("Authority Insight",data?.backlinks?.referringDomains?`${domain} has ${cl(String(data.backlinks.referringDomains))} referring domains and ${cl(String(data.backlinks.backlinks??"unknown"))} total backlinks. Focus on earning quality industry mentions and relevant authority links.`:"Data not available from Crawler Que Backlinks API.","blue");
+    hiBox("Authority Insight",pdfData?.backlinks?.referringDomains?`${domain} has ${cl(String(pdfData.backlinks.referringDomains))} referring domains and ${cl(String(pdfData.backlinks.backlinks??"unknown"))} total backlinks. Focus on earning quality industry mentions and relevant authority links.`:"Data not available from Crawler Que Backlinks API.","blue");
   }
 
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 13 — TECHNICAL SEO AUDIT
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("technical")&&data?.onPage){
+  if(pdfShow("technical")&&pdfData?.onPage){
     secHdr(nextSec(),"Technical SEO Audit","OnPage crawl status, page-level issues, broken links, and crawl signals from Crawler Que OnPage API.");
     kpiRow([
-      {label:"Pages Discovered",value:fmt(data?.onPage?.discoveredPages),col:C.blue},
-      {label:"Pages Crawled",value:fmt(data?.onPage?.crawledPages),col:C.accent},
-      {label:"Coverage",value:data?.onPage?.coveragePercent!==null&&data?.onPage?.coveragePercent!==undefined?`${fmt(data.onPage.coveragePercent)}%`:"—",col:(n(data?.onPage?.coveragePercent)??0)>=90?C.green:C.amber},
-      {label:"Crawl Page Limit",value:fmt(data?.onPage?.pageLimit),col:C.muted},
+      {label:"Pages Discovered",value:fmt(pdfData?.onPage?.discoveredPages),col:C.blue},
+      {label:"Pages Crawled",value:fmt(pdfData?.onPage?.crawledPages),col:C.accent},
+      {label:"Coverage",value:pdfData?.onPage?.coveragePercent!==null&&pdfData?.onPage?.coveragePercent!==undefined?`${fmt(pdfData.onPage.coveragePercent)}%`:"—",col:(n(pdfData?.onPage?.coveragePercent)??0)>=90?C.green:C.amber},
+      {label:"Crawl Page Limit",value:fmt(pdfData?.onPage?.pageLimit),col:C.muted},
     ]);
     kpiRow([
-      {label:"Completed Pages",value:fmt(data?.onPage?.completedPages),col:C.green},
-      {label:"Failed Pages",value:fmt(data?.onPage?.failedPages),col:(n(data?.onPage?.failedPages)??0)>0?C.red:C.green},
-      {label:"Remaining Pages",value:fmt(data?.onPage?.remainingPages),col:(n(data?.onPage?.remainingPages)??0)>0?C.amber:C.green},
-      {label:"Crawl Confidence",value:cl(data?.onPage?.confidence??data?.reconciliation?.technical?.confidence,"Unknown"),col:data?.onPage?.confidence==="high"?C.green:C.amber},
+      {label:"Completed Pages",value:fmt(pdfData?.onPage?.completedPages),col:C.green},
+      {label:"Failed Pages",value:fmt(pdfData?.onPage?.failedPages),col:(n(pdfData?.onPage?.failedPages)??0)>0?C.red:C.green},
+      {label:"Remaining Pages",value:fmt(pdfData?.onPage?.remainingPages),col:(n(pdfData?.onPage?.remainingPages)??0)>0?C.amber:C.green},
+      {label:"Crawl Confidence",value:cl(pdfData?.onPage?.confidence??pdfData?.reconciliation?.technical?.confidence,"Unknown"),col:pdfData?.onPage?.confidence==="high"?C.green:C.amber},
     ]);
-    if(data?.onPage?.limitation||data?.reconciliation?.technical?.limitation){
-      hiBox("Technical Coverage Limitation",cl(data?.onPage?.limitation??data?.reconciliation?.technical?.limitation),"amber");
+    if(pdfData?.onPage?.limitation||pdfData?.reconciliation?.technical?.limitation){
+      hiBox("Technical Coverage Limitation",cl(pdfData?.onPage?.limitation??pdfData?.reconciliation?.technical?.limitation),"amber");
     }
     tbl(["Check","Result","Notes"],[
-      {col1:"Crawl Status",col2:cl(data?.onPage?.crawlStatus,"—"),col3:"Final status from the saved OnPage task"},
-      {col1:"Confidence",col2:cl(data?.onPage?.confidence??data?.reconciliation?.technical?.confidence,"—"),col3:"Limited when the crawl times out or returns partial coverage"},
-      {col1:"Pages Discovered",col2:fmt(data?.onPage?.discoveredPages),col3:"Pages identified by the crawl"},
-      {col1:"Pages Crawled",col2:fmt(data?.onPage?.crawledPages),col3:"Pages with returned technical evidence"},
-      {col1:"Pages Remaining",col2:fmt(data?.onPage?.remainingPages),col3:"Unprocessed in-scope pages at finalization"},
-      {col1:"Crawl Page Limit",col2:fmt(data?.onPage?.pageLimit),col3:"Maximum pages requested for this audit"},
-      {col1:"Outside Crawl Limit",col2:fmt(data?.onPage?.outsideLimitPages),col3:"Discovered pages excluded by the visible crawl cap"},
-      {col1:"Coverage",col2:data?.onPage?.coveragePercent!==null&&data?.onPage?.coveragePercent!==undefined?`${fmt(data.onPage.coveragePercent)}%`:"—",col3:"Returned pages divided by in-scope discovered pages"},
-      {col1:"Broken Links",col2:fmt(data?.onPage?.brokenLinks),col3:"All evidenced broken links should be fixed or redirected"},
-      {col1:"Missing Titles",col2:fmt(data?.onPage?.missingTitle),col3:"Every important page needs a unique title"},
-      {col1:"Missing Descriptions",col2:fmt(data?.onPage?.missingDescription),col3:"Descriptions improve search CTR"},
-      {col1:"Duplicate Titles",col2:fmt(data?.onPage?.duplicateTitle),col3:"Duplicate titles reduce topical clarity"},
+      {col1:"Crawl Status",col2:cl(pdfData?.onPage?.crawlStatus,"—"),col3:"Final status from the saved OnPage task"},
+      {col1:"Confidence",col2:cl(pdfData?.onPage?.confidence??pdfData?.reconciliation?.technical?.confidence,"—"),col3:"Limited when the crawl times out or returns partial coverage"},
+      {col1:"Pages Discovered",col2:fmt(pdfData?.onPage?.discoveredPages),col3:"Pages identified by the crawl"},
+      {col1:"Pages Crawled",col2:fmt(pdfData?.onPage?.crawledPages),col3:"Pages with returned technical evidence"},
+      {col1:"Pages Remaining",col2:fmt(pdfData?.onPage?.remainingPages),col3:"Unprocessed in-scope pages at finalization"},
+      {col1:"Crawl Page Limit",col2:fmt(pdfData?.onPage?.pageLimit),col3:"Maximum pages requested for this audit"},
+      {col1:"Outside Crawl Limit",col2:fmt(pdfData?.onPage?.outsideLimitPages),col3:"Discovered pages excluded by the visible crawl cap"},
+      {col1:"Coverage",col2:pdfData?.onPage?.coveragePercent!==null&&pdfData?.onPage?.coveragePercent!==undefined?`${fmt(pdfData.onPage.coveragePercent)}%`:"—",col3:"Returned pages divided by in-scope discovered pages"},
+      {col1:"Broken Links",col2:fmt(pdfData?.onPage?.brokenLinks),col3:"All evidenced broken links should be fixed or redirected"},
+      {col1:"Missing Titles",col2:fmt(pdfData?.onPage?.missingTitle),col3:"Every important page needs a unique title"},
+      {col1:"Missing Descriptions",col2:fmt(pdfData?.onPage?.missingDescription),col3:"Descriptions improve search CTR"},
+      {col1:"Duplicate Titles",col2:fmt(pdfData?.onPage?.duplicateTitle),col3:"Duplicate titles reduce topical clarity"},
     ],[42,30,CW-72]);
-    if(data?.onPage?.pages?.length){
+    if(pdfData?.onPage?.pages?.length){
       secTitle("Sample Crawled Pages");
       tbl(["Title","URL","Status","Load Time"],
-        data.onPage.pages.slice(0,12).map((p:any)=>({
+        pdfData.onPage.pages.slice(0,12).map((p:any)=>({
           col1:cl(p.title,"Untitled"),col2:cl(p.url,"—"),
           col3:cl(String(p.statusCode??"—")),col4:cl(p.loadTime?`${p.loadTime}ms`:"—"),
         })),[55,65,14,CW-134]);
@@ -2938,22 +3281,22 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   if(pdfShow("content")){
     secHdr(nextSec(),"First-Party Content Quality","Only pages from the audited domain are scored. External pages are excluded from this module.");
     kpiRow([
-      {label:"Pages Requested",value:fmt(data?.contentAnalysis?.requestedPages),col:C.blue},
-      {label:"Pages Analyzed",value:fmt(data?.contentAnalysis?.analyzedPages??data?.contentAnalysis?.results?.length),col:C.accent},
-      {label:"Failed Pages",value:fmt(data?.contentAnalysis?.failedPages),col:(n(data?.contentAnalysis?.failedPages)??0)>0?C.amber:C.green},
-      {label:"Average Score",value:data?.contentAnalysis?.averageScore!==null&&data?.contentAnalysis?.averageScore!==undefined?`${fmt(data.contentAnalysis.averageScore)}/100`:"—",col:sCol(data?.contentAnalysis?.averageScore)},
+      {label:"Pages Requested",value:fmt(pdfData?.contentAnalysis?.requestedPages),col:C.blue},
+      {label:"Pages Analyzed",value:fmt(pdfData?.contentAnalysis?.analyzedPages??pdfData?.contentAnalysis?.results?.length),col:C.accent},
+      {label:"Failed Pages",value:fmt(pdfData?.contentAnalysis?.failedPages),col:(n(pdfData?.contentAnalysis?.failedPages)??0)>0?C.amber:C.green},
+      {label:"Average Score",value:pdfData?.contentAnalysis?.averageScore!==null&&pdfData?.contentAnalysis?.averageScore!==undefined?`${fmt(pdfData.contentAnalysis.averageScore)}/100`:"—",col:sCol(pdfData?.contentAnalysis?.averageScore)},
     ]);
-    if(data?.dataforseo?.keywordGap?.opportunities?.length){
+    if(pdfData?.dataforseo?.keywordGap?.opportunities?.length){
       secTitle("Content Opportunities");
       tbl(["Keyword","Volume","Competitor Domains"],
-        data.dataforseo.keywordGap.opportunities.slice(0,10).map((k:any)=>({
+        pdfData.dataforseo.keywordGap.opportunities.slice(0,10).map((k:any)=>({
           col1:cl(k.keyword),col2:fmt(k.volume),col3:Array.isArray(k.competitors)?k.competitors.join(", "):cl(k.competitors,"—"),
         })),[60,25,CW-85]);
     }
-    if(data?.contentAnalysis?.results?.length){
+    if(pdfData?.contentAnalysis?.results?.length){
       secTitle("Audited-Site Content Results");
       tbl(["Page","Score","Words","Top Issue","URL"],
-        data.contentAnalysis.results.slice(0,10).map((item:any)=>({
+        pdfData.contentAnalysis.results.slice(0,10).map((item:any)=>({
           col1:cl(item.title??item.mainTopic,"Untitled"),
           col2:item.score!==null&&item.score!==undefined?`${cl(String(item.score))}/100`:"—",
           col3:fmt(item.wordCount??item.contentLength),
@@ -2966,16 +3309,16 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 15 — LOCAL SEO
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("local")&&data?.businessData?.listings?.length){
+  if(pdfShow("local")&&pdfData?.businessData?.listings?.length){
     secHdr(nextSec(),"Local SEO & Business Listings","Business listing visibility, ratings, and review signals from Crawler Que Business Data API.");
     kpiRow([
-      {label:"Listings Found",value:fmt(data?.businessData?.listings?.length),col:C.accent},
-      {label:"Search Query",value:cl(data?.businessData?.keyword),col:C.blue},
-      {label:"Location",value:cl(data?.businessData?.location),col:C.muted},
-      {label:"Top Rating",value:cl(String(Math.max(...(data.businessData.listings||[]).map((l:any)=>Number(l.rating||0)))||"—")),col:C.amber},
+      {label:"Listings Found",value:fmt(pdfData?.businessData?.listings?.length),col:C.accent},
+      {label:"Search Query",value:cl(pdfData?.businessData?.keyword),col:C.blue},
+      {label:"Location",value:cl(pdfData?.businessData?.location),col:C.muted},
+      {label:"Top Rating",value:cl(String(Math.max(...(pdfData.businessData.listings||[]).map((l:any)=>Number(l.rating||0)))||"—")),col:C.amber},
     ]);
     tbl(["Business","Category","Rating","Reviews","Address"],
-      data.businessData.listings.slice(0,10).map((item:any)=>({
+      pdfData.businessData.listings.slice(0,10).map((item:any)=>({
         col1:cl(item.title,"Unknown"),col2:cl(item.category,"—"),
         col3:cl(String(item.rating??"—")),col4:cl(String(item.reviews??"—")),col5:cl(item.address,"—"),
       })),[40,30,14,16,CW-100]);
@@ -2986,14 +3329,14 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   if(pdfShow("recommendations")){
     secHdr(nextSec(),"Evidence-Backed Recommendations","Prioritised actions tied to source modules, affected URLs, validation status, and supporting evidence.");
-    const canonicalRecommendations = Array.isArray(data?.recommendations)
-      ? data.recommendations.slice(0, 10)
+    const canonicalRecommendations = Array.isArray(pdfData?.recommendations)
+      ? pdfData.recommendations.slice(0, 10)
       : [];
     kpiRow([
       {label:"Recommendations",value:fmt(canonicalRecommendations.length),col:C.accent},
-      {label:"Source",value:cl(data?.aiRecommendations?.source,"Evidence Engine"),col:C.muted},
-      {label:"Primary Opportunity",value:cl(data?.unifiedOverview?.primaryOpportunity),col:C.amber},
-      {label:"Suppressed Branded Gaps",value:fmt(data?.aiRecommendations?.suppressedCompetitorBrandedKeywords),col:C.blue},
+      {label:"Source",value:cl(pdfData?.aiRecommendations?.source,"Evidence Engine"),col:C.muted},
+      {label:"Primary Opportunity",value:cl(pdfData?.unifiedOverview?.primaryOpportunity),col:C.amber},
+      {label:"Suppressed Branded Gaps",value:fmt(pdfData?.aiRecommendations?.suppressedCompetitorBrandedKeywords),col:C.blue},
     ]);
     if(canonicalRecommendations.length){
       secTitle("Priority Recommendations");
@@ -3032,7 +3375,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   //  SECTION 17 — ACTION ROADMAP
   // ════════════════════════════════════════════════════════════════════
   secHdr(nextSec(),"30 / 60 / 90 Day Action Roadmap","An execution sequence generated from the validated recommendations in this report.");
-  const roadmap = data?.actionRoadmap || data?.aiRecommendations?.roadmap || normalized?.actionRoadmap || {};
+  const roadmap = pdfData?.actionRoadmap || pdfData?.aiRecommendations?.roadmap || normalized?.actionRoadmap || {};
   const roadmapPhase = (
     title:string,
     timeline:string,
@@ -3144,7 +3487,8 @@ const shouldShowSection = (section: string) => {
   section === "overview" ||
   section === "history" ||
   section === "billing" ||
-  section === "account"
+  section === "account" ||
+  (section === "review" && Boolean(data?.reportId))
 ) {
   return true;
 }
@@ -3172,6 +3516,279 @@ const shouldShowSection = (section: string) => {
 const isLargeSiteWarning =
   Number(data?.traffic?.rankedKeywordCount || 0) >= 10000 &&
   data?.traffic?.confidence !== "insufficient-data";
+
+const reviewStatusClass = (
+  status: string
+) => {
+  const value = String(
+    status || "draft"
+  ).toLowerCase();
+
+  if (value === "approved") {
+    return "border-emerald-300/20 bg-emerald-300/10 text-emerald-300";
+  }
+
+  if (value === "in_review") {
+    return "border-blue-300/20 bg-blue-300/10 text-blue-300";
+  }
+
+  if (value === "changes_required") {
+    return "border-amber-300/20 bg-amber-300/10 text-amber-300";
+  }
+
+  return "border-[#C5FF3D]/20 bg-[#C5FF3D]/10 text-[#C5FF3D]";
+};
+
+const reviewStatusLabel = (
+  status: string
+) =>
+  String(status || "draft")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) =>
+      character.toUpperCase()
+    );
+
+const renderReviewItems = (
+  group:
+    | "issues"
+    | "recommendations",
+  title: string
+) => {
+  const items = Array.isArray(
+    reviewDraft?.[group]
+  )
+    ? [...reviewDraft[group]].sort(
+        (a: any, b: any) =>
+          Number(a?.order || 0) -
+          Number(b?.order || 0)
+      )
+    : [];
+
+  const canEdit =
+    currentUser?.canReviewReports ===
+    true;
+
+  return (
+    <div className="rounded-2xl border border-[#222] bg-[#111] p-5">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-bold text-white">
+            {title}
+          </h3>
+          <p className="mt-1 text-xs text-[#777]">
+            Original automated evidence is locked. Client-facing fields can be edited, reordered, or suppressed.
+          </p>
+        </div>
+
+        <span className="rounded-full border border-[#2A2A2A] bg-[#151515] px-3 py-1 text-xs text-[#A0A0A0]">
+          {items.filter((item: any) => item?.visible !== false).length} visible / {items.length} total
+        </span>
+      </div>
+
+      {items.length === 0 ? (
+        <p className="text-sm text-[#777]">
+          No items are available in this section.
+        </p>
+      ) : (
+        <div className="space-y-5">
+          {items.map((item: any, index: number) => {
+            const original =
+              item?.original || {};
+            const client =
+              item?.client || {};
+
+            return (
+              <div
+                key={item?.id || index}
+                className={`rounded-2xl border p-5 ${
+                  item?.visible === false
+                    ? "border-red-300/20 bg-red-300/5 opacity-75"
+                    : "border-[#252525] bg-[#151515]"
+                }`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full border border-[#2A2A2A] bg-[#0A0A0A] px-3 py-1 font-mono text-[10px] uppercase tracking-wide text-[#8A8A8A]">
+                      {group === "issues" ? "Finding" : "Recommendation"} {index + 1}
+                    </span>
+
+                    <span className="rounded-full border border-[#C5FF3D]/20 bg-[#C5FF3D]/10 px-3 py-1 text-[10px] font-semibold text-[#C5FF3D]">
+                      {original?.sourceModule || "Automated evidence"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={!canEdit || index === 0}
+                      onClick={() =>
+                        moveReviewItem(
+                          group,
+                          item.id,
+                          -1
+                        )
+                      }
+                      className="rounded-lg border border-[#2A2A2A] px-3 py-1.5 text-xs text-[#CCCCCC] disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      Move Up
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={!canEdit || index === items.length - 1}
+                      onClick={() =>
+                        moveReviewItem(
+                          group,
+                          item.id,
+                          1
+                        )
+                      }
+                      className="rounded-lg border border-[#2A2A2A] px-3 py-1.5 text-xs text-[#CCCCCC] disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      Move Down
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={!canEdit}
+                      onClick={() =>
+                        updateReviewItem(
+                          group,
+                          item.id,
+                          (current: any) => ({
+                            ...current,
+                            visible:
+                              current?.visible ===
+                              false,
+                          })
+                        )
+                      }
+                      className={`rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${
+                        item?.visible === false
+                          ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-300"
+                          : "border-red-300/20 bg-red-300/10 text-red-300"
+                      }`}
+                    >
+                      {item?.visible === false ? "Restore" : "Suppress"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                  <div className="rounded-xl border border-[#252525] bg-[#0D0D0D] p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[#777]">
+                      Original automated version — locked
+                    </p>
+                    <p className="mt-3 font-semibold text-white">
+                      {original?.title || "Untitled item"}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-[#999]">
+                      {original?.detail || "No detail available."}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-[#777]">
+                      <span>Impact: {original?.impact || "Medium"}</span>
+                      <span>Effort: {original?.effort || "Medium"}</span>
+                      <span>Owner: {original?.owner || "Growth Team"}</span>
+                      <span>Timeline: {original?.timeline || "31–60 days"}</span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-[#C5FF3D]/15 bg-[#C5FF3D]/5 p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[#C5FF3D]">
+                      Client-facing version
+                    </p>
+
+                    <label className="mt-3 block text-xs text-[#8A8A8A]">
+                      Title
+                    </label>
+                    <input
+                      value={client?.title || ""}
+                      disabled={!canEdit}
+                      onChange={(event) =>
+                        updateReviewItem(
+                          group,
+                          item.id,
+                          (current: any) => ({
+                            ...current,
+                            client: {
+                              ...current.client,
+                              title:
+                                event.target.value,
+                            },
+                          })
+                        )
+                      }
+                      className="mt-1 w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] px-3 py-2 text-sm text-white outline-none focus:border-[#C5FF3D]/50 disabled:opacity-70"
+                    />
+
+                    <label className="mt-3 block text-xs text-[#8A8A8A]">
+                      Client-facing detail
+                    </label>
+                    <textarea
+                      value={client?.detail || ""}
+                      disabled={!canEdit}
+                      onChange={(event) =>
+                        updateReviewItem(
+                          group,
+                          item.id,
+                          (current: any) => ({
+                            ...current,
+                            client: {
+                              ...current.client,
+                              detail:
+                                event.target.value,
+                            },
+                          })
+                        )
+                      }
+                      rows={4}
+                      className="mt-1 w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] px-3 py-2 text-sm leading-6 text-white outline-none focus:border-[#C5FF3D]/50 disabled:opacity-70"
+                    />
+
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      {[
+                        ["impact", "Impact"],
+                        ["effort", "Effort"],
+                        ["owner", "Owner"],
+                        ["timeline", "Timeline"],
+                      ].map(([field, label]) => (
+                        <label
+                          key={field}
+                          className="block text-xs text-[#8A8A8A]"
+                        >
+                          {label}
+                          <input
+                            value={client?.[field] || ""}
+                            disabled={!canEdit}
+                            onChange={(event) =>
+                              updateReviewItem(
+                                group,
+                                item.id,
+                                (current: any) => ({
+                                  ...current,
+                                  client: {
+                                    ...current.client,
+                                    [field]:
+                                      event.target.value,
+                                  },
+                                })
+                              )
+                            }
+                            className="mt-1 w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] px-3 py-2 text-sm text-white outline-none focus:border-[#C5FF3D]/50 disabled:opacity-70"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
   return (
 <div className="si-dashboard flex min-h-screen bg-[#0A0A0A] text-white [&_.bg-white]:bg-[#111111] [&_.bg-slate-50]:bg-[#181818] [&_.bg-slate-100]:bg-[#181818] [&_.bg-slate-200]:bg-[#222222] [&_.bg-slate-950]:bg-[#0d0d0d] [&_.border-slate-200]:border-[#222222] [&_.border-slate-100]:border-[#222222] [&_.text-slate-950]:text-white [&_.text-slate-900]:text-white [&_.text-slate-800]:text-[#EEEEEE] [&_.text-slate-700]:text-[#CCCCCC] [&_.text-slate-600]:text-[#A0A0A0] [&_.text-slate-500]:text-[#8A8A8A] [&_.text-slate-400]:text-[#666666] [&_.text-slate-300]:text-[#AAAAAA] [&_.text-blue-600]:text-[#C5FF3D] [&_.text-blue-700]:text-[#C5FF3D] [&_.bg-blue-600]:bg-[#C5FF3D] [&_.bg-blue-100]:bg-[#C5FF3D]/10 [&_.text-blue-700]:text-[#C5FF3D] [&_.bg-green-100]:bg-[#C5FF3D]/10 [&_.text-green-700]:text-[#C5FF3D] [&_.bg-green-600]:bg-[#C5FF3D] [&_.text-green-600]:text-[#C5FF3D] [&_.shadow-sm]:shadow-none [&_.text-white]:text-white">
@@ -3204,6 +3821,7 @@ const isLargeSiteWarning =
   ["keywordResearch", "Keyword Research", Search, currentUser?.role === "admin" || currentUser?.package?.allowKeywords],
   ["content", "Content Quality", Brain, true],
   ["localSeo", "Local SEO", Globe, currentUser?.role === "admin" || currentUser?.package?.allowLocalSeo],
+  ["review", "Client Review", Brain, Boolean(data?.reportId)],
   ["history", "History", BarChart3, true],
 ["billing", "Subscription", BarChart3, !currentUser?.isPromoAccess],
 ["account", "Account Settings", Brain, !currentUser?.isPromoAccess],
@@ -3829,6 +4447,188 @@ data?.renderReady !== true
     </div>
   </div>
 )}
+{/* CLIENT REVIEW */}
+{activeTab === "review" && (
+  <Section title="Agency Review & Client Approval">
+    {!data?.reportId ? (
+      <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-5 text-sm text-amber-100">
+        Open a completed saved report before starting client review.
+      </div>
+    ) : reviewLoading ? (
+      <div className="rounded-2xl border border-[#222] bg-[#111] p-6 text-sm text-[#A0A0A0]">
+        Loading client review...
+      </div>
+    ) : !reportReview || !reviewDraft ? (
+      <div className="rounded-2xl border border-[#222] bg-[#111] p-6 text-sm text-[#A0A0A0]">
+        Review data is not available yet. The audit must be completed and export-ready first.
+      </div>
+    ) : (
+      <div className="space-y-6">
+        <div className="rounded-2xl border border-[#222] bg-[#111] p-5">
+          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#C5FF3D]">
+                Client-facing report workflow
+              </p>
+              <h3 className="mt-2 text-xl font-bold text-white">
+                Preserve the automated evidence, then control what the client sees.
+              </h3>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-[#8A8A8A]">
+                The original audit is never overwritten. Agency edits are stored as a separate versioned review snapshot with a complete revision log.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <span className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wide ${reviewStatusClass(reportReview?.status)}`}>
+                {reviewStatusLabel(reportReview?.status)}
+              </span>
+
+              <span className="rounded-full border border-[#2A2A2A] bg-[#151515] px-4 py-2 text-xs text-[#A0A0A0]">
+                Version {reportReview?.version || 1}
+              </span>
+            </div>
+          </div>
+
+          {reportReview?.approvedBy && (
+            <div className="mt-4 rounded-xl border border-emerald-300/20 bg-emerald-300/10 p-4 text-sm text-emerald-100">
+              Last approved by {reportReview.approvedBy.name || reportReview.approvedBy.email || "Reviewer"}
+              {reportReview?.approvedAt
+                ? ` on ${new Date(reportReview.approvedAt).toLocaleString()}`
+                : ""}.
+            </div>
+          )}
+
+          {currentUser?.canReviewReports !== true && (
+            <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm text-amber-100">
+              Read-only access. Editing and approval are available on Agency and Enterprise access.
+            </div>
+          )}
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <label className="block text-sm text-[#A0A0A0]">
+              Client-facing note
+              <textarea
+                value={reviewDraft?.clientNote || ""}
+                disabled={currentUser?.canReviewReports !== true}
+                onChange={(event) =>
+                  setReviewDraft((previous: any) => ({
+                    ...previous,
+                    clientNote: event.target.value,
+                  }))
+                }
+                rows={4}
+                placeholder="Add context that should appear in the approved client report."
+                className="mt-2 w-full rounded-xl border border-[#2A2A2A] bg-[#0A0A0A] px-4 py-3 text-sm leading-6 text-white outline-none focus:border-[#C5FF3D]/50 disabled:opacity-70"
+              />
+            </label>
+
+            <label className="block text-sm text-[#A0A0A0]">
+              Internal agency note
+              <textarea
+                value={reviewDraft?.internalNote || ""}
+                disabled={currentUser?.canReviewReports !== true}
+                onChange={(event) =>
+                  setReviewDraft((previous: any) => ({
+                    ...previous,
+                    internalNote: event.target.value,
+                  }))
+                }
+                rows={4}
+                placeholder="Private note for your team. This never appears in the client report or PDF."
+                className="mt-2 w-full rounded-xl border border-[#2A2A2A] bg-[#0A0A0A] px-4 py-3 text-sm leading-6 text-white outline-none focus:border-[#C5FF3D]/50 disabled:opacity-70"
+              />
+            </label>
+          </div>
+
+          {currentUser?.canReviewReports === true && (
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                type="button"
+                disabled={reviewSaving}
+                onClick={() => void saveReportReview("save")}
+                className="rounded-xl border border-[#2A2A2A] bg-[#151515] px-4 py-2.5 text-sm font-semibold text-white hover:border-[#C5FF3D]/40 disabled:opacity-50"
+              >
+                Save Draft
+              </button>
+
+              <button
+                type="button"
+                disabled={reviewSaving}
+                onClick={() => void saveReportReview("submit")}
+                className="rounded-xl border border-blue-300/20 bg-blue-300/10 px-4 py-2.5 text-sm font-semibold text-blue-200 disabled:opacity-50"
+              >
+                Submit for Review
+              </button>
+
+              <button
+                type="button"
+                disabled={reviewSaving}
+                onClick={() => void saveReportReview("request_changes")}
+                className="rounded-xl border border-amber-300/20 bg-amber-300/10 px-4 py-2.5 text-sm font-semibold text-amber-200 disabled:opacity-50"
+              >
+                Request Changes
+              </button>
+
+              <button
+                type="button"
+                disabled={reviewSaving}
+                onClick={() => void saveReportReview("approve")}
+                className="rounded-xl bg-[#C5FF3D] px-5 py-2.5 text-sm font-bold text-black hover:opacity-90 disabled:opacity-50"
+              >
+                Approve Client Report
+              </button>
+            </div>
+          )}
+
+          <p className="mt-4 text-xs leading-5 text-[#777]">
+            Editing an approved report automatically creates a new Draft version. PDF export for Agency and Enterprise accounts remains locked until the current version is approved.
+          </p>
+        </div>
+
+        {renderReviewItems(
+          "issues",
+          "Client-Facing Findings"
+        )}
+
+        {renderReviewItems(
+          "recommendations",
+          "Client-Facing Recommendations"
+        )}
+
+        {Array.isArray(reportReview?.revisions) && reportReview.revisions.length > 0 && (
+          <div className="rounded-2xl border border-[#222] bg-[#111] p-5">
+            <h3 className="text-lg font-bold text-white">
+              Review Audit Log
+            </h3>
+            <div className="mt-4 space-y-3">
+              {reportReview.revisions.slice(0, 10).map((revision: any) => (
+                <div
+                  key={revision.id || revision.version}
+                  className="flex flex-col justify-between gap-2 rounded-xl border border-[#252525] bg-[#151515] p-4 text-sm md:flex-row md:items-center"
+                >
+                  <div>
+                    <p className="font-semibold text-white">
+                      Version {revision.version} · {reviewStatusLabel(revision.action)}
+                    </p>
+                    <p className="mt-1 text-xs text-[#777]">
+                      {revision.actorName || revision.actorEmail || "Reviewer"}
+                    </p>
+                  </div>
+                  <p className="text-xs text-[#8A8A8A]">
+                    {revision.createdAt
+                      ? new Date(revision.createdAt).toLocaleString()
+                      : ""}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+  </Section>
+)}
+
 {/* HISTORY */}
 {activeTab === "history" && (
   <Section title="Audit History & Comparison">
@@ -4046,6 +4846,16 @@ if (
                 <div>
                   <p className="font-bold text-slate-950">{item.domain}</p>
                   <p className="mt-1 text-xs text-slate-500">{item.createdAt}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${reviewStatusClass(item.reviewStatus || "draft")}`}>
+                      {reviewStatusLabel(item.reviewStatus || "draft")}
+                    </span>
+                    {item?.approvedBy && (
+                      <span className="text-[10px] text-slate-500">
+                        Approved by {item.approvedBy.name || item.approvedBy.email || "Reviewer"}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="text-right">

@@ -10,6 +10,9 @@ import {
 import {
   getAnalyticsUserId,
 } from "@/lib/analytics-user-id";
+import {
+  canReviewAuditReports,
+} from "@/lib/permissions";
 
 export async function GET() {
   try {
@@ -207,6 +210,7 @@ export async function GET() {
           allowLocalSeo: true,
           allowWhiteLabel: false,
           canUseWhiteLabel: false,
+          canReviewReports: false,
           whiteLabelEnabled: false,
           agencyName: null,
           companyName: null,
@@ -259,6 +263,9 @@ export async function GET() {
       user.package?.allowWhiteLabel ===
         true ||
       user.allowWhiteLabel === true;
+
+    const canReviewReports =
+      canReviewAuditReports(user);
 
     const monthlyLimit =
       user.package?.monthlyAudits ||
@@ -398,6 +405,7 @@ export async function GET() {
         trial: trialInfo,
         analytics,
         canUseWhiteLabel,
+        canReviewReports,
         whiteLabelEnabled:
           canUseWhiteLabel &&
           user.whiteLabelEnabled,

@@ -15,6 +15,8 @@ export default function ReportDetailPage({
   const { id } = React.use(params);
   const [report, setReport] = useState<any>(null);
   const [reportData, setReportData] = useState<any>(null);
+  const [clientReportData, setClientReportData] = useState<any>(null);
+  const [review, setReview] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -36,6 +38,8 @@ export default function ReportDetailPage({
 
         setReport(json.report);
         setReportData(json.report?.reportData || null);
+        setClientReportData(json.report?.clientReportData || null);
+        setReview(json.report?.review || null);
       } catch (loadError) {
         setError(
           loadError instanceof Error
@@ -50,22 +54,34 @@ export default function ReportDetailPage({
     void loadReport();
   }, [id]);
 
+  const displayReportData =
+    clientReportData || reportData;
+
   const normalized = useMemo(
-    () => (reportData ? normalizeAuditData(reportData) : null),
-    [reportData]
+    () =>
+      displayReportData
+        ? normalizeAuditData(
+            displayReportData
+          )
+        : null,
+    [displayReportData]
   );
 
   const recommendations = useMemo(() => {
     if (!normalized) return [];
 
-    const saved = Array.isArray(reportData?.recommendations)
-      ? reportData.recommendations
+    const saved = Array.isArray(displayReportData?.recommendations)
+      ? displayReportData.recommendations
       : [];
+
+    if (clientReportData) {
+      return saved;
+    }
 
     return saved.length > 0
       ? saved
       : buildSmartRecommendations(normalized);
-  }, [normalized, reportData]);
+  }, [normalized, displayReportData, clientReportData]);
 
   if (loading) {
     return (
@@ -75,7 +91,7 @@ export default function ReportDetailPage({
     );
   }
 
-  if (error || !report || !reportData || !normalized) {
+  if (error || !report || !displayReportData || !normalized) {
     return (
       <main className="min-h-screen bg-[#0A0A0A] p-8 text-white">
         <p className="text-red-400">
@@ -92,13 +108,13 @@ export default function ReportDetailPage({
     );
   }
 
-  const finalReady = report?.renderReady === true && reportData?.renderReady === true;
-  const reportStatus = String(report?.status || reportData?.reportStatus || "processing");
+  const finalReady = report?.renderReady === true && displayReportData?.renderReady === true;
+  const reportStatus = String(report?.status || displayReportData?.reportStatus || "processing");
   const technical = normalized.technicalCrawl;
-  const ai = reportData?.aiSearchVisibility || null;
+  const ai = displayReportData?.aiSearchVisibility || null;
   const providerSignal =
-    reportData?.providerSignals?.domainAnalytics ||
-    reportData?.domainAnalytics ||
+    displayReportData?.providerSignals?.domainAnalytics ||
+    displayReportData?.domainAnalytics ||
     null;
 
   return (
@@ -107,7 +123,7 @@ export default function ReportDetailPage({
         <header className="mb-8 flex flex-col justify-between gap-5 border-b border-[#222] pb-7 md:flex-row md:items-end">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.14em] text-[#C5FF3D]">
-              Crawler Que Reconciled Report v{reportData?.reportVersion || "2.0"}
+              Crawler Que Reconciled Report v{displayReportData?.reportVersion || "2.0"}
             </p>
 
             <h1 className="mt-3 text-3xl font-bold text-white md:text-4xl">
@@ -124,6 +140,14 @@ export default function ReportDetailPage({
               <span>
                 Technical confidence: {technical?.confidence || "unknown"}
               </span>
+              <span>
+                Client review: <StatusText status={review?.status || "draft"} />
+              </span>
+              {review?.approvedBy && (
+                <span>
+                  Approved by: {review.approvedBy.name || review.approvedBy.email || "Reviewer"}
+                </span>
+              )}
             </div>
           </div>
 
@@ -144,6 +168,23 @@ export default function ReportDetailPage({
           </div>
         </header>
 
+        {review?.status === "approved" ? (
+          <Notice tone="green" title="Client-facing report approved">
+            This page is showing the approved client snapshot. Suppressed findings are hidden, while the original automated evidence remains preserved in the account dashboard.
+            {review?.approvedAt
+              ? ` Approved ${new Date(review.approvedAt).toLocaleString()}.`
+              : ""}
+          </Notice>
+        ) : clientReportData ? (
+          <Notice tone="amber" title="Draft changes are pending approval">
+            This page continues to show the last approved client snapshot. New agency edits will not appear here until the current draft is approved.
+          </Notice>
+        ) : (
+          <Notice tone="amber" title="Automated report — client approval pending">
+            This page is showing the reconciled automated audit. Agency edits and suppression rules will appear here after the first client-facing snapshot is approved.
+          </Notice>
+        )}
+
         {!finalReady && (
           <Notice tone="amber" title="Report is still being finalized">
             Scores and evidence can change until every selected module reaches a final state.
@@ -155,6 +196,16 @@ export default function ReportDetailPage({
           <Notice tone="amber" title="Technical coverage limitation">
             {technical.limitation}
           </Notice>
+        )}
+
+        {clientReportData && displayReportData?.clientReview?.clientNote && (
+          <section className="mb-6">
+            <Panel title="Client Note">
+              <p className="text-sm leading-7 text-[#D4D4D4]">
+                {displayReportData.clientReview.clientNote}
+              </p>
+            </Panel>
+          </section>
         )}
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
@@ -191,51 +242,51 @@ export default function ReportDetailPage({
           </Panel>
 
           <Panel title="Audit Scope & Sources">
-            <KeyValue label="Submitted URL" value={reportData?.submittedUrl} />
-            <KeyValue label="Resolved URL" value={reportData?.resolvedUrl} />
-            <KeyValue label="Canonical URL" value={reportData?.canonicalUrl} />
+            <KeyValue label="Submitted URL" value={displayReportData?.submittedUrl} />
+            <KeyValue label="Resolved URL" value={displayReportData?.resolvedUrl} />
+            <KeyValue label="Canonical URL" value={displayReportData?.canonicalUrl} />
             <KeyValue
               label="Redirect count"
-              value={String(reportData?.redirectCount ?? 0)}
+              value={String(displayReportData?.redirectCount ?? 0)}
             />
             <KeyValue
               label="Market"
               value={
-                reportData?.auditConfig?.countryName ||
-                reportData?.searchContext?.country ||
-                reportData?.traffic?.country
+                displayReportData?.auditConfig?.countryName ||
+                displayReportData?.searchContext?.country ||
+                displayReportData?.traffic?.country
               }
             />
             <KeyValue
               label="Language"
               value={
-                reportData?.auditConfig?.languageName ||
-                reportData?.searchContext?.language ||
+                displayReportData?.auditConfig?.languageName ||
+                displayReportData?.searchContext?.language ||
                 "English"
               }
             />
             <KeyValue
               label="Primary device"
               value={
-                reportData?.auditConfig?.device ||
-                reportData?.searchContext?.device
+                displayReportData?.auditConfig?.device ||
+                displayReportData?.searchContext?.device
               }
             />
             <KeyValue
               label="Search engine"
               value={
-                reportData?.auditConfig?.searchEngine ||
-                reportData?.searchContext?.searchEngine ||
+                displayReportData?.auditConfig?.searchEngine ||
+                displayReportData?.searchContext?.searchEngine ||
                 "google"
               }
             />
             <KeyValue
               label="Technical crawl limit"
               value={
-                reportData?.auditConfig?.maxCrawlPages
-                  ? `${reportData.auditConfig.maxCrawlPages} pages`
-                  : reportData?.onPage?.pageLimit
-                    ? `${reportData.onPage.pageLimit} pages`
+                displayReportData?.auditConfig?.maxCrawlPages
+                  ? `${displayReportData.auditConfig.maxCrawlPages} pages`
+                  : displayReportData?.onPage?.pageLimit
+                    ? `${displayReportData.onPage.pageLimit} pages`
                     : null
               }
             />
@@ -252,7 +303,7 @@ export default function ReportDetailPage({
 
         <section className="mt-6 grid gap-6 lg:grid-cols-2">
           <Panel title="Resolved Homepage SEO">
-            <KeyValue label="Source" value={reportData?.canonicalSeo?.source} />
+            <KeyValue label="Source" value={displayReportData?.canonicalSeo?.source} />
             <KeyValue label="Title" value={normalized.seo.title} multiline />
             <KeyValue
               label="Meta description"
@@ -279,11 +330,11 @@ export default function ReportDetailPage({
             />
             <KeyValue
               label="Discovered pages"
-              value={formatNumber(reportData?.onPage?.discoveredPages)}
+              value={formatNumber(displayReportData?.onPage?.discoveredPages)}
             />
             <KeyValue
               label="Remaining pages"
-              value={formatNumber(reportData?.onPage?.remainingPages)}
+              value={formatNumber(displayReportData?.onPage?.remainingPages)}
             />
           </Panel>
         </section>
@@ -301,7 +352,7 @@ export default function ReportDetailPage({
             <KeyValue label="Confidence" value={normalized.traffic.confidence} />
             <KeyValue
               label="Method"
-              value={reportData?.traffic?.method || "clickstream / CTR fallback"}
+              value={displayReportData?.traffic?.method || "clickstream / CTR fallback"}
             />
             <p className="mt-4 text-xs leading-5 text-[#777]">
               This is directional modeled traffic, not first-party analytics.
@@ -397,10 +448,20 @@ export default function ReportDetailPage({
                     badge={issue?.severity || issue?.impact || "Medium"}
                     detail={
                       issue?.description ||
+                      issue?.detail ||
                       issue?.impact ||
                       issue?.fix ||
                       issue?.recommendation ||
                       "Review this reconciled issue."
+                    }
+                    footer={
+                      [
+                        issue?.owner && `Owner: ${issue.owner}`,
+                        issue?.effort && `Effort: ${issue.effort}`,
+                        issue?.timeline && `Timeline: ${issue.timeline}`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || undefined
                     }
                   />
                 ))}
@@ -437,6 +498,7 @@ export default function ReportDetailPage({
                           ? undefined
                           : [
                               recommendation?.owner && `Owner: ${recommendation.owner}`,
+                              recommendation?.effort && `Effort: ${recommendation.effort}`,
                               recommendation?.timeline && `Timeline: ${recommendation.timeline}`,
                             ]
                               .filter(Boolean)
@@ -586,17 +648,31 @@ function FindingCard({
 }
 
 function Notice({
+  tone,
   title,
   children,
 }: {
-  tone: "amber";
+  tone: "amber" | "green";
   title: string;
   children: React.ReactNode;
 }) {
+  const classes =
+    tone === "green"
+      ? {
+          wrap: "border-emerald-400/30 bg-emerald-400/10",
+          title: "text-emerald-300",
+          body: "text-emerald-100/80",
+        }
+      : {
+          wrap: "border-amber-400/30 bg-amber-400/10",
+          title: "text-amber-300",
+          body: "text-amber-100/80",
+        };
+
   return (
-    <div className="mb-6 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5">
-      <p className="font-semibold text-amber-300">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-amber-100/80">{children}</p>
+    <div className={`mb-6 rounded-2xl border p-5 ${classes.wrap}`}>
+      <p className={`font-semibold ${classes.title}`}>{title}</p>
+      <p className={`mt-2 text-sm leading-6 ${classes.body}`}>{children}</p>
     </div>
   );
 }

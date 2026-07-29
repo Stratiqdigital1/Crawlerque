@@ -87,6 +87,10 @@ model User {
   resetTokens          PasswordResetToken[]
   auditReports         AuditReport[]
   auditJobs            AuditJob[]
+  createdReportReviews  AuditReportReview[]         @relation("ReportReviewCreatedBy")
+  updatedReportReviews  AuditReportReview[]         @relation("ReportReviewUpdatedBy")
+  approvedReportReviews AuditReportReview[]         @relation("ReportReviewApprovedBy")
+  reportReviewRevisions AuditReportReviewRevision[]
   blogPosts            BlogPost[]           @relation("BlogPostCreator")
   promoAccess          PromoAccess?         @relation("PromoAccessUser")
   createdPromoAccesses PromoAccess[]        @relation("PromoAccessCreator")
@@ -132,7 +136,8 @@ model AuditReport {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  review AuditReportReview?
 
   @@index([userId])
   @@index([domain])
@@ -140,6 +145,51 @@ model AuditReport {
   @@index([userId, normalizedDomain, createdAt])
   @@index([userId, inputHash, createdAt])
   @@index([status, renderReady])
+}
+
+model AuditReportReview {
+  id              String   @id @default(cuid())
+  reportId        String   @unique
+  status          String   @default("draft")
+  version         Int      @default(1)
+  approvedVersion Int?
+  draftData       Json
+  approvedData    Json?
+  createdById     String
+  updatedById     String
+  approvedById    String?
+  approvedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  report     AuditReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  createdBy  User        @relation("ReportReviewCreatedBy", fields: [createdById], references: [id])
+  updatedBy  User        @relation("ReportReviewUpdatedBy", fields: [updatedById], references: [id])
+  approvedBy User?       @relation("ReportReviewApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  revisions  AuditReportReviewRevision[]
+
+  @@index([status])
+  @@index([approvedAt])
+}
+
+model AuditReportReviewRevision {
+  id         String   @id @default(cuid())
+  reviewId   String
+  version    Int
+  action     String
+  status     String
+  snapshot   Json
+  actorId    String?
+  actorName  String?
+  actorEmail String?
+  createdAt  DateTime @default(now())
+
+  review AuditReportReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  actor  User?             @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@unique([reviewId, version])
+  @@index([reviewId, createdAt])
+  @@index([actorId, createdAt])
 }
 
 model AuditLog {
