@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { LOCATION_CODE, LANGUAGE_CODE } from "@/lib/dataforseo-config";
 
 function normalizeDomain(url: string) {
   try {
@@ -73,7 +72,11 @@ export async function GET() {
       "apartment buildings for sale los angeles",
     ],
     locationName: "United States",
+    locationCode: 2840,
     languageName: "English",
+    languageCode: "en",
+    device: "desktop",
+    searchEngine: "google",
   });
 }
 
@@ -84,7 +87,11 @@ export async function POST(req: Request) {
     url: body?.url || body?.domain,
     keywords: body?.keywords || [],
     locationName: body?.locationName || "United States",
+    locationCode: Number(body?.locationCode || 2840),
     languageName: body?.languageName || "English",
+    languageCode: body?.languageCode || "en",
+    device: body?.device === "desktop" ? "desktop" : "mobile",
+    searchEngine: String(body?.searchEngine || "google").toLowerCase(),
   });
 }
 
@@ -92,12 +99,20 @@ async function runSerp({
   url,
   keywords,
   locationName,
+  locationCode,
   languageName,
+  languageCode,
+  device,
+  searchEngine,
 }: {
   url: string;
   keywords: string[];
   locationName: string;
+  locationCode: number;
   languageName: string;
+  languageCode: string;
+  device: "mobile" | "desktop";
+  searchEngine: string;
 }) {
   try {
     const domain = normalizeDomain(url);
@@ -105,6 +120,16 @@ async function runSerp({
     if (!domain) {
       return NextResponse.json(
         { success: false, error: "Domain is required" },
+        { status: 400 }
+      );
+    }
+
+    if (searchEngine !== "google") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Google is currently the supported search engine for complete audits.",
+        },
         { status: 400 }
       );
     }
@@ -120,15 +145,18 @@ async function runSerp({
       const payload = [
         {
           keyword,
-          location_code: LOCATION_CODE,
-language_code: LANGUAGE_CODE,
-          device: "desktop",
-          os: "windows",
+          location_code: locationCode,
+          language_code: languageCode,
+          device,
+          os: device === "mobile" ? "android" : "windows",
           depth: 100,
         },
       ];
 
-      const serp = await dataForSeoPost("serp/google/organic/live/advanced", payload);
+      const serp = await dataForSeoPost(
+        "serp/google/organic/live/advanced",
+        payload
+      );
       const rankData = extractRank(serp, domain);
 
       results.push({
@@ -142,8 +170,10 @@ language_code: LANGUAGE_CODE,
     const avgRank =
       avgRankItems.length > 0
         ? Math.round(
-            avgRankItems.reduce((sum, item: any) => sum + Number(item.rank || 0), 0) /
-              avgRankItems.length
+            avgRankItems.reduce(
+              (sum, item: any) => sum + Number(item.rank || 0),
+              0
+            ) / avgRankItems.length
           )
         : null;
 
@@ -152,7 +182,11 @@ language_code: LANGUAGE_CODE,
       serpData: {
         domain,
         country: locationName,
+        locationCode,
         language: languageName,
+        languageCode,
+        device,
+        searchEngine,
         checkedKeywords: results.length,
         foundCount,
         avgRank,

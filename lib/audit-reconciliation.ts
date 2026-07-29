@@ -618,7 +618,12 @@ export function reconcileAuditReport(
 
   return {
     ...report,
-    reportVersion: "3.0",
+    reportVersion: firstText(
+      report?.reportVersion,
+      report?.auditConfig
+        ? "4.0"
+        : "3.0"
+    ),
     reportStatus,
     renderReady,
     completedAt,

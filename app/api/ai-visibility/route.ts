@@ -162,11 +162,35 @@ export async function POST(req: Request) {
     });
 
     let rankedPages: unknown[] = [];
+    let generatedPrompts: string[] = [];
     let detectedCountry = String(body?.country || body?.locationName || "").trim();
+    const selectedLanguageName =
+      String(body?.languageName || "English");
+    const selectedLanguageCode =
+      String(body?.languageCode || "en");
+    const selectedLocationCode =
+      Number(body?.locationCode || 0) ||
+      undefined;
 
     try {
-      const keywordIntel = await getKeywordIntel(domain, category, brandName);
+      const keywordIntel = await getKeywordIntel(
+        domain,
+        category,
+        brandName,
+        {
+          country: detectedCountry,
+          locationCode:
+            selectedLocationCode,
+          languageName:
+            selectedLanguageName,
+          languageCode:
+            selectedLanguageCode,
+        }
+      );
       rankedPages = Array.isArray(keywordIntel?.rankedPages) ? keywordIntel.rankedPages : [];
+      generatedPrompts = Array.isArray(keywordIntel?.prompts)
+        ? keywordIntel.prompts
+        : [];
       detectedCountry = detectedCountry || String(keywordIntel?.country || "US");
     } catch (error) {
       console.error("AI keyword context failed:", error);
@@ -190,7 +214,12 @@ export async function POST(req: Request) {
 
     const scoredPrompts = uniqueStrings([
       ...neutralCustomPrompts,
-      ...buildNeutralPrompts(category, detectedCountry),
+      ...(generatedPrompts.length > 0
+        ? generatedPrompts
+        : buildNeutralPrompts(
+            category,
+            detectedCountry
+          )),
     ]).slice(0, 5);
 
     const iso = countryIso(detectedCountry);
@@ -348,6 +377,18 @@ export async function POST(req: Request) {
       rankedPages,
       country: detectedCountry,
       countryIso: iso,
+      locationCode:
+        selectedLocationCode || null,
+      languageName:
+        selectedLanguageName,
+      languageCode:
+        selectedLanguageCode,
+      device:
+        body?.device === "desktop"
+          ? "desktop"
+          : "mobile",
+      searchEngine:
+        String(body?.searchEngine || "google"),
       totalPrompts: scoredPrompts.length,
       modelsCalled,
       modelsExpected: MODEL_ROSTER,

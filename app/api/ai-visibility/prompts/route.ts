@@ -21,13 +21,17 @@ const PROBE_LOCATIONS = [
   { code: 2784, country: "UAE" }, { code: 2826, country: "United Kingdom" },
 ];
 
-async function rankedCount(domain: string, locationCode: number): Promise<number> {
+async function rankedCount(
+  domain: string,
+  locationCode: number,
+  languageCode = "en"
+): Promise<number> {
   const auth = getAuthHeader();
   if (!auth) return 0;
   try {
     const res = await fetch("https://api.dataforseo.com/v3/dataforseo_labs/google/ranked_keywords/live", {
       method: "POST", headers: { Authorization: auth, "Content-Type": "application/json" },
-      body: JSON.stringify([{ target: domain, location_code: locationCode, language_code: "en", limit: 1 }]),
+      body: JSON.stringify([{ target: domain, location_code: locationCode, language_code: languageCode, limit: 1 }]),
       cache: "no-store",
     });
     const json = await res.json();
@@ -36,26 +40,54 @@ async function rankedCount(domain: string, locationCode: number): Promise<number
 }
 
 // Find the country where the domain actually ranks the most.
-export async function detectMarket(domain: string): Promise<{ locationCode: number; country: string }> {
+export async function detectMarket(
+  domain: string,
+  override?: {
+    locationCode?: number;
+    country?: string;
+    languageCode?: string;
+  }
+): Promise<{ locationCode: number; country: string }> {
+  if (
+    Number(override?.locationCode || 0) > 0 &&
+    String(override?.country || "").trim()
+  ) {
+    return {
+      locationCode: Number(override?.locationCode),
+      country: String(override?.country),
+    };
+  }
   const tldCode = getLocationCode(domain);
   if (tldCode !== 2840) {
     const found = PROBE_LOCATIONS.find((p) => p.code === tldCode);
     return { locationCode: tldCode, country: found?.country || "US" };
   }
   // Ambiguous TLD (.com/.co/...) → probe candidate markets in parallel.
-  const counts = await Promise.all(PROBE_LOCATIONS.map((p) => rankedCount(domain, p.code)));
+  const counts = await Promise.all(
+    PROBE_LOCATIONS.map((p) =>
+      rankedCount(
+        domain,
+        p.code,
+        override?.languageCode || "en"
+      )
+    )
+  );
   let best = { code: 2840, country: "US", count: -1 };
   PROBE_LOCATIONS.forEach((p, i) => { if (counts[i] > best.count) best = { code: p.code, country: p.country, count: counts[i] }; });
   return { locationCode: best.code, country: best.country };
 }
 
-async function fetchRankedItems(domain: string, locationCode: number): Promise<RankedItem[]> {
+async function fetchRankedItems(
+  domain: string,
+  locationCode: number,
+  languageCode = "en"
+): Promise<RankedItem[]> {
   const auth = getAuthHeader();
   if (!auth) return [];
   try {
     const res = await fetch("https://api.dataforseo.com/v3/dataforseo_labs/google/ranked_keywords/live", {
       method: "POST", headers: { Authorization: auth, "Content-Type": "application/json" },
-      body: JSON.stringify([{ target: domain, location_code: locationCode, language_code: "en", limit: 60, order_by: ["keyword_data.keyword_info.search_volume,desc"] }]),
+      body: JSON.stringify([{ target: domain, location_code: locationCode, language_code: languageCode, limit: 60, order_by: ["keyword_data.keyword_info.search_volume,desc"] }]),
       cache: "no-store",
     });
     const json = await res.json();
@@ -79,7 +111,13 @@ function buildRankedPages(items: RankedItem[]): RankedPage[] {
 }
 
 // Turn real keywords into 3 CLEAN buyer questions via OpenAI (no junk like "best glacier arcade").
-async function buildCleanPrompts(keywords: string[], country: string, brandName = "", industry = ""): Promise<string[]> {
+async function buildCleanPrompts(
+  keywords: string[],
+  country: string,
+  brandName = "",
+  industry = "",
+  languageName = "English"
+): Promise<string[]> {
 const top = keywords.slice(0, 20).join(", ");
   const where = country && country.toLowerCase() !== "us" ? ` Focus on the ${country} market.` : "";
   try {
@@ -88,7 +126,7 @@ const ai = await queryOpenAI(
       `IMPORTANT: some of these terms are UNRELATED topics the site only ranks for by accident (e.g. news, prayer times, or prices of products the company does NOT sell). ` +
       `Step 1: from the company name and the terms, work out the company's ACTUAL core products or services. ` +
       `Step 2: write exactly 5 natural questions a shopper would ask an AI assistant when looking to BUY or CHOOSE those core products/services.${where} ` +
-      `Rules: ONLY cover the company's real core categories — discard every unrelated term. Do NOT mention "${brandName}" or any specific brand, store, or company name in the questions. Each question on its own line, no numbering, each ends with a question mark.`
+      `Rules: ONLY cover the company's real core categories — discard every unrelated term. Do NOT mention "${brandName}" or any specific brand, store, or company name in the questions. Write the questions in ${languageName}. Each question on its own line, no numbering, each ends with a question mark.`
     );
     const lines = (ai || "").split("\n").map((l) => l.replace(/^[\d.)\-\s]+/, "").trim()).filter((l) => l.length > 8 && l.includes("?"));
     if (lines.length >= 2) return lines.slice(0, 5);
@@ -100,10 +138,41 @@ const ai = await queryOpenAI(
 
 // Main: market + ranked pages + clean prompts (one place).
 export async function getKeywordIntel(
-  domain: string, industry: string, brandName: string
-): Promise<{ prompts: string[]; rankedPages: RankedPage[]; country: string; locationCode: number }> {
-  const { locationCode, country } = await detectMarket(domain);
-  const items = await fetchRankedItems(domain, locationCode);
+  domain: string,
+  industry: string,
+  brandName: string,
+  scope?: {
+    country?: string;
+    locationCode?: number;
+    languageName?: string;
+    languageCode?: string;
+  }
+): Promise<{
+  prompts: string[];
+  rankedPages: RankedPage[];
+  country: string;
+  locationCode: number;
+  languageName: string;
+  languageCode: string;
+}> {
+  const languageName =
+    scope?.languageName || "English";
+  const languageCode =
+    scope?.languageCode || "en";
+
+  const { locationCode, country } =
+    await detectMarket(domain, {
+      locationCode:
+        scope?.locationCode,
+      country: scope?.country,
+      languageCode,
+    });
+
+  const items = await fetchRankedItems(
+    domain,
+    locationCode,
+    languageCode
+  );
   const rankedPages = buildRankedPages(items);
 
   const brandToks = brandName.toLowerCase().split(/[\s.-]+/).filter((t) => t.length >= 3);
@@ -115,10 +184,25 @@ export async function getKeywordIntel(
   ));
 
   const seedKw = cleanKw.length ? cleanKw : items.map((i) => i.keyword);
-  const prompts = (await buildCleanPrompts(seedKw, country, brandName, industry)).slice(0, 5);
+  const prompts = (
+    await buildCleanPrompts(
+      seedKw,
+      country,
+      brandName,
+      industry,
+      languageName
+    )
+  ).slice(0, 5);
 
   console.log("[ai-visibility] market:", country, "| prompts:", prompts, "| pages:", rankedPages.length);
-  return { prompts, rankedPages, country, locationCode };
+  return {
+    prompts,
+    rankedPages,
+    country,
+    locationCode,
+    languageName,
+    languageCode,
+  };
 }
 
 // Back-compat
@@ -130,7 +214,23 @@ export async function discoverPrompts(domain: string, industry = "", competitors
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const intel = await getKeywordIntel(body?.domain || "", body?.industry || "business services", body?.brandName || "");
+    const intel = await getKeywordIntel(
+      body?.domain || "",
+      body?.industry || "business services",
+      body?.brandName || "",
+      {
+        country:
+          body?.country ||
+          body?.locationName,
+        locationCode:
+          Number(body?.locationCode || 0) ||
+          undefined,
+        languageName:
+          body?.languageName || "English",
+        languageCode:
+          body?.languageCode || "en",
+      }
+    );
     return NextResponse.json({ success: true, ...intel });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || "failed", prompts: [], rankedPages: [] }, { status: 500 });

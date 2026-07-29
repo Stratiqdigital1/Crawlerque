@@ -75,29 +75,43 @@ const report = await prisma.auditReport.findFirst({
         )
       : report.reportData;
 
+    const scopedReportData =
+      reportData &&
+      typeof reportData === "object" &&
+      !Array.isArray(reportData)
+        ? {
+            ...(reportData as Record<string, unknown>),
+            auditConfig:
+              (reportData as any)?.auditConfig ||
+              report.auditConfig ||
+              null,
+          }
+        : reportData;
+
     return withSecurityHeaders(
       NextResponse.json({
         success: true,
         report: {
           ...report,
-          reportData,
+          reportData:
+            scopedReportData,
           overallScore:
-            (reportData as any)?.overallScore ??
+            (scopedReportData as any)?.overallScore ??
             report.overallScore,
           seoScore:
-            (reportData as any)?.seoScore ??
+            (scopedReportData as any)?.seoScore ??
             report.seoScore,
           uxScore:
-            (reportData as any)?.uxScore ??
+            (scopedReportData as any)?.uxScore ??
             report.uxScore,
           aiScore:
-            (reportData as any)?.aiScore ??
+            (scopedReportData as any)?.aiScore ??
             report.aiScore,
           estimatedTraffic:
-            (reportData as any)?.estimatedTraffic ??
+            (scopedReportData as any)?.estimatedTraffic ??
             report.estimatedTraffic,
           keywordCount:
-            (reportData as any)?.keywordCount ??
+            (scopedReportData as any)?.keywordCount ??
             report.keywordCount,
         },
       })

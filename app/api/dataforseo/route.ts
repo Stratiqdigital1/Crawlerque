@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getCTR, getCTRCommercial } from "@/lib/ctr-curve";
 import {
   DEFAULT_LOCATION_CODE,
-  LANGUAGE_CODE,
   getLocationCode,
 } from "@/lib/dataforseo-config";
 
@@ -195,6 +194,9 @@ export async function GET() {
   locationCode: getLocationCode(
     "losangelesmultifamilyrealtor.com"
   ),
+  languageCode: "en",
+  device: "mobile",
+  searchEngine: "google",
 });
 }
 
@@ -214,6 +216,15 @@ return runDataForSEO({
   locationCode:
     Number(body?.locationCode || 0) ||
     getLocationCode(requestDomain),
+  languageCode:
+    String(body?.languageCode || "en"),
+  device:
+    body?.device === "desktop"
+      ? "desktop"
+      : "mobile",
+  searchEngine:
+    String(body?.searchEngine || "google")
+      .toLowerCase(),
 });
   } catch (error) {
     return NextResponse.json(
@@ -231,14 +242,31 @@ async function runDataForSEO({
   locationName,
   languageName,
   locationCode,
+  languageCode,
+  device,
+  searchEngine,
 }: {
   url: string;
   locationName: string;
   languageName: string;
   locationCode?: number;
+  languageCode: string;
+  device: "mobile" | "desktop";
+  searchEngine: string;
 }) {
   try {
     const domain = normalizeDomain(url);
+
+    if (searchEngine !== "google") {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Complete keyword, traffic, and competitor intelligence currently supports Google only.",
+        },
+        { status: 400 }
+      );
+    }
 
 const effectiveLocationCode =
   Number(locationCode || 0) ||
@@ -257,7 +285,7 @@ const MAX_KEYWORDS = 10000;
   {
     target: domain,
     location_code: effectiveLocationCode,
-language_code: LANGUAGE_CODE,
+language_code: languageCode || "en",
     include_clickstream_data: true,
   },
 ];
@@ -266,7 +294,7 @@ const keywordTask = [
   {
     target: domain,
     location_code: effectiveLocationCode,
-language_code: LANGUAGE_CODE,
+language_code: languageCode || "en",
     include_clickstream_data: true,
     limit: 100,
   },
@@ -321,7 +349,7 @@ while (
       {
         target: domain,
         location_code: effectiveLocationCode,
-        language_code: LANGUAGE_CODE,
+        language_code: languageCode || "en",
         include_clickstream_data: true,
         limit: KEYWORD_FETCH_LIMIT,
         offset: keywordOffset,
@@ -1052,7 +1080,7 @@ topCompetitors = Array.from(
     const competitorKeywordTasks = competitorDomains.map((competitorDomain: string) => ({
   target: competitorDomain,
   location_code: effectiveLocationCode,
-language_code: LANGUAGE_CODE,
+language_code: languageCode || "en",
   include_clickstream_data: true,
   limit: 50,
 }));
@@ -1360,8 +1388,12 @@ console.log("TRAFFIC DEBUG", {
         domain,
         detectedNiche,
 country: locationName,
+countryCode: null,
 language: languageName,
+languageCode: languageCode || "en",
 locationCode: effectiveLocationCode,
+device,
+searchEngine,
 source: "DataForSEO",
         organicTraffic,
 organicTrafficRaw,

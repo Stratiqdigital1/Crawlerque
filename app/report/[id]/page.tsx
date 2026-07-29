@@ -185,7 +185,7 @@ export default function ReportDetailPage({
 
             <div className="mt-5 rounded-xl border border-[#252525] bg-[#171717] p-4 text-sm leading-6 text-[#AFAFAF]">
               Executive metrics use the reconciled homepage, the finalized OnPage crawl,
-              canonical Traffic Intelligence, and AI Visibility methodology v2. Domain
+              canonical Traffic Intelligence, and the saved audit scope. Domain
               Analytics traffic remains a separate provider signal.
             </div>
           </Panel>
@@ -195,12 +195,49 @@ export default function ReportDetailPage({
             <KeyValue label="Resolved URL" value={reportData?.resolvedUrl} />
             <KeyValue label="Canonical URL" value={reportData?.canonicalUrl} />
             <KeyValue
+              label="Redirect count"
+              value={String(reportData?.redirectCount ?? 0)}
+            />
+            <KeyValue
               label="Market"
-              value={reportData?.searchContext?.country || reportData?.traffic?.country}
+              value={
+                reportData?.auditConfig?.countryName ||
+                reportData?.searchContext?.country ||
+                reportData?.traffic?.country
+              }
             />
             <KeyValue
               label="Language"
-              value={reportData?.searchContext?.language || "English"}
+              value={
+                reportData?.auditConfig?.languageName ||
+                reportData?.searchContext?.language ||
+                "English"
+              }
+            />
+            <KeyValue
+              label="Primary device"
+              value={
+                reportData?.auditConfig?.device ||
+                reportData?.searchContext?.device
+              }
+            />
+            <KeyValue
+              label="Search engine"
+              value={
+                reportData?.auditConfig?.searchEngine ||
+                reportData?.searchContext?.searchEngine ||
+                "google"
+              }
+            />
+            <KeyValue
+              label="Technical crawl limit"
+              value={
+                reportData?.auditConfig?.maxCrawlPages
+                  ? `${reportData.auditConfig.maxCrawlPages} pages`
+                  : reportData?.onPage?.pageLimit
+                    ? `${reportData.onPage.pageLimit} pages`
+                    : null
+              }
             />
             <KeyValue
               label="Traffic source"

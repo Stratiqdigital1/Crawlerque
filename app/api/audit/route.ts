@@ -6,7 +6,6 @@ import { checkFreeAuditRateLimit } from "@/lib/rate-limit";
 import { verifySessionToken } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { hasAuditLimit, canUseModule } from "@/lib/permissions";
-import { getLocationCode } from "@/lib/dataforseo-config";
 import {
   AuditIdentityError,
   buildAuditIdentity,
@@ -21,6 +20,9 @@ import {
   refundAuditUsage,
 } from "@/lib/audit-usage";
 import { reconcileAuditReport } from "@/lib/audit-reconciliation";
+import {
+  getAuditScopeKey,
+} from "@/lib/audit-scope";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,31 +60,71 @@ function getClientIp(req: Request) {
 
 
 async function fetchHtml(url: string) {
-  try {
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 Website Audit Bot",
-      },
-      redirect: "follow",
-      cache: "no-store",
-      signal: AbortSignal.timeout(8000),
-    });
+  let currentUrl = url;
+  let redirectCount = 0;
 
-    if (!res.ok) {
+  try {
+    for (let hop = 0; hop <= 10; hop++) {
+      const res = await fetch(currentUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 Website Audit Bot",
+        },
+        redirect: "manual",
+        cache: "no-store",
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (
+        res.status >= 300 &&
+        res.status < 400
+      ) {
+        const location =
+          res.headers.get("location");
+
+        if (!location) {
+          return {
+            html: "",
+            resolvedUrl: currentUrl,
+            redirectCount,
+          };
+        }
+
+        currentUrl = new URL(
+          location,
+          currentUrl
+        ).toString();
+
+        redirectCount += 1;
+        continue;
+      }
+
+      if (!res.ok) {
+        return {
+          html: "",
+          resolvedUrl:
+            res.url || currentUrl,
+          redirectCount,
+        };
+      }
+
       return {
-        html: "",
-        resolvedUrl: res.url || url,
+        html: await res.text(),
+        resolvedUrl:
+          res.url || currentUrl,
+        redirectCount,
       };
     }
 
     return {
-      html: await res.text(),
-      resolvedUrl: res.url || url,
+      html: "",
+      resolvedUrl: currentUrl,
+      redirectCount,
     };
   } catch {
     return {
       html: "",
-      resolvedUrl: url,
+      resolvedUrl: currentUrl,
+      redirectCount,
     };
   }
 }
@@ -248,15 +290,23 @@ async function getTodayAuditCount(userId: string) {
     },
   });
 }
-async function getCachedAuditReport(userId: string, domain: string, reportTypes: string[]) {
+async function getCachedAuditReport(
+  userId: string,
+  inputHash: string
+) {
   const since = new Date();
   since.setHours(since.getHours() - 24);
 
   const cached = await prisma.auditReport.findFirst({
     where: {
   userId,
-  normalizedDomain: domain,
-  status: "completed",
+  inputHash,
+  status: {
+    in: [
+      "completed",
+      "completed_with_limitation",
+    ],
+  },
   renderReady: true,
   createdAt: {
     gte: since,
@@ -267,19 +317,7 @@ async function getCachedAuditReport(userId: string, domain: string, reportTypes:
     },
   });
 
-  if (!cached) return null;
-
-  const cachedTypes = Array.isArray(cached.reportTypes)
-    ? cached.reportTypes
-    : [];
-
-  const hasSameModules =
-    reportTypes.length === cachedTypes.length &&
-    reportTypes.every((type) => cachedTypes.includes(type));
-
-  if (!hasSameModules) return null;
-
-  return cached;
+  return cached || null;
 }
 
 export async function GET() {
@@ -597,6 +635,8 @@ try {
     userId: auditOwnerIdentity,
     url: String(inputUrl),
     reportTypes: permittedReportTypes,
+    auditConfig:
+      body?.auditConfig || body,
   });
 } catch (error) {
   if (error instanceof AuditIdentityError) {
@@ -620,10 +660,22 @@ const {
   normalizedUrl: url,
   normalizedDomain: domain,
   reportTypes,
+  auditConfig,
   inputHash,
 } = auditIdentity;
 
-const locationCode = getLocationCode(domain);
+const locationCode =
+  auditConfig.locationCode;
+const locationName =
+  auditConfig.countryName;
+const languageName =
+  auditConfig.languageName;
+const languageCode =
+  auditConfig.languageCode;
+const selectedDevice =
+  auditConfig.device;
+const searchEngine =
+  auditConfig.searchEngine;
 const origin = new URL(req.url).origin;
 
 /*
@@ -707,7 +759,15 @@ if (incomingAuditJobId) {
     auditJob.inputHash !== inputHash ||
     auditJob.normalizedDomain !== domain ||
     auditJob.url !== url ||
-    !sameReportTypes;
+    !sameReportTypes ||
+    getAuditScopeKey(
+      auditJob.auditConfig || {},
+      domain
+    ) !==
+      getAuditScopeKey(
+        auditConfig,
+        domain
+      );
 
   if (identityMismatch) {
     const userMessage =
@@ -769,6 +829,9 @@ if (incomingAuditJobId) {
     failedAt: null,
     error: null,
     moduleStatus: {},
+    auditConfig: {
+      ...auditConfig,
+    },
     technicalTaskId: null,
     renderReady: false,
   });
@@ -786,6 +849,9 @@ if (incomingAuditJobId) {
       currentModule: "Initializing audit",
       startedAt: new Date(),
       moduleStatus: {},
+      auditConfig: {
+        ...auditConfig,
+      },
       technicalTaskId: null,
       renderReady: false,
       usageCounted: false,
@@ -807,8 +873,7 @@ const cachedAudit =
   user.role !== "admin"
     ? await getCachedAuditReport(
         user.id,
-        domain,
-        reportTypes
+        inputHash
       )
     : null;
 
@@ -914,20 +979,18 @@ await updateAuditJob(auditJob.id, {
     const htmlResult = await fetchHtml(url);
     const html = htmlResult.html;
     const resolvedUrl = htmlResult.resolvedUrl || url;
+    const redirectCount =
+      Number(htmlResult.redirectCount || 0);
     const canonicalUrl = getCanonicalUrl(html, resolvedUrl);
     const auditTargetUrl = canonicalUrl || resolvedUrl || url;
     const title = getTitle(html);
     const description = getDescription(html);
 
     const isPakistanDomain =
+      auditConfig.countryCode === "PK" ||
       domain.endsWith(".pk") ||
       description.toLowerCase().includes("pakistan") ||
       title.toLowerCase().includes("pakistan");
-
-    const locationName =
-      body?.locationName || (isPakistanDomain ? "Pakistan" : "United States");
-
-    const languageName = body?.languageName || "English";
 
     const cleanSeedKeyword =
       title?.replace(/[-|–].*$/, "").trim() ||
@@ -996,6 +1059,11 @@ const desktopSpeed = await getPageSpeed(auditTargetUrl, "desktop");
         ? Math.round((mobileSpeed.score + desktopSpeed.score) / 2)
         : 0;
 
+    const primaryPageSpeed =
+      selectedDevice === "desktop"
+        ? desktopSpeed
+        : mobileSpeed;
+
 await updateAuditJob(auditJob.id, {
   progress: 35,
   currentModule: "Running SEO intelligence modules",
@@ -1056,7 +1124,10 @@ try {
   url,
   locationName,
   languageName,
+  languageCode,
   locationCode,
+  device: selectedDevice,
+  searchEngine,
 }),
         cache: "no-store",
       });
@@ -1107,6 +1178,10 @@ try {
           keywords: serpKeywords,
           locationName,
           languageName,
+          languageCode,
+          locationCode,
+          device: selectedDevice,
+          searchEngine,
         }),
         cache: "no-store",
       });
@@ -1144,7 +1219,15 @@ try {
             industry: dataforseo?.detectedNiche || "",
             categoryKeywords,
             country: locationName,
+            countryCode:
+              auditConfig.countryCode,
             locationName,
+            locationCode,
+            languageName,
+            languageCode,
+            device: selectedDevice,
+            searchEngine,
+            auditConfig,
             competitors: (dataforseo?.competitors || []).map(
               (competitor: any) => competitor.domain
             ),
@@ -1200,10 +1283,8 @@ try {
       }
     }
 
-const requestedCrawlPageLimit = Math.min(
-  100,
-  Math.max(1, Number(body?.maxCrawlPages || 100))
-);
+const requestedCrawlPageLimit =
+  auditConfig.maxCrawlPages;
 
 if (runTechnical) {
   try {
@@ -1233,6 +1314,7 @@ if (runTechnical) {
           body: JSON.stringify({
             url: auditTargetUrl,
             maxCrawlPages: requestedCrawlPageLimit,
+            auditConfig,
 
             auditJobId:
               auditJob.id,
@@ -1321,7 +1403,10 @@ try {
             url: auditTargetUrl,
             locationName,
             languageName,
+            languageCode,
             locationCode,
+            device: selectedDevice,
+            searchEngine,
           }),
           cache: "no-store",
         }
@@ -1350,6 +1435,10 @@ try {
             domain,
             locationName,
             languageName,
+            languageCode,
+            locationCode,
+            device: selectedDevice,
+            searchEngine,
           }),
           cache: "no-store",
         }
@@ -1392,7 +1481,7 @@ try {
             url: auditTargetUrl,
             maxPages: Math.min(
               20,
-              Math.max(1, Number(body?.contentPageLimit || 10))
+              Math.max(1, auditConfig.contentPageLimit)
             ),
           }),
           cache: "no-store",
@@ -1431,6 +1520,9 @@ try {
               ?.keyword || cleanSeedKeyword,
           locationName,
           languageName,
+          languageCode,
+          locationCode,
+          auditConfig,
         }),
         cache: "no-store",
       });
@@ -1459,7 +1551,7 @@ try {
       Math.min(
         100,
         95 -
-          (mobileSpeed.score > 0 && mobileSpeed.score < 60 ? 15 : 0) -
+          (primaryPageSpeed.score > 0 && primaryPageSpeed.score < 60 ? 15 : 0) -
           (imagesMissingAlt > 0 ? 5 : 0)
       )
     );
@@ -1545,7 +1637,7 @@ const trafficHealthScore =
 const overallScore = Math.round(
   seoScore * 0.3 +
     uxScore * 0.15 +
-    (mobileSpeed.score || 0) * 0.25 +
+    (primaryPageSpeed.score || 0) * 0.25 +
     backlinkScore * 0.15 +
     (aiVisibilityScore || 0) * 0.15
 );
@@ -1942,11 +2034,14 @@ const draftReport = {
   normalizedDomain: domain,
   renderReady: false,
 
+  reportVersion: "4.0",
   reportTypes,
+  auditConfig,
   url,
   submittedUrl: url,
   resolvedUrl,
   canonicalUrl,
+  redirectCount,
   domain,
   moduleStatus,
       unifiedOverview,
@@ -1957,16 +2052,27 @@ const draftReport = {
       imagesMissingAlt,
       searchContext: {
         country: locationName,
+        countryCode:
+          auditConfig.countryCode,
         language: languageName,
+        languageCode,
         locationCode,
-        device: body?.device || "mobile-and-desktop",
+        device: selectedDevice,
+        os: auditConfig.os,
+        searchEngine,
+        maxCrawlPages:
+          auditConfig.maxCrawlPages,
+        contentPageLimit:
+          auditConfig.contentPageLimit,
       },
 
       overallScore,
       seoScore,
       uxScore,
 
-      speedScore: mobileSpeed.score,
+      speedScore: primaryPageSpeed.score,
+      primaryPerformanceDevice:
+        selectedDevice,
       mobilePerformance: mobileSpeed.score,
       desktopPerformance: desktopSpeed.score,
       tabletPerformance: tabletScore,
@@ -2099,6 +2205,9 @@ aiVisibility,
               finalJobStatus,
             renderReady,
             moduleStatus: report.moduleStatus,
+            auditConfig: {
+              ...auditConfig,
+            },
             completedAt,
             reportTypes,
             reportData:
@@ -2127,6 +2236,9 @@ aiVisibility,
               finalJobStatus,
             renderReady,
             moduleStatus: report.moduleStatus,
+            auditConfig: {
+              ...auditConfig,
+            },
             completedAt,
             reportTypes,
             reportData:

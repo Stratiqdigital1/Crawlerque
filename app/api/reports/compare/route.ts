@@ -3,6 +3,9 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { verifySessionToken } from "@/lib/auth";
 import { withSecurityHeaders } from "@/lib/security-headers";
+import {
+  getAuditScopeKey,
+} from "@/lib/audit-scope";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -77,6 +80,30 @@ function getReportTypesKey(
       a.localeCompare(b)
     )
     .join("|");
+}
+
+
+function getAuditConfig(
+  report: {
+    auditConfig?: unknown;
+    reportData?: unknown;
+  }
+) {
+  if (isRecord(report.auditConfig)) {
+    return report.auditConfig;
+  }
+
+  if (isRecord(report.reportData)) {
+    const config =
+      report.reportData.auditConfig ||
+      report.reportData.searchContext;
+
+    return isRecord(config)
+      ? config
+      : null;
+  }
+
+  return null;
 }
 
 function getReportVersion(
@@ -211,7 +238,12 @@ export async function POST(
                 userId: user.id,
               }),
 
-          status: "completed",
+          status: {
+            in: [
+              "completed",
+              "completed_with_limitation",
+            ],
+          },
           renderReady: true,
         },
       });
@@ -319,6 +351,57 @@ export async function POST(
       );
     }
 
+    const auditConfigA =
+      getAuditConfig(reportA);
+
+    const auditConfigB =
+      getAuditConfig(reportB);
+
+    if (
+      !auditConfigA ||
+      !auditConfigB
+    ) {
+      return withSecurityHeaders(
+        NextResponse.json(
+          {
+            success: false,
+            error:
+              "Legacy reports without a verified audit scope cannot be compared reliably.",
+          },
+          {
+            status: 409,
+          }
+        )
+      );
+    }
+
+    const scopeKeyA =
+      getAuditScopeKey(
+        auditConfigA,
+        domainA
+      );
+
+    const scopeKeyB =
+      getAuditScopeKey(
+        auditConfigB,
+        domainB
+      );
+
+    if (scopeKeyA !== scopeKeyB) {
+      return withSecurityHeaders(
+        NextResponse.json(
+          {
+            success: false,
+            error:
+              "These reports used different country, language, device, search engine, or crawl scope settings and cannot be compared reliably.",
+          },
+          {
+            status: 409,
+          }
+        )
+      );
+    }
+
     const versionA =
       getReportVersion(
         reportA.reportData
@@ -363,6 +446,9 @@ export async function POST(
             )
               ? reportA.reportTypes
               : [],
+
+          auditConfig:
+            auditConfigA,
         },
 
         reportA,

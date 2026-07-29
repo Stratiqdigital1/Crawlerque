@@ -16,6 +16,9 @@ import {
   buildAuditIdentity,
 } from "@/lib/audit-identity";
 import {
+  getAuditScopeKey,
+} from "@/lib/audit-scope";
+import {
   AuditUsageLimitError,
   createAuditJobWithReservation,
   failAuditAndRestoreCredit,
@@ -152,6 +155,8 @@ export async function POST(
         ),
         reportTypes:
           requestedReportTypes,
+        auditConfig:
+          body?.auditConfig || body,
       });
 
     const retryOfJobId =
@@ -177,6 +182,7 @@ export async function POST(
           select: {
             id: true,
             normalizedDomain: true,
+            auditConfig: true,
           },
         });
 
@@ -206,6 +212,32 @@ export async function POST(
               success: false,
               error:
                 "A retry must use the same domain as the failed audit.",
+            },
+            {
+              status: 409,
+            }
+          )
+        );
+      }
+
+      if (
+        retrySource.auditConfig &&
+        getAuditScopeKey(
+          retrySource.auditConfig,
+          retrySource.normalizedDomain ||
+            identity.normalizedDomain
+        ) !==
+          getAuditScopeKey(
+            identity.auditConfig,
+            identity.normalizedDomain
+          )
+      ) {
+        return withSecurityHeaders(
+          NextResponse.json(
+            {
+              success: false,
+              error:
+                "A retry must use the same country, language, device, search engine, and crawl scope as the failed audit.",
             },
             {
               status: 409,
@@ -258,6 +290,7 @@ export async function POST(
           usageState: true,
           usageSource: true,
           retryOfJobId: true,
+          auditConfig: true,
         },
       });
 
@@ -332,7 +365,7 @@ export async function POST(
       user.monthlyAudits ||
       0;
 
-    const job =
+    const reservedJob =
       await createAuditJobWithReservation({
         userId: session.id,
         role: user.role,
@@ -354,6 +387,18 @@ export async function POST(
         retryOfJobId,
       });
 
+    const job =
+      await prisma.auditJob.update({
+        where: {
+          id: reservedJob.id,
+        },
+        data: {
+          auditConfig: {
+            ...identity.auditConfig,
+          },
+        },
+      });
+
     return withSecurityHeaders(
       NextResponse.json({
         success: true,
@@ -361,6 +406,8 @@ export async function POST(
         job,
         auditJobId: job.id,
         traceId: job.traceId,
+        auditConfig:
+          identity.auditConfig,
       })
     );
   } catch (error) {

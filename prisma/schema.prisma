@@ -113,6 +113,7 @@ model AuditReport {
   status       String    @default("processing")
   renderReady  Boolean   @default(false)
   moduleStatus Json?
+  auditConfig Json?
   completedAt  DateTime?
 
   reportTypes Json?
@@ -137,6 +138,7 @@ model AuditReport {
   @@index([domain])
   @@index([createdAt])
   @@index([userId, normalizedDomain, createdAt])
+  @@index([userId, inputHash, createdAt])
   @@index([status, renderReady])
 }
 
@@ -182,6 +184,7 @@ model AuditJob {
   progress         Int       @default(0)
   currentModule    String?
   moduleStatus     Json?
+  auditConfig      Json?
   error            String?
   resultReportId   String?
   resultData       Json?

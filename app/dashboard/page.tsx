@@ -28,6 +28,11 @@ import {
 import {
   trackAnalyticsEvent,
 } from "@/lib/client-analytics";
+import {
+  AUDIT_COUNTRY_OPTIONS,
+  AUDIT_CRAWL_LIMIT_OPTIONS,
+  AUDIT_LANGUAGE_OPTIONS,
+} from "@/lib/audit-scope";
 
 const PROMO_REPORT_TYPES = [
   "seo",
@@ -48,6 +53,18 @@ type OnPagePollIdentity = {
   auditJobId: string;
   inputHash: string;
   normalizedDomain: string;
+};
+
+type DashboardAuditConfig = {
+  countryName: string;
+  countryCode?: string;
+  locationCode?: number;
+  languageName: string;
+  languageCode?: string;
+  device: "mobile" | "desktop";
+  searchEngine: "google";
+  maxCrawlPages: number;
+  contentPageLimit: number;
 };
 
 export default function WebsiteAuditDashboardPage() {
@@ -73,6 +90,11 @@ const [auditModuleStatus, setAuditModuleStatus] = useState<any>({});
 const [abortController, setAbortController] = useState<AbortController | null>(null);
 const [error, setError] = useState("");
   const [customPrompts, setCustomPrompts] = useState("");
+  const [auditCountry, setAuditCountry] = useState("auto");
+  const [auditLanguage, setAuditLanguage] = useState("English");
+  const [auditDevice, setAuditDevice] = useState<"mobile" | "desktop">("mobile");
+  const [auditSearchEngine] = useState<"google">("google");
+  const [auditCrawlLimit, setAuditCrawlLimit] = useState(100);
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedReportTypes, setSelectedReportTypes] = useState<string[]>([
   "seo",
@@ -503,6 +525,7 @@ const runAudit = async (
     url?: string;
     reportTypes?: string[];
     retryOfJobId?: string | null;
+    auditConfig?: Partial<DashboardAuditConfig> | null;
   }
 ) => {
   const requestedUrl =
@@ -575,6 +598,37 @@ const effectiveReportTypes =
       ? [...options.reportTypes]
       : selectedReportTypes;
 
+const effectiveAuditConfig: DashboardAuditConfig = {
+  countryName:
+    options?.auditConfig?.countryName ||
+    (auditCountry === "auto"
+      ? ""
+      : auditCountry),
+  countryCode:
+    options?.auditConfig?.countryCode,
+  locationCode:
+    options?.auditConfig?.locationCode,
+  languageName:
+    options?.auditConfig?.languageName ||
+    auditLanguage,
+  languageCode:
+    options?.auditConfig?.languageCode,
+  device:
+    options?.auditConfig?.device ||
+    auditDevice,
+  searchEngine: "google",
+  maxCrawlPages:
+    Number(
+      options?.auditConfig?.maxCrawlPages ||
+      auditCrawlLimit
+    ),
+  contentPageLimit:
+    Number(
+      options?.auditConfig?.contentPageLimit ||
+      10
+    ),
+};
+
 setData(null);
 setCompareA(null);
 setCompareB(null);
@@ -614,6 +668,8 @@ body: JSON.stringify({
           retryOfJobId:
             options?.retryOfJobId ||
             null,
+          auditConfig:
+            effectiveAuditConfig,
         }),
       });
 
@@ -650,6 +706,11 @@ setAuditTraceId(
   )
 );
 
+const reservedAuditConfig =
+  startJson?.auditConfig ||
+  startJson?.job?.auditConfig ||
+  effectiveAuditConfig;
+
 activeAuditJobIdRef.current =
   startedJobId;
 
@@ -678,6 +739,8 @@ body: JSON.stringify({
   url: normalizedUrl,
   reportTypes: effectiveReportTypes,
   auditJobId: startedJobId,
+  auditConfig:
+    reservedAuditConfig,
   customPrompts: customPrompts.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 5),
 }),
       });
@@ -705,6 +768,9 @@ if (
 const report = {
   ...(json?.report || json),
   reportTypes: effectiveReportTypes,
+  auditConfig:
+    (json?.report || json)?.auditConfig ||
+    reservedAuditConfig,
 };
 
 /* Recommendations are generated and saved server-side. The dashboard never
@@ -1027,6 +1093,37 @@ const historyReportTypesKey = (
     .join("|");
 };
 
+const historyAuditScopeKey = (
+  item: any
+) => {
+  const config =
+    item?.auditConfig ||
+    item?.searchContext ||
+    null;
+
+  if (!config) {
+    return "";
+  }
+
+  return [
+    config?.countryCode ||
+      config?.countryName ||
+      config?.country ||
+      "",
+    config?.locationCode || "",
+    config?.languageCode ||
+      config?.languageName ||
+      config?.language ||
+      "",
+    config?.device || "",
+    config?.searchEngine || "google",
+    config?.maxCrawlPages ||
+      config?.crawlPageLimit ||
+      "",
+    config?.contentPageLimit || "",
+  ].join("|");
+};
+
 const reportsAreComparable = (
   reportA: any,
   reportB: any
@@ -1057,6 +1154,11 @@ const reportsAreComparable = (
       historyReportTypesKey(
         reportB
       ) &&
+    Boolean(
+      historyAuditScopeKey(reportA)
+    ) &&
+    historyAuditScopeKey(reportA) ===
+      historyAuditScopeKey(reportB) &&
     reportA?.renderReady ===
       true &&
     reportB?.renderReady ===
@@ -1090,7 +1192,7 @@ const selectComparisonReport = (
     )
   ) {
     setError(
-      "Select another completed audit for the same domain and the same module selection."
+      "Select another completed audit for the same domain, modules, country, language, device, search engine, and crawl scope."
     );
     return;
   }
@@ -1137,6 +1239,10 @@ const formattedReports =
       reportTypes:
         item.reportTypes ||
         [],
+
+      auditConfig:
+        item.auditConfig ||
+        null,
 
       status:
         item.status,
@@ -1208,6 +1314,10 @@ const formattedAttempts =
       reportTypes:
         item.reportTypes ||
         [],
+
+      auditConfig:
+        item.auditConfig ||
+        null,
 
       status:
         item.status,
@@ -1387,9 +1497,45 @@ const loadSavedReport = async (id: string) => {
         json.report?.status ||
         fullReport?.reportStatus ||
         "processing",
+
+      auditConfig:
+        fullReport?.auditConfig ||
+        json.report?.auditConfig ||
+        null,
     };
 
     setData(hydratedReport);
+
+    const savedAuditConfig =
+      hydratedReport?.auditConfig ||
+      hydratedReport?.searchContext ||
+      null;
+
+    if (savedAuditConfig) {
+      setAuditCountry(
+        savedAuditConfig?.countryName ||
+        savedAuditConfig?.country ||
+        "auto"
+      );
+      setAuditLanguage(
+        savedAuditConfig?.languageName ||
+        savedAuditConfig?.language ||
+        "English"
+      );
+      setAuditDevice(
+        savedAuditConfig?.device ===
+          "desktop"
+          ? "desktop"
+          : "mobile"
+      );
+      setAuditCrawlLimit(
+        Number(
+          savedAuditConfig?.maxCrawlPages ||
+          savedAuditConfig?.crawlPageLimit ||
+          100
+        )
+      );
+    }
 
     setAuditJobId(
       hydratedReport?.auditJobId ||
@@ -1548,6 +1694,9 @@ const retryAuditAttempt = (
     retryOfJobId:
       item?.auditJobId ||
       null,
+    auditConfig:
+      item?.auditConfig ||
+      null,
   });
 };
 
@@ -1590,7 +1739,7 @@ const exportComparisonPDF = async () => {
   )
 ) {
   setError(
-    "Comparison is allowed only for completed audits of the same domain using the same modules."
+    "Comparison is allowed only for completed audits of the same domain using the same modules and audit scope."
   );
 
   return;
@@ -2268,6 +2417,7 @@ sub("From executive summary to action roadmap — everything your team needs to 
   const tocN = () => String(++tocNo).padStart(2,"0");
   const toc = [
     [tocN(),"Executive Snapshot","Reconciled scores, risks, opportunities, and confidence"],
+    [tocN(),"Audit Methodology & Scope","URLs, market, language, device, search engine, and crawl limits"],
     ...(pdfShow("traffic")
       ? [[tocN(),"Organic Traffic Intelligence","Canonical modeled traffic and keyword footprint"]]
       : []),
@@ -2354,6 +2504,30 @@ sub("From executive summary to action roadmap — everything your team needs to 
   ensure(50); secTitle("Biggest Risk & Opportunity");
 hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   hiBox("Biggest Opportunity",cl(normalized.summary.biggestOpportunity),"green");
+
+  // ════════════════════════════════════════════════════════════════════
+  //  AUDIT METHODOLOGY & SCOPE
+  // ════════════════════════════════════════════════════════════════════
+  secHdr(
+    nextSec(),
+    "Audit Methodology & Scope",
+    "The exact market and crawl settings used for this audit. These settings are part of the audit identity and comparison rules."
+  );
+  tbl(
+    ["Setting", "Value", "Meaning"],
+    [
+      { col1: "Submitted URL", col2: cl(data?.submittedUrl || data?.url), col3: "The URL entered when the audit started" },
+      { col1: "Resolved URL", col2: cl(data?.resolvedUrl), col3: "The final URL after HTTP redirects" },
+      { col1: "Canonical URL", col2: cl(data?.canonicalUrl), col3: "The canonical page declared by the resolved page" },
+      { col1: "Redirect Count", col2: cl(String(data?.redirectCount ?? 0)), col3: "Redirect hops followed before analysis" },
+      { col1: "Country", col2: cl(data?.auditConfig?.countryName || data?.searchContext?.country), col3: "Market used for keyword, SERP, local, and AI context" },
+      { col1: "Language", col2: cl(data?.auditConfig?.languageName || data?.searchContext?.language), col3: "Language used for search and prompt context" },
+      { col1: "Primary Device", col2: cl(data?.auditConfig?.device || data?.searchContext?.device), col3: "Device used for SERP and primary scope interpretation" },
+      { col1: "Search Engine", col2: cl(data?.auditConfig?.searchEngine || "google"), col3: "Primary search engine used by supported search modules" },
+      { col1: "Crawl Limit", col2: `${fmt(data?.auditConfig?.maxCrawlPages || data?.onPage?.pageLimit || 100)} pages`, col3: "Maximum pages requested from the technical crawler" },
+    ],
+    [42, 72, CW - 114]
+  );
 
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 03 — ORGANIC TRAFFIC
@@ -3269,8 +3443,138 @@ data?.renderReady !== true
     </button>
 
   </div>
+
+  <div className="mt-5 rounded-2xl border border-[#222] bg-[#111] p-4">
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-[#C5FF3D]">
+          Audit Market & Scope
+        </p>
+        <p className="mt-1 text-xs leading-5 text-[#777]">
+          These settings are bound to the audit identity, cache, history, comparison, and final report.
+        </p>
+      </div>
+      <span className="rounded-full border border-[#2A2A2A] px-3 py-1 text-xs text-[#8A8A8A]">
+        Search engine: Google
+      </span>
+    </div>
+
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <label className="text-xs text-[#8A8A8A]">
+        Country
+        <select
+          value={auditCountry}
+          onChange={(event) =>
+            setAuditCountry(event.target.value)
+          }
+          disabled={loading}
+          className="mt-2 h-11 w-full rounded-xl border border-[#2A2A2A] bg-[#0A0A0A] px-3 text-sm text-white outline-none focus:border-[#C5FF3D]/60"
+        >
+          <option value="auto">Auto-detect from domain</option>
+          {AUDIT_COUNTRY_OPTIONS.map((option) => (
+            <option
+              key={option.countryCode}
+              value={option.countryName}
+            >
+              {option.countryName}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="text-xs text-[#8A8A8A]">
+        Language
+        <select
+          value={auditLanguage}
+          onChange={(event) =>
+            setAuditLanguage(event.target.value)
+          }
+          disabled={loading}
+          className="mt-2 h-11 w-full rounded-xl border border-[#2A2A2A] bg-[#0A0A0A] px-3 text-sm text-white outline-none focus:border-[#C5FF3D]/60"
+        >
+          {AUDIT_LANGUAGE_OPTIONS.map((option) => (
+            <option
+              key={option.languageCode}
+              value={option.languageName}
+            >
+              {option.languageName}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="text-xs text-[#8A8A8A]">
+        Primary device
+        <select
+          value={auditDevice}
+          onChange={(event) =>
+            setAuditDevice(
+              event.target.value === "desktop"
+                ? "desktop"
+                : "mobile"
+            )
+          }
+          disabled={loading}
+          className="mt-2 h-11 w-full rounded-xl border border-[#2A2A2A] bg-[#0A0A0A] px-3 text-sm text-white outline-none focus:border-[#C5FF3D]/60"
+        >
+          <option value="mobile">Mobile</option>
+          <option value="desktop">Desktop</option>
+        </select>
+      </label>
+
+      <label className="text-xs text-[#8A8A8A]">
+        Crawl limit
+        <select
+          value={auditCrawlLimit}
+          onChange={(event) =>
+            setAuditCrawlLimit(
+              Number(event.target.value)
+            )
+          }
+          disabled={loading}
+          className="mt-2 h-11 w-full rounded-xl border border-[#2A2A2A] bg-[#0A0A0A] px-3 text-sm text-white outline-none focus:border-[#C5FF3D]/60"
+        >
+          {AUDIT_CRAWL_LIMIT_OPTIONS.map((limit) => (
+            <option key={limit} value={limit}>
+              {limit} pages
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="text-xs text-[#8A8A8A]">
+        Search engine
+        <select
+          value={auditSearchEngine}
+          disabled
+          className="mt-2 h-11 w-full rounded-xl border border-[#2A2A2A] bg-[#0A0A0A] px-3 text-sm text-white opacity-80"
+        >
+          <option value="google">Google</option>
+        </select>
+      </label>
+    </div>
+  </div>
 </div>
 )}
+
+{data && (
+  <div className="cq-card cq-frame mb-6 !rounded-none p-5">
+    <p className="text-xs font-semibold uppercase tracking-wide text-[#C5FF3D]">
+      Audit Methodology & Scope
+    </p>
+    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <ScopeValue label="Submitted URL" value={data?.submittedUrl || data?.url} />
+      <ScopeValue label="Resolved URL" value={data?.resolvedUrl} />
+      <ScopeValue label="Canonical URL" value={data?.canonicalUrl} />
+      <ScopeValue label="Redirects" value={String(data?.redirectCount ?? 0)} />
+      <ScopeValue label="Country" value={data?.auditConfig?.countryName || data?.searchContext?.country} />
+      <ScopeValue label="Language" value={data?.auditConfig?.languageName || data?.searchContext?.language} />
+      <ScopeValue label="Primary Device" value={data?.auditConfig?.device || data?.searchContext?.device} />
+      <ScopeValue label="Crawl Limit" value={`${data?.auditConfig?.maxCrawlPages || data?.onPage?.pageLimit || 100} pages`} />
+    </div>
+  </div>
+)}
+
 {data?.onPage?.taskId &&
   data?.renderReady !== true && (
     <div className="cq-card mb-6 border-l-2 border-l-amber-400 p-5">
@@ -6606,6 +6910,29 @@ function RecommendationCard({
 
       <p className="mt-4 text-sm leading-6 text-slate-600">
         {description}
+      </p>
+    </div>
+  );
+}
+
+function ScopeValue({
+  label,
+  value,
+}: {
+  label: string;
+  value: unknown;
+}) {
+  return (
+    <div className="rounded-xl border border-[#222] bg-[#111] p-4">
+      <p className="text-xs uppercase tracking-wide text-[#777]">
+        {label}
+      </p>
+      <p className="mt-2 break-words text-sm font-semibold text-white">
+        {value === null ||
+        value === undefined ||
+        value === ""
+          ? "Not available"
+          : String(value)}
       </p>
     </div>
   );

@@ -103,6 +103,8 @@ export async function POST(req: Request) {
     );
     const locationName = clean(body?.locationName) || "United States";
     const languageName = clean(body?.languageName) || "English";
+    const languageCode = clean(body?.languageCode) || "en";
+    const locationCode = Number(body?.locationCode || 0) || null;
 
     if (!brandName && !domain) {
       return NextResponse.json(
@@ -156,6 +158,9 @@ export async function POST(req: Request) {
         keyword: query,
         location: locationName,
         language: languageName,
+        languageCode,
+        locationCode,
+        searchEngine: "google",
         listings,
         marketListings,
         matchStatus: listings.length > 0 ? "brand-listing-found" : "brand-listing-not-found",

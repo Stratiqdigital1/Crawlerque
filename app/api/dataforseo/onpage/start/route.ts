@@ -8,6 +8,10 @@ import {
   AuditIdentityError,
   buildAuditIdentity,
 } from "@/lib/audit-identity";
+import {
+  getAuditScopeKey,
+  normalizeAuditScope,
+} from "@/lib/audit-scope";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -250,11 +254,13 @@ export async function POST(
     try {
       identity = buildAuditIdentity({
         userId: user.id,
-        url: String(
-          body?.url || job.url
-        ),
+        url: job.url,
         reportTypes:
           jobReportTypes,
+        auditConfig:
+          job.auditConfig ||
+          body?.auditConfig ||
+          body,
       });
     } catch (error) {
       if (
@@ -287,7 +293,17 @@ export async function POST(
       identity.normalizedDomain !==
         suppliedDomain ||
       identity.normalizedUrl !==
-        job.url;
+        job.url ||
+      getAuditScopeKey(
+        identity.auditConfig,
+        job.normalizedDomain
+      ) !==
+        getAuditScopeKey(
+          job.auditConfig ||
+            body?.auditConfig ||
+            body,
+          job.normalizedDomain
+        );
 
     if (identityMismatch) {
       await prisma.auditJob.update({
@@ -353,6 +369,9 @@ export async function POST(
           normalizedDomain:
             job.normalizedDomain,
           inputHash: job.inputHash,
+          auditConfig:
+            job.auditConfig ||
+            identity.auditConfig,
           pageLimit:
             Number(
               asRecord(
@@ -366,15 +385,16 @@ export async function POST(
       );
     }
 
-    const maxCrawlPages = Math.min(
-      100,
-      Math.max(
-        1,
-        Number(
-          body?.maxCrawlPages || 100
-        )
-      )
-    );
+    const auditConfig =
+      normalizeAuditScope(
+        job.auditConfig ||
+          body?.auditConfig ||
+          body,
+        job.normalizedDomain
+      );
+
+    const maxCrawlPages =
+      auditConfig.maxCrawlPages;
 
     const rawTaskResponse =
       await dataForSeoPost(
@@ -483,6 +503,7 @@ export async function POST(
         normalizedDomain:
           job.normalizedDomain,
         inputHash: job.inputHash,
+        auditConfig,
         pageLimit: maxCrawlPages,
         message:
           "OnPage crawl started with safe retry protection.",

@@ -1,4 +1,8 @@
 import { createHash } from "node:crypto";
+import {
+  normalizeAuditScope,
+  type AuditScope,
+} from "@/lib/audit-scope";
 
 export const SUPPORTED_AUDIT_REPORT_TYPES = [
   "seo",
@@ -29,12 +33,14 @@ type BuildAuditIdentityInput = {
   userId: string;
   url: string;
   reportTypes: unknown;
+  auditConfig?: unknown;
 };
 
 export type AuditIdentity = {
   normalizedUrl: string;
   normalizedDomain: string;
   reportTypes: string[];
+  auditConfig: AuditScope;
   inputHash: string;
 };
 
@@ -102,6 +108,7 @@ export function buildAuditIdentity({
   userId,
   url,
   reportTypes,
+  auditConfig,
 }: BuildAuditIdentityInput): AuditIdentity {
   const cleanUserId = String(userId || "").trim();
   const cleanInputUrl = String(url || "").trim();
@@ -178,6 +185,23 @@ export function buildAuditIdentity({
   const normalizedReportTypes =
     normalizeAuditReportTypes(reportTypes);
 
+  let normalizedAuditConfig:
+    AuditScope;
+
+  try {
+    normalizedAuditConfig =
+      normalizeAuditScope(
+        auditConfig,
+        normalizedDomain
+      );
+  } catch (error) {
+    throw new AuditIdentityError(
+      error instanceof Error
+        ? error.message
+        : "Invalid audit market or scope settings."
+    );
+  }
+
   if (normalizedReportTypes.length === 0) {
     throw new AuditIdentityError(
       "Select at least one audit module."
@@ -200,10 +224,11 @@ export function buildAuditIdentity({
   const inputHash = createHash("sha256")
     .update(
       JSON.stringify({
-        version: 1,
+        version: 2,
         userId: cleanUserId,
         target: canonicalTarget,
         reportTypes: normalizedReportTypes,
+        auditConfig: normalizedAuditConfig,
       })
     )
     .digest("hex");
@@ -212,6 +237,7 @@ export function buildAuditIdentity({
     normalizedUrl,
     normalizedDomain,
     reportTypes: normalizedReportTypes,
+    auditConfig: normalizedAuditConfig,
     inputHash,
   };
 }
