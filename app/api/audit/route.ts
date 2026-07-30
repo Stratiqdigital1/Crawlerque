@@ -1125,6 +1125,68 @@ try {
 }
 }
 
+const keywordResearchSeedMap: Record<string, string> = {
+  saas: "business software",
+  ecommerce: "online shopping products",
+  real_estate: "real estate services",
+  legal: "legal services",
+  healthcare: "healthcare services",
+  restaurant: "restaurant services",
+  local_service: "local professional services",
+  general: cleanSeedKeyword,
+};
+
+const blockedResearchSeedTerms =
+  /crossword|movie|song|youtube|tiktok|reddit|birthday|cemetery|olive|archive|download|github|jobs|careers|contact number/i;
+
+const validatedGapSeed =
+  (dataforseo?.keywordGap?.missingKeywords || [])
+    .filter((item: any) => {
+      const keyword = String(item?.keyword || "").trim();
+      const volume = Number(
+        item?.volume || item?.search_volume || 0
+      );
+
+      return (
+        keyword.length >= 4 &&
+        volume >= 20 &&
+        !blockedResearchSeedTerms.test(keyword)
+      );
+    })
+    .sort(
+      (a: any, b: any) =>
+        Number(b?.opportunityScore || 0) -
+          Number(a?.opportunityScore || 0) ||
+        Number(b?.volume || b?.search_volume || 0) -
+          Number(a?.volume || a?.search_volume || 0)
+    )[0]?.keyword;
+
+const validatedRankingSeed =
+  (dataforseo?.topKeywords || []).find(
+    (item: any) => {
+      const keyword = String(item?.keyword || "").trim();
+      const position = Number(item?.position || 999);
+      const volume = Number(item?.volume || 0);
+
+      return (
+        keyword.length >= 4 &&
+        position <= 50 &&
+        volume >= 20 &&
+        item?.branded !== true &&
+        !blockedResearchSeedTerms.test(keyword)
+      );
+    }
+  )?.keyword;
+
+const keywordResearchSeed = String(
+  validatedGapSeed ||
+    validatedRankingSeed ||
+    keywordResearchSeedMap[
+      String(dataforseo?.detectedNiche || "general")
+    ] ||
+    cleanSeedKeyword
+).trim();
+
     if (runSERP) {
 try {
   const serpKeywords = Array.from(
@@ -1412,18 +1474,18 @@ try {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            seedKeyword: cleanSeedKeyword,
-            keyword: cleanSeedKeyword,
-            brandName: domain.replace(/\.(com|co|net|org|io|pk|us)$/i, ""),
-            domain,
-            locationName,
-            languageName,
-            languageCode,
-            locationCode,
-            device: selectedDevice,
-            searchEngine,
-          }),
+body: JSON.stringify({
+  seedKeyword: keywordResearchSeed,
+  keyword: keywordResearchSeed,
+  brandName: domain.replace(/\.(com|co|net|org|io|pk|us)$/i, ""),
+  domain,
+  locationName,
+  languageName,
+  languageCode,
+  locationCode,
+  device: selectedDevice,
+  searchEngine,
+}),
           cache: "no-store",
         }
       );
@@ -1440,9 +1502,9 @@ try {
   (!keywordResearch?.suggestions || keywordResearch.suggestions.length === 0) &&
   dataforseo?.topKeywords?.length > 0
 ) {
-  keywordResearch = {
-    seedKeyword: cleanSeedKeyword,
-    suggestions: dataforseo.topKeywords.map((k: any) => ({
+keywordResearch = {
+  seedKeyword: keywordResearchSeed,
+  suggestions: dataforseo.topKeywords.map((k: any) => ({
       keyword: k.keyword,
       volume: k.volume,
       cpc: k.cpc,
@@ -1764,23 +1826,223 @@ const normalizeRecommendation = (recommendation: any, index: number) => {
   return recommendation;
 };
 
-const finalRecommendations = (aiRecommendations?.recommendations || [])
+const foundationRecommendations: any[] = [];
+const foundationKeys = new Set<string>();
+
+const addFoundationRecommendation = (item: any) => {
+  const key = String(item?.title || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+  if (!key || foundationKeys.has(key)) {
+    return;
+  }
+
+  foundationKeys.add(key);
+  foundationRecommendations.push(item);
+};
+
+if (runRecommendations || runAI) {
+  (issues || []).forEach((issue: any) => {
+    const issueText = [
+      issue?.title,
+      issue?.impact,
+      issue?.fix,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    if (/alt text|missing alt/.test(issueText)) {
+      addFoundationRecommendation({
+        id: "foundation-alt-text",
+        title: "Add descriptive ALT text to important images",
+        detail:
+          "Add concise, descriptive ALT text to every important image that is currently missing it. Validate the homepage first, then the remaining audited pages.",
+        sourceModule: "SEO Foundation",
+        impact: "High",
+        effort: "Low",
+        owner: "SEO / Content",
+        timeline: "0–30 days",
+        expectedImpact:
+          "Improve accessibility, image understanding, and AI citation readiness.",
+        affectedUrls: [auditTargetUrl],
+        evidence: [
+          `Images missing ALT text: ${imagesMissingAlt}`,
+        ],
+        validationStatus: "validated",
+        confidence: "high",
+      });
+    }
+
+    if (/missing page title/.test(issueText)) {
+      addFoundationRecommendation({
+        id: "foundation-page-title",
+        title: "Add a unique SEO title to the homepage",
+        detail:
+          "Create a concise homepage title that clearly communicates the primary topic and commercial intent.",
+        sourceModule: "SEO Foundation",
+        impact: "High",
+        effort: "Low",
+        owner: "SEO / Content",
+        timeline: "0–30 days",
+        affectedUrls: [auditTargetUrl],
+        evidence: ["Homepage title was not detected."],
+        validationStatus: "validated",
+        confidence: "high",
+      });
+    }
+
+    if (/missing meta description/.test(issueText)) {
+      addFoundationRecommendation({
+        id: "foundation-meta-description",
+        title: "Add a unique homepage meta description",
+        detail:
+          "Write a clear 140–160 character description that explains the core offer and gives searchers a reason to click.",
+        sourceModule: "SEO Foundation",
+        impact: "Medium",
+        effort: "Low",
+        owner: "SEO / Content",
+        timeline: "0–30 days",
+        affectedUrls: [auditTargetUrl],
+        evidence: [
+          "Homepage meta description was not detected.",
+        ],
+        validationStatus: "validated",
+        confidence: "high",
+      });
+    }
+
+    if (/missing h1/.test(issueText)) {
+      addFoundationRecommendation({
+        id: "foundation-h1",
+        title: "Add one clear primary H1 heading",
+        detail:
+          "Add one primary H1 that accurately defines the page topic and offer.",
+        sourceModule: "SEO Foundation",
+        impact: "Medium",
+        effort: "Low",
+        owner: "SEO / Content",
+        timeline: "0–30 days",
+        affectedUrls: [auditTargetUrl],
+        evidence: ["Homepage H1 was not detected."],
+        validationStatus: "validated",
+        confidence: "high",
+      });
+    }
+  });
+
+  if (!hasFaqSchema) {
+    addFoundationRecommendation({
+      id: "foundation-faq-schema",
+      title: "Add validated FAQ schema to the audited page",
+      detail:
+        "Add a useful visible FAQ section and matching FAQPage structured data. Keep every structured answer consistent with the visible page content.",
+      sourceModule: "AI Citation Readiness",
+      impact: "High",
+      effort: "Medium",
+      owner: "SEO / Developer",
+      timeline: "0–30 days",
+      affectedUrls: [auditTargetUrl],
+      evidence: ["FAQPage schema was not detected."],
+      validationStatus: "validated",
+      confidence: "high",
+    });
+  }
+
+  const multipleH1Pages = (
+    contentAnalysis?.results || []
+  ).filter(
+    (item: any) =>
+      Array.isArray(item?.issues) &&
+      item.issues.some((issue: any) =>
+        /multiple h1/i.test(String(issue || ""))
+      )
+  );
+
+  if (multipleH1Pages.length > 0) {
+    addFoundationRecommendation({
+      id: "foundation-multiple-h1",
+      title: "Fix multiple H1 headings on affected content pages",
+      detail:
+        "Keep one primary H1 on each affected page and convert additional top-level headings to H2 or H3 based on the content hierarchy.",
+      sourceModule: "Content Quality",
+      impact: "Medium",
+      effort: "Medium",
+      owner: "SEO / Content",
+      timeline: "0–30 days",
+      affectedUrls: multipleH1Pages
+        .map((item: any) => item?.url)
+        .filter(Boolean)
+        .slice(0, 3),
+      evidence: [
+        `Affected audited pages: ${multipleH1Pages.length}`,
+      ],
+      validationStatus: "validated",
+      confidence: "high",
+    });
+  }
+}
+
+const recommendationKeys = new Set<string>();
+
+const finalRecommendations = [
+  ...foundationRecommendations,
+  ...(aiRecommendations?.recommendations || []),
+]
   .map(normalizeRecommendation)
   .filter(Boolean)
+  .filter((item: any) => {
+    const key = String(item?.title || item?.detail || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+
+    if (!key || recommendationKeys.has(key)) {
+      return false;
+    }
+
+    recommendationKeys.add(key);
+    return true;
+  })
   .slice(0, 10);
 
-const actionRoadmap =
-  aiRecommendations?.roadmap || {
-    first30Days: finalRecommendations.filter(
-      (item: any) => item?.timeline === "0–30 days"
-    ),
-    next30Days: finalRecommendations.filter(
-      (item: any) => item?.timeline === "31–60 days"
-    ),
-    final30Days: finalRecommendations.filter(
-      (item: any) => item?.timeline === "61–90 days"
-    ),
-  };
+const first30Days: any[] = [];
+const next30Days: any[] = [];
+const final30Days: any[] = [];
+
+finalRecommendations.forEach((item: any) => {
+  const timeline = String(
+    item?.timeline || "31–60 days"
+  ).toLowerCase();
+
+  if (
+    /0\s*[–-]\s*30|first|immediate|14 day/.test(
+      timeline
+    )
+  ) {
+    first30Days.push(item);
+    return;
+  }
+
+  if (
+    /61\s*[–-]\s*90|final|90 day/.test(
+      timeline
+    )
+  ) {
+    final30Days.push(item);
+    return;
+  }
+
+  next30Days.push(item);
+});
+
+const actionRoadmap = {
+  first30Days,
+  next30Days,
+  final30Days,
+};
     const unifiedOverview = {
       domain,
       overallStatus:

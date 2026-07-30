@@ -1089,6 +1089,606 @@ const cancelAudit = async () => {
     },
   ];
 
+const roadmapActionKey = (
+  item: any
+) =>
+  String(
+    typeof item === "string"
+      ? item
+      : item?.title ||
+          item?.detail ||
+          ""
+  )
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const mergeRoadmapActions = (
+  existingItems: any,
+  generatedItems: any
+) => {
+  const combined = [
+    ...(Array.isArray(existingItems)
+      ? existingItems
+      : []),
+    ...(Array.isArray(generatedItems)
+      ? generatedItems
+      : []),
+  ];
+
+  const seen = new Set<string>();
+
+  return combined.filter((item: any) => {
+    const key = roadmapActionKey(item);
+
+    if (!key || seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+};
+
+const buildFoundationRoadmapActions = (
+  report: any
+) => {
+  const actions: any[] = [];
+  const seen = new Set<string>();
+
+  const addAction = (action: any) => {
+    const key = roadmapActionKey(action);
+
+    if (!key || seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    actions.push(action);
+  };
+
+  const reportIssues = Array.isArray(
+    report?.issues
+  )
+    ? report.issues
+    : [];
+
+  reportIssues.forEach((issue: any) => {
+    const issueText = [
+      issue?.title,
+      issue?.detail,
+      issue?.description,
+      issue?.impact,
+      issue?.fix,
+      issue?.recommendation,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    if (/alt text|missing alt/.test(issueText)) {
+      addAction({
+        id: "foundation-alt-text",
+        title:
+          "Add descriptive ALT text to important images",
+        detail:
+          "Add concise, descriptive ALT text to every important image that is currently missing it. Validate the homepage first, then the remaining audited pages.",
+        impact: "High",
+        effort: "Low",
+        owner: "SEO / Content",
+        timeline: "0–30 days",
+        sourceModule: "SEO Foundation",
+        validationStatus: "validated",
+        evidence: [
+          `Images missing ALT text: ${Number(
+            report?.imagesMissingAlt || 0
+          )}`,
+        ],
+      });
+      return;
+    }
+
+    if (/missing meta description/.test(issueText)) {
+      addAction({
+        id: "foundation-meta-description",
+        title:
+          "Add a unique homepage meta description",
+        detail:
+          "Write a clear 140–160 character description that explains the core offer and gives searchers a reason to click.",
+        impact: "Medium",
+        effort: "Low",
+        owner: "SEO / Content",
+        timeline: "0–30 days",
+        sourceModule: "SEO Foundation",
+        validationStatus: "validated",
+        evidence: [
+          "Homepage meta description was not detected.",
+        ],
+      });
+      return;
+    }
+
+    if (/missing page title/.test(issueText)) {
+      addAction({
+        id: "foundation-page-title",
+        title:
+          "Add a unique SEO title to the homepage",
+        detail:
+          "Create a concise homepage title that clearly communicates the primary topic and commercial intent.",
+        impact: "High",
+        effort: "Low",
+        owner: "SEO / Content",
+        timeline: "0–30 days",
+        sourceModule: "SEO Foundation",
+        validationStatus: "validated",
+        evidence: [
+          "Homepage title was not detected.",
+        ],
+      });
+      return;
+    }
+
+    if (/missing h1|multiple h1/.test(issueText)) {
+      addAction({
+        id: "foundation-heading-structure",
+        title:
+          "Correct the primary H1 heading structure",
+        detail:
+          "Use one clear primary H1 per page and convert additional top-level headings to the correct lower heading level.",
+        impact: "Medium",
+        effort: "Low",
+        owner: "SEO / Content",
+        timeline: "0–30 days",
+        sourceModule: "Content Quality",
+        validationStatus: "validated",
+        evidence: [
+          "Heading-structure issue detected in the audited content.",
+        ],
+      });
+      return;
+    }
+
+    if (/broken link/.test(issueText)) {
+      addAction({
+        id: "foundation-broken-links",
+        title:
+          "Repair or redirect verified broken links",
+        detail:
+          "Update each evidenced broken destination, restore the missing page, or add the most relevant permanent redirect.",
+        impact: "High",
+        effort: "Medium",
+        owner: "Developer / SEO",
+        timeline: "0–30 days",
+        sourceModule: "Technical SEO",
+        validationStatus: "validated",
+        evidence: [
+          `Broken links detected: ${Number(
+            report?.onPage?.brokenLinks || 0
+          )}`,
+        ],
+      });
+    }
+  });
+
+  const geoFactors = Array.isArray(
+    report?.aiVisibility
+      ?.pageGeoReadiness?.factors
+  )
+    ? report.aiVisibility.pageGeoReadiness
+        .factors
+    : [];
+
+  geoFactors
+    .filter((factor: any) =>
+      factor?.pass === false
+    )
+    .forEach((factor: any) => {
+      const label = String(
+        factor?.label || ""
+      );
+
+      if (/faq schema/i.test(label)) {
+        addAction({
+          id: "foundation-faq-schema",
+          title:
+            "Add validated FAQ schema to the audited page",
+          detail:
+            "Add a useful on-page FAQ section and matching FAQPage structured data. Keep every structured answer consistent with visible page content.",
+          impact: "High",
+          effort: "Medium",
+          owner: "SEO / Developer",
+          timeline: "0–30 days",
+          sourceModule:
+            "AI Citation Readiness",
+          validationStatus: "validated",
+          evidence: [label],
+        });
+      }
+
+      if (/alt text/i.test(label)) {
+        addAction({
+          id: "foundation-alt-text",
+          title:
+            "Add descriptive ALT text to important images",
+          detail:
+            "Add concise, descriptive ALT text to every important image that is currently missing it.",
+          impact: "High",
+          effort: "Low",
+          owner: "SEO / Content",
+          timeline: "0–30 days",
+          sourceModule:
+            "AI Citation Readiness",
+          validationStatus: "validated",
+          evidence: [label],
+        });
+      }
+    });
+
+  const contentResults = Array.isArray(
+    report?.contentAnalysis?.results
+  )
+    ? report.contentAnalysis.results
+    : [];
+
+  const multipleH1Pages = contentResults.filter(
+    (item: any) =>
+      Array.isArray(item?.issues) &&
+      item.issues.some((issue: any) =>
+        /multiple h1/i.test(
+          String(issue || "")
+        )
+      )
+  );
+
+  if (multipleH1Pages.length > 0) {
+    addAction({
+      id: "foundation-multiple-h1",
+      title:
+        "Fix multiple H1 headings on affected content pages",
+      detail:
+        "Keep one primary H1 on each affected page and convert additional top-level headings to H2 or H3 based on the content hierarchy.",
+      impact: "Medium",
+      effort: "Medium",
+      owner: "SEO / Content",
+      timeline: "0–30 days",
+      sourceModule: "Content Quality",
+      validationStatus: "validated",
+      affectedUrls: multipleH1Pages
+        .map((item: any) => item?.url)
+        .filter(Boolean)
+        .slice(0, 3),
+      evidence: [
+        `Affected audited pages: ${multipleH1Pages.length}`,
+      ],
+    });
+  }
+
+  return actions.slice(0, 5);
+};
+
+const keywordStopWords = new Set([
+  "a",
+  "an",
+  "and",
+  "are",
+  "as",
+  "at",
+  "be",
+  "best",
+  "by",
+  "for",
+  "from",
+  "how",
+  "in",
+  "is",
+  "it",
+  "of",
+  "on",
+  "or",
+  "the",
+  "to",
+  "top",
+  "what",
+  "which",
+  "with",
+  "software",
+  "tool",
+  "tools",
+  "platform",
+  "platforms",
+  "solution",
+  "solutions",
+  "company",
+  "companies",
+]);
+
+const keywordTokens = (value: any) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .split(" ")
+    .map((token) => token.trim())
+    .filter(
+      (token) =>
+        token.length >= 3 &&
+        !keywordStopWords.has(token)
+    );
+
+const getKeywordResearchDisplay = (
+  report: any
+) => {
+  const rawSuggestions = Array.isArray(
+    report?.keywordResearch?.suggestions
+  )
+    ? report.keywordResearch.suggestions
+    : [];
+
+  const brandTokens = new Set([
+    ...keywordTokens(
+      report?.keywordResearch?.seedKeyword
+    ),
+    ...keywordTokens(
+      report?.domain ||
+        report?.normalizedDomain
+    ),
+  ]);
+
+  const contextValues = [
+    report?.dataforseo?.detectedNiche,
+    ...(Array.isArray(
+      report?.dataforseo?.topKeywords
+    )
+      ? report.dataforseo.topKeywords
+          .slice(0, 30)
+          .map((item: any) =>
+            item?.keyword
+          )
+      : []),
+    ...(Array.isArray(
+      report?.dataforseo?.keywordGap
+        ?.missingKeywords
+    )
+      ? report.dataforseo.keywordGap.missingKeywords
+          .slice(0, 30)
+          .map((item: any) =>
+            item?.keyword
+          )
+      : []),
+    ...(Array.isArray(
+      report?.aiSearchVisibility?.rankedPages
+    )
+      ? report.aiSearchVisibility.rankedPages
+          .flatMap((page: any) =>
+            Array.isArray(page?.keywords)
+              ? page.keywords
+                  .slice(0, 5)
+                  .map((item: any) =>
+                    item?.keyword
+                  )
+              : []
+          )
+      : []),
+  ].filter(Boolean);
+
+  const tokenFrequency = new Map<
+    string,
+    number
+  >();
+
+  contextValues.forEach((value: any) => {
+    keywordTokens(value).forEach(
+      (token) => {
+        if (brandTokens.has(token)) {
+          return;
+        }
+
+        tokenFrequency.set(
+          token,
+          (tokenFrequency.get(token) || 0) +
+            1
+        );
+      }
+    );
+  });
+
+  const contextTokens = new Set(
+    Array.from(tokenFrequency.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 30)
+      .map(([token]) => token)
+  );
+
+  const niche = String(
+    report?.dataforseo?.detectedNiche ||
+      "general"
+  ).toLowerCase();
+
+  const nicheTokenMap: Record<
+    string,
+    string[]
+  > = {
+    saas: [
+      "saas",
+      "crm",
+      "automation",
+      "marketing",
+      "ecommerce",
+      "project",
+      "management",
+      "password",
+      "cybersecurity",
+      "accounting",
+      "analytics",
+      "intelligence",
+      "helpdesk",
+      "payroll",
+      "hrms",
+    ],
+    ecommerce: [
+      "ecommerce",
+      "shop",
+      "store",
+      "product",
+      "shopping",
+      "retail",
+    ],
+    real_estate: [
+      "property",
+      "realtor",
+      "broker",
+      "apartment",
+      "commercial",
+      "realestate",
+    ],
+    legal: [
+      "legal",
+      "law",
+      "lawyer",
+      "attorney",
+    ],
+    healthcare: [
+      "health",
+      "medical",
+      "clinic",
+      "doctor",
+      "dental",
+    ],
+    restaurant: [
+      "restaurant",
+      "food",
+      "menu",
+      "cafe",
+      "delivery",
+    ],
+    local_service: [
+      "service",
+      "agency",
+      "marketing",
+      "repair",
+      "local",
+    ],
+  };
+
+  const strongNicheTokens = new Set(
+    nicheTokenMap[niche] || []
+  );
+
+  const qualifiedSuggestions =
+    rawSuggestions.filter((item: any) => {
+      const tokens = keywordTokens(
+        item?.keyword
+      );
+
+      const contextMatches = tokens.filter(
+        (token) => contextTokens.has(token)
+      ).length;
+
+      const nicheMatches = tokens.filter(
+        (token) =>
+          strongNicheTokens.has(token)
+      ).length;
+
+      return (
+        nicheMatches >= 1 ||
+        contextMatches >= 2
+      );
+    });
+
+  const fallbackSuggestions = [
+    ...(Array.isArray(
+      report?.dataforseo?.keywordGap
+        ?.missingKeywords
+    )
+      ? report.dataforseo.keywordGap
+          .missingKeywords
+      : []),
+    ...(Array.isArray(
+      report?.dataforseo?.topKeywords
+    )
+      ? report.dataforseo.topKeywords
+      : []),
+  ]
+    .map((item: any) => ({
+      keyword: item?.keyword,
+      volume:
+        item?.volume ??
+        item?.search_volume ??
+        null,
+      cpc: item?.cpc ?? null,
+      competition:
+        item?.competition ?? null,
+      intent:
+        item?.intent || "General",
+      difficulty:
+        item?.difficulty ??
+        item?.keyword_difficulty ??
+        null,
+      source:
+        item?.source ||
+        "Validated audit intelligence",
+    }))
+    .filter((item: any) =>
+      Boolean(item.keyword)
+    );
+
+  const dedupeSuggestions = (
+    items: any[]
+  ) => {
+    const seen = new Set<string>();
+
+    return items.filter((item: any) => {
+      const key = String(
+        item?.keyword || ""
+      )
+        .trim()
+        .toLowerCase();
+
+      if (!key || seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    });
+  };
+
+  const useFallback =
+    qualifiedSuggestions.length < 5 &&
+    fallbackSuggestions.length > 0;
+
+  const suggestions = dedupeSuggestions(
+    useFallback
+      ? fallbackSuggestions
+      : qualifiedSuggestions
+  ).slice(0, 20);
+
+  const nicheLabel = niche
+    .replace(/_/g, " ")
+    .replace(/\w/g, (character) =>
+      character.toUpperCase()
+    );
+
+  return {
+    context:
+      niche !== "general"
+        ? nicheLabel
+        : report?.keywordResearch
+            ?.seedKeyword ||
+          "Audited website",
+    source: useFallback
+      ? "Validated keyword gap and ranking data"
+      : report?.keywordResearch?.source ||
+        "Crawler Que Keyword Suggestions",
+    suggestions,
+    filteredCount: Math.max(
+      0,
+      rawSuggestions.length -
+        qualifiedSuggestions.length
+    ),
+    usedFallback: useFallback,
+  };
+};
+
 const normalizeHistoryDomain = (
   item: any
 ) => {
@@ -2296,6 +2896,7 @@ const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligenc
   const domain             = normalized.domain || pdfData?.domain || "—";
   const generatedDate      = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
   const selectedModules    = pdfData?.reportTypes?.length > 0 ? pdfData.reportTypes : selectedReportTypes;
+  const pdfKeywordResearch = getKeywordResearchDisplay(pdfData);
 
   // parse hex accent → RGB
   const hexToRgb = (h: string): [number,number,number] => {
@@ -2869,8 +3470,7 @@ y += rh;
     keywords: pdfShow("keywords") || pdfShow("labs"),
     keywordResearch:
       pdfShow("keywords") &&
-      Array.isArray(pdfData?.keywordResearch?.suggestions) &&
-      pdfData.keywordResearch.suggestions.length > 0,
+      pdfKeywordResearch.suggestions.length > 0,
     serp: pdfShow("serp") && Boolean(pdfData?.serpData),
     backlinks: pdfShow("backlinks") && Boolean(pdfData?.backlinks),
     content: pdfShow("content"),
@@ -2982,33 +3582,19 @@ y += rh;
     content: "Content",
     serp: "SERP",
   };
-const coverModules: string[] =
-  Array.from(
+  const coverModules: string[] = Array.from(
     new Set<string>(
       (
         selectedModules.length
           ? selectedModules
-          : [
-              "seo",
-              "traffic",
-              "ai",
-              "competitors",
-            ]
-      ).map(
-        (moduleKey: unknown) =>
-          String(moduleKey)
-      )
+          : ["seo", "traffic", "ai", "competitors"]
+      ).map((moduleKey: unknown) => String(moduleKey))
     )
   );
-
-let px = ML + 8;
-let py = 138;
-
-coverModules.forEach(
-  (moduleKey) => {
-    const moduleLabel =
-      coverModuleLabels[moduleKey] ||
-      moduleKey;
+  let px = ML + 8;
+  let py = 138;
+  coverModules.forEach((moduleKey) => {
+    const moduleLabel = coverModuleLabels[moduleKey] || moduleKey;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(6);
     const safeLabel = ell(cl(moduleLabel), 40);
@@ -3479,6 +4065,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
 
     if(pdfData?.aiVisibility?.pageGeoReadiness){
       const geo=pdfData.aiVisibility.pageGeoReadiness;
+      ensure(72);
       secTitle("AI Citation Readiness — Audited Page");
       kpiRow([{label:"Readiness Score",value:`${geo.score}/100`,sub:geo.grade,col:sCol(geo.score)}]);
       tbl(["Factor","Status"],geo.factors.map((f:any)=>({col1:cl(f.label),col2:f.pass?"Pass":"Needs work"})));
@@ -3525,7 +4112,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
     }
     if(pdfData?.dataforseo?.keywordGap?.missingKeywords?.length){
       secTitle("Missing Keyword Opportunities");
-      tbl(["Keyword","Volume","Intent","Page Type","Opportunity","Priority"],
+      tbl(["Keyword","Volume","Intent","Page Type","Score","Priority"],
         pdfData.dataforseo.keywordGap.missingKeywords.slice(0,15).map((k:any)=>({
           col1:cl(k.keyword),col2:fmt(k.volume??k.search_volume),
           col3:cl(k.intent,"general"),col4:cl(k.recommendedPageType,"Supporting Content"),
@@ -3565,15 +4152,22 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   //  SECTION 10 — KEYWORD RESEARCH
   // ════════════════════════════════════════════════════════════════════
   if(pdfSections.keywordResearch){
-    secHdr(nextSec(),"Keyword Research","Seed keyword suggestions from Crawler Que Keyword Suggestions API with intent and CPC signals.");
+    secHdr(nextSec(),"Qualified Keyword Research","Relevant keyword opportunities qualified against the audited site niche, ranking footprint, and validated competitor gaps.");
     kpiRow([
-      {label:"Seed Keyword",value:cl(pdfData?.keywordResearch?.seedKeyword),col:C.accent},
-      {label:"Suggestions Found",value:fmt(pdfData?.keywordResearch?.suggestions?.length),col:C.blue},
-      {label:"Source",value:cl(pdfData?.keywordResearch?.source,"Crawler Que"),col:C.muted},
-      {label:"Location",value:cl(pdfData?.traffic?.country,"—"),col:C.muted},
+      {label:"Research Context",value:cl(pdfKeywordResearch.context),col:C.accent},
+      {label:"Qualified Keywords",value:fmt(pdfKeywordResearch.suggestions.length),col:C.blue},
+      {label:"Source",value:cl(pdfKeywordResearch.source,"Crawler Que"),col:C.muted},
+      {label:"Filtered Irrelevant",value:fmt(pdfKeywordResearch.filteredCount),col:pdfKeywordResearch.filteredCount>0?C.amber:C.muted},
     ]);
-    tbl(["Keyword","Volume","CPC","Competition","Intent","KD"],
-      pdfData.keywordResearch.suggestions.slice(0,20).map((k:any)=>({
+    if (pdfKeywordResearch.usedFallback) {
+      hiBox(
+        "Relevance Guard Applied",
+        "The original seed suggestions did not contain enough site-relevant terms. This section therefore uses validated keyword-gap and ranking evidence instead of showing unrelated brand-name suggestions.",
+        "blue"
+      );
+    }
+    tbl(["Keyword","Volume","CPC","Comp.","Intent","KD"],
+      pdfKeywordResearch.suggestions.slice(0,20).map((k:any)=>({
         col1:cl(k.keyword),col2:fmt(k.volume),col3:cl(k.cpc?`$${Number(k.cpc).toFixed(2)}`:"—"),
         col4:fmtCompetition(k.competition),col5:cl(k.intent,"—"),col6:cl(String(k.difficulty??"—")),
       })),[65,22,18,22,18,CW-145]);
@@ -3592,11 +4186,11 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
     ]);
     if(pdfData?.serpData?.results?.length){
       secTitle("Keyword Rank Results");
-      tbl(["Keyword","Found","Google Rank","Ranking URL"],
+      tbl(["Keyword","Found","Rank","Ranking URL"],
         pdfData.serpData.results.map((r:any)=>({
           col1:cl(r.keyword),col2:r.found?"Yes":"No",
           col3:r.found?`#${cl(String(r.rank),"—")}`:"Not found",col4:r.found?cl(r.url,"—"):"Not in top 100",
-        })),[55,14,18,CW-87]);
+        })),[55,18,20,CW-93]);
     }
   }
 
@@ -3812,7 +4406,12 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
       );
     });
   };
-  roadmapPhase("First 30 Days — Fix Validated Foundations","0–30 days",roadmap?.first30Days,"high");
+  const first30DayActions = mergeRoadmapActions(
+    roadmap?.first30Days,
+    buildFoundationRoadmapActions(pdfData)
+  );
+
+  roadmapPhase("First 30 Days — Fix Validated Foundations","0–30 days",first30DayActions,"high");
   roadmapPhase("Next 30 Days — Expand Qualified Visibility","31–60 days",roadmap?.next30Days,"medium");
   roadmapPhase("Final 30 Days — Build Authority and Coverage","61–90 days",roadmap?.final30Days,"low");
 
@@ -3820,6 +4419,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   //  APPENDIX — EVIDENCE
   // ════════════════════════════════════════════════════════════════════
 // Benchmark guide
+  newPage();
   secHdr(nextSec(),"Benchmark & Metric Reference","What each score in this report means and the target to aim for.");
   tbl(["Metric","Range","Target","What it means"],[
     {col1:"Overall Score",col2:"0–100",col3:"80+",col4:"Combined SEO, tech, visibility, authority, and growth readiness"},
@@ -3894,6 +4494,20 @@ const shareOfVoice = Number(
 
 const currentReportTypes =
   data?.reportTypes || selectedReportTypes || [];
+
+const dashboardRoadmap =
+  data?.actionRoadmap ||
+  data?.aiRecommendations?.roadmap ||
+  {};
+
+const dashboardFirst30DayActions =
+  mergeRoadmapActions(
+    dashboardRoadmap?.first30Days,
+    buildFoundationRoadmapActions(data)
+  );
+
+const dashboardKeywordResearch =
+  getKeywordResearchDisplay(data);
 
 const shouldShowSection = (section: string) => {
   if (
@@ -6862,9 +7476,9 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 
     <div className="mt-8 grid gap-5 lg:grid-cols-3">
       {[
-        ["First 30 Days", data?.actionRoadmap?.first30Days, "0–30 days"],
-        ["Next 30 Days", data?.actionRoadmap?.next30Days, "31–60 days"],
-        ["Final 30 Days", data?.actionRoadmap?.final30Days, "61–90 days"],
+        ["First 30 Days", dashboardFirst30DayActions, "0–30 days"],
+        ["Next 30 Days", dashboardRoadmap?.next30Days, "31–60 days"],
+        ["Final 30 Days", dashboardRoadmap?.final30Days, "61–90 days"],
       ].map(([label, items, timeline]: any) => (
         <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">{timeline}</p>
@@ -6894,32 +7508,38 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 {activeTab === "keywordResearch" && (
   <Section title="Keyword Research">
     <p className="mb-5 text-sm text-slate-500">
-      Powered by Crawler Que Keyword Suggestions API. Shows real keyword ideas from the selected seed keyword.
+      Shows site-relevant keyword opportunities qualified against the audited niche, ranking footprint, and validated competitor gaps.
     </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-3">
       <MetricCard
-        label="Seed Keyword"
-        value={data?.keywordResearch?.seedKeyword || "Data not available"}
+        label="Research Context"
+        value={dashboardKeywordResearch.context || "Data not available"}
       />
       <MetricCard
         label="Suggestions Found"
-        value={data?.keywordResearch?.suggestions?.length ?? "Data not available"}
+        value={dashboardKeywordResearch.suggestions.length}
       />
       <MetricCard
         label="Source"
-        value={data?.keywordResearch?.source || "Data not available"}
+        value={dashboardKeywordResearch.source || "Data not available"}
       />
     </div>
 
+    {dashboardKeywordResearch.usedFallback && (
+      <div className="mb-5 rounded-2xl border border-blue-300/20 bg-blue-300/10 p-4 text-sm leading-6 text-blue-100">
+        The original seed suggestions were not sufficiently relevant to the audited site. Crawler Que replaced them with validated keyword-gap and ranking evidence instead of showing unrelated terms.
+      </div>
+    )}
+
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <h3 className="mb-4 font-semibold text-slate-950">
-        Keyword Suggestions
+        Qualified Keyword Opportunities
       </h3>
 
-      {data?.keywordResearch?.suggestions?.length > 0 ? (
+      {dashboardKeywordResearch.suggestions.length > 0 ? (
         <div className="grid gap-3">
-          {data.keywordResearch.suggestions.slice(0, 20).map((k: any, i: number) => {
+          {dashboardKeywordResearch.suggestions.slice(0, 20).map((k: any, i: number) => {
             const volume = Number(k.volume || 0);
             const competition = Number(k.competition || 0);
             const opportunityScore =
