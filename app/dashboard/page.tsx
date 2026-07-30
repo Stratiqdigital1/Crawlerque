@@ -249,17 +249,38 @@ const pollOnPage = async (
             return previous;
           }
 
-          return {
-            ...json.report,
+return {
+  ...json.report,
 
-            reportTypes:
-              json.report
-                ?.reportTypes ||
-              previous?.reportTypes ||
-              [],
+  reportId:
+    json.report?.reportId ||
+    json?.reportId ||
+    previous?.reportId ||
+    null,
 
-            renderReady: true,
-          };
+  auditJobId:
+    json.report?.auditJobId ||
+    json?.auditJobId ||
+    previous?.auditJobId ||
+    pollingAuditJobId,
+
+  inputHash:
+    json.report?.inputHash ||
+    previous?.inputHash ||
+    inputHash,
+
+  normalizedDomain:
+    json.report?.normalizedDomain ||
+    previous?.normalizedDomain ||
+    normalizedDomain,
+
+  reportTypes:
+    json.report?.reportTypes ||
+    previous?.reportTypes ||
+    [],
+
+  renderReady: true,
+};
         });
 
         setAuditProgress(100);
@@ -781,11 +802,27 @@ if (
   );
 }
 
+const reportSource =
+  json?.report || json;
+
 const report = {
-  ...(json?.report || json),
-  reportTypes: effectiveReportTypes,
+  ...reportSource,
+
+  reportId:
+    reportSource?.reportId ||
+    json?.reportId ||
+    null,
+
+  auditJobId:
+    reportSource?.auditJobId ||
+    json?.auditJobId ||
+    startedJobId,
+
+  reportTypes:
+    effectiveReportTypes,
+
   auditConfig:
-    (json?.report || json)?.auditConfig ||
+    reportSource?.auditConfig ||
     reservedAuditConfig,
 };
 
@@ -4445,252 +4482,6 @@ data?.renderReady !== true
   <AccountSettingsTab currentUser={currentUser} />
 )}
 
-        {data && (
-  <>
-{data?.renderReady === true ? (
-  <div className="mb-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/8 p-5">
-    <div className="flex items-center justify-between gap-4">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
-          Audit Status
-        </p>
-
-        <h3 className="mt-1 text-lg font-bold text-white">
-          {[
-            "failed",
-            "timed_out",
-          ].includes(
-            String(
-              data?.moduleStatus
-                ?.technical ||
-                data?.moduleStatus
-                  ?.onPage ||
-                ""
-            )
-          )
-            ? "Audit Ready With a Technical Limitation"
-            : "Audit Completed Successfully"}
-        </h3>
-
-        <p className="mt-1 text-sm text-[#A0A0A0]">
-          Every selected module has reached
-          a final status. The report is now
-          safe to review, save, and export.
-        </p>
-      </div>
-
-      <div className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-sm font-semibold text-emerald-300">
-        Report Ready
-      </div>
-    </div>
-  </div>
-) : (
-  <div className="mb-6 rounded-2xl border border-amber-400/20 bg-amber-400/8 p-5">
-    <div className="flex items-center justify-between gap-4">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-amber-300">
-          Audit Status
-        </p>
-
-        <h3 className="mt-1 text-lg font-bold text-white">
-          Finalizing Audit
-        </h3>
-
-        <p className="mt-1 text-sm text-[#A0A0A0]">
-          Technical crawl processing is still
-          active. PDF export will unlock
-          automatically after finalization.
-        </p>
-      </div>
-
-      <div className="rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-sm font-semibold text-amber-300">
-        Processing
-      </div>
-    </div>
-  </div>
-)}
-{/* CLIENT REVIEW */}
-{activeTab === "review" && (
-  <Section title="Agency Review & Client Approval">
-    {!data?.reportId ? (
-      <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-5 text-sm text-amber-100">
-        Open a completed saved report before starting client review.
-      </div>
-    ) : reviewLoading ? (
-      <div className="rounded-2xl border border-[#222] bg-[#111] p-6 text-sm text-[#A0A0A0]">
-        Loading client review...
-      </div>
-    ) : !reportReview || !reviewDraft ? (
-      <div className="rounded-2xl border border-[#222] bg-[#111] p-6 text-sm text-[#A0A0A0]">
-        Review data is not available yet. The audit must be completed and export-ready first.
-      </div>
-    ) : (
-      <div className="space-y-6">
-        <div className="rounded-2xl border border-[#222] bg-[#111] p-5">
-          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#C5FF3D]">
-                Client-facing report workflow
-              </p>
-              <h3 className="mt-2 text-xl font-bold text-white">
-                Preserve the automated evidence, then control what the client sees.
-              </h3>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-[#8A8A8A]">
-                The original audit is never overwritten. Agency edits are stored as a separate versioned review snapshot with a complete revision log.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <span className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wide ${reviewStatusClass(reportReview?.status)}`}>
-                {reviewStatusLabel(reportReview?.status)}
-              </span>
-
-              <span className="rounded-full border border-[#2A2A2A] bg-[#151515] px-4 py-2 text-xs text-[#A0A0A0]">
-                Version {reportReview?.version || 1}
-              </span>
-            </div>
-          </div>
-
-          {reportReview?.approvedBy && (
-            <div className="mt-4 rounded-xl border border-emerald-300/20 bg-emerald-300/10 p-4 text-sm text-emerald-100">
-              Last approved by {reportReview.approvedBy.name || reportReview.approvedBy.email || "Reviewer"}
-              {reportReview?.approvedAt
-                ? ` on ${new Date(reportReview.approvedAt).toLocaleString()}`
-                : ""}.
-            </div>
-          )}
-
-          {currentUser?.canReviewReports !== true && (
-            <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm text-amber-100">
-              Read-only access. Editing and approval are available on Agency and Enterprise access.
-            </div>
-          )}
-
-          <div className="mt-5 grid gap-4 lg:grid-cols-2">
-            <label className="block text-sm text-[#A0A0A0]">
-              Client-facing note
-              <textarea
-                value={reviewDraft?.clientNote || ""}
-                disabled={currentUser?.canReviewReports !== true}
-                onChange={(event) =>
-                  setReviewDraft((previous: any) => ({
-                    ...previous,
-                    clientNote: event.target.value,
-                  }))
-                }
-                rows={4}
-                placeholder="Add context that should appear in the approved client report."
-                className="mt-2 w-full rounded-xl border border-[#2A2A2A] bg-[#0A0A0A] px-4 py-3 text-sm leading-6 text-white outline-none focus:border-[#C5FF3D]/50 disabled:opacity-70"
-              />
-            </label>
-
-            <label className="block text-sm text-[#A0A0A0]">
-              Internal agency note
-              <textarea
-                value={reviewDraft?.internalNote || ""}
-                disabled={currentUser?.canReviewReports !== true}
-                onChange={(event) =>
-                  setReviewDraft((previous: any) => ({
-                    ...previous,
-                    internalNote: event.target.value,
-                  }))
-                }
-                rows={4}
-                placeholder="Private note for your team. This never appears in the client report or PDF."
-                className="mt-2 w-full rounded-xl border border-[#2A2A2A] bg-[#0A0A0A] px-4 py-3 text-sm leading-6 text-white outline-none focus:border-[#C5FF3D]/50 disabled:opacity-70"
-              />
-            </label>
-          </div>
-
-          {currentUser?.canReviewReports === true && (
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                disabled={reviewSaving}
-                onClick={() => void saveReportReview("save")}
-                className="rounded-xl border border-[#2A2A2A] bg-[#151515] px-4 py-2.5 text-sm font-semibold text-white hover:border-[#C5FF3D]/40 disabled:opacity-50"
-              >
-                Save Draft
-              </button>
-
-              <button
-                type="button"
-                disabled={reviewSaving}
-                onClick={() => void saveReportReview("submit")}
-                className="rounded-xl border border-blue-300/20 bg-blue-300/10 px-4 py-2.5 text-sm font-semibold text-blue-200 disabled:opacity-50"
-              >
-                Submit for Review
-              </button>
-
-              <button
-                type="button"
-                disabled={reviewSaving}
-                onClick={() => void saveReportReview("request_changes")}
-                className="rounded-xl border border-amber-300/20 bg-amber-300/10 px-4 py-2.5 text-sm font-semibold text-amber-200 disabled:opacity-50"
-              >
-                Request Changes
-              </button>
-
-              <button
-                type="button"
-                disabled={reviewSaving}
-                onClick={() => void saveReportReview("approve")}
-                className="rounded-xl bg-[#C5FF3D] px-5 py-2.5 text-sm font-bold text-black hover:opacity-90 disabled:opacity-50"
-              >
-                Approve Client Report
-              </button>
-            </div>
-          )}
-
-          <p className="mt-4 text-xs leading-5 text-[#777]">
-            Editing an approved report automatically creates a new Draft version. PDF export for Agency and Enterprise accounts remains locked until the current version is approved.
-          </p>
-        </div>
-
-        {renderReviewItems(
-          "issues",
-          "Client-Facing Findings"
-        )}
-
-        {renderReviewItems(
-          "recommendations",
-          "Client-Facing Recommendations"
-        )}
-
-        {Array.isArray(reportReview?.revisions) && reportReview.revisions.length > 0 && (
-          <div className="rounded-2xl border border-[#222] bg-[#111] p-5">
-            <h3 className="text-lg font-bold text-white">
-              Review Audit Log
-            </h3>
-            <div className="mt-4 space-y-3">
-              {reportReview.revisions.slice(0, 10).map((revision: any) => (
-                <div
-                  key={revision.id || revision.version}
-                  className="flex flex-col justify-between gap-2 rounded-xl border border-[#252525] bg-[#151515] p-4 text-sm md:flex-row md:items-center"
-                >
-                  <div>
-                    <p className="font-semibold text-white">
-                      Version {revision.version} · {reviewStatusLabel(revision.action)}
-                    </p>
-                    <p className="mt-1 text-xs text-[#777]">
-                      {revision.actorName || revision.actorEmail || "Reviewer"}
-                    </p>
-                  </div>
-                  <p className="text-xs text-[#8A8A8A]">
-                    {revision.createdAt
-                      ? new Date(revision.createdAt).toLocaleString()
-                      : ""}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    )}
-  </Section>
-)}
-
 {/* HISTORY */}
 {activeTab === "history" && (
   <Section title="Audit History & Comparison">
@@ -5025,6 +4816,254 @@ if (
     )}
   </Section>
 )}
+
+        {data && (
+  <>
+{data?.renderReady === true ? (
+  <div className="mb-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/8 p-5">
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
+          Audit Status
+        </p>
+
+        <h3 className="mt-1 text-lg font-bold text-white">
+          {[
+            "failed",
+            "timed_out",
+          ].includes(
+            String(
+              data?.moduleStatus
+                ?.technical ||
+                data?.moduleStatus
+                  ?.onPage ||
+                ""
+            )
+          )
+            ? "Audit Ready With a Technical Limitation"
+            : "Audit Completed Successfully"}
+        </h3>
+
+        <p className="mt-1 text-sm text-[#A0A0A0]">
+          Every selected module has reached
+          a final status. The report is now
+          safe to review, save, and export.
+        </p>
+      </div>
+
+      <div className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-sm font-semibold text-emerald-300">
+        Report Ready
+      </div>
+    </div>
+  </div>
+) : (
+  <div className="mb-6 rounded-2xl border border-amber-400/20 bg-amber-400/8 p-5">
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-amber-300">
+          Audit Status
+        </p>
+
+        <h3 className="mt-1 text-lg font-bold text-white">
+          Finalizing Audit
+        </h3>
+
+        <p className="mt-1 text-sm text-[#A0A0A0]">
+          Technical crawl processing is still
+          active. PDF export will unlock
+          automatically after finalization.
+        </p>
+      </div>
+
+      <div className="rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-sm font-semibold text-amber-300">
+        Processing
+      </div>
+    </div>
+  </div>
+)}
+{/* CLIENT REVIEW */}
+{activeTab === "review" && (
+  <Section title="Agency Review & Client Approval">
+    {!data?.reportId ? (
+      <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-5 text-sm text-amber-100">
+        Open a completed saved report before starting client review.
+      </div>
+    ) : reviewLoading ? (
+      <div className="rounded-2xl border border-[#222] bg-[#111] p-6 text-sm text-[#A0A0A0]">
+        Loading client review...
+      </div>
+    ) : !reportReview || !reviewDraft ? (
+      <div className="rounded-2xl border border-[#222] bg-[#111] p-6 text-sm text-[#A0A0A0]">
+        Review data is not available yet. The audit must be completed and export-ready first.
+      </div>
+    ) : (
+      <div className="space-y-6">
+        <div className="rounded-2xl border border-[#222] bg-[#111] p-5">
+          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#C5FF3D]">
+                Client-facing report workflow
+              </p>
+              <h3 className="mt-2 text-xl font-bold text-white">
+                Preserve the automated evidence, then control what the client sees.
+              </h3>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-[#8A8A8A]">
+                The original audit is never overwritten. Agency edits are stored as a separate versioned review snapshot with a complete revision log.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <span className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wide ${reviewStatusClass(reportReview?.status)}`}>
+                {reviewStatusLabel(reportReview?.status)}
+              </span>
+
+              <span className="rounded-full border border-[#2A2A2A] bg-[#151515] px-4 py-2 text-xs text-[#A0A0A0]">
+                Version {reportReview?.version || 1}
+              </span>
+            </div>
+          </div>
+
+          {reportReview?.approvedBy && (
+            <div className="mt-4 rounded-xl border border-emerald-300/20 bg-emerald-300/10 p-4 text-sm text-emerald-100">
+              Last approved by {reportReview.approvedBy.name || reportReview.approvedBy.email || "Reviewer"}
+              {reportReview?.approvedAt
+                ? ` on ${new Date(reportReview.approvedAt).toLocaleString()}`
+                : ""}.
+            </div>
+          )}
+
+          {currentUser?.canReviewReports !== true && (
+            <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm text-amber-100">
+              Read-only access. Editing and approval are available on Agency and Enterprise access.
+            </div>
+          )}
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <label className="block text-sm text-[#A0A0A0]">
+              Client-facing note
+              <textarea
+                value={reviewDraft?.clientNote || ""}
+                disabled={currentUser?.canReviewReports !== true}
+                onChange={(event) =>
+                  setReviewDraft((previous: any) => ({
+                    ...previous,
+                    clientNote: event.target.value,
+                  }))
+                }
+                rows={4}
+                placeholder="Add context that should appear in the approved client report."
+                className="mt-2 w-full rounded-xl border border-[#2A2A2A] bg-[#0A0A0A] px-4 py-3 text-sm leading-6 text-white outline-none focus:border-[#C5FF3D]/50 disabled:opacity-70"
+              />
+            </label>
+
+            <label className="block text-sm text-[#A0A0A0]">
+              Internal agency note
+              <textarea
+                value={reviewDraft?.internalNote || ""}
+                disabled={currentUser?.canReviewReports !== true}
+                onChange={(event) =>
+                  setReviewDraft((previous: any) => ({
+                    ...previous,
+                    internalNote: event.target.value,
+                  }))
+                }
+                rows={4}
+                placeholder="Private note for your team. This never appears in the client report or PDF."
+                className="mt-2 w-full rounded-xl border border-[#2A2A2A] bg-[#0A0A0A] px-4 py-3 text-sm leading-6 text-white outline-none focus:border-[#C5FF3D]/50 disabled:opacity-70"
+              />
+            </label>
+          </div>
+
+          {currentUser?.canReviewReports === true && (
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                type="button"
+                disabled={reviewSaving}
+                onClick={() => void saveReportReview("save")}
+                className="rounded-xl border border-[#2A2A2A] bg-[#151515] px-4 py-2.5 text-sm font-semibold text-white hover:border-[#C5FF3D]/40 disabled:opacity-50"
+              >
+                Save Draft
+              </button>
+
+              <button
+                type="button"
+                disabled={reviewSaving}
+                onClick={() => void saveReportReview("submit")}
+                className="rounded-xl border border-blue-300/20 bg-blue-300/10 px-4 py-2.5 text-sm font-semibold text-blue-200 disabled:opacity-50"
+              >
+                Submit for Review
+              </button>
+
+              <button
+                type="button"
+                disabled={reviewSaving}
+                onClick={() => void saveReportReview("request_changes")}
+                className="rounded-xl border border-amber-300/20 bg-amber-300/10 px-4 py-2.5 text-sm font-semibold text-amber-200 disabled:opacity-50"
+              >
+                Request Changes
+              </button>
+
+              <button
+                type="button"
+                disabled={reviewSaving}
+                onClick={() => void saveReportReview("approve")}
+                className="rounded-xl bg-[#C5FF3D] px-5 py-2.5 text-sm font-bold text-black hover:opacity-90 disabled:opacity-50"
+              >
+                Approve Client Report
+              </button>
+            </div>
+          )}
+
+          <p className="mt-4 text-xs leading-5 text-[#777]">
+            Editing an approved report automatically creates a new Draft version. PDF export for Agency and Enterprise accounts remains locked until the current version is approved.
+          </p>
+        </div>
+
+        {renderReviewItems(
+          "issues",
+          "Client-Facing Findings"
+        )}
+
+        {renderReviewItems(
+          "recommendations",
+          "Client-Facing Recommendations"
+        )}
+
+        {Array.isArray(reportReview?.revisions) && reportReview.revisions.length > 0 && (
+          <div className="rounded-2xl border border-[#222] bg-[#111] p-5">
+            <h3 className="text-lg font-bold text-white">
+              Review Audit Log
+            </h3>
+            <div className="mt-4 space-y-3">
+              {reportReview.revisions.slice(0, 10).map((revision: any) => (
+                <div
+                  key={revision.id || revision.version}
+                  className="flex flex-col justify-between gap-2 rounded-xl border border-[#252525] bg-[#151515] p-4 text-sm md:flex-row md:items-center"
+                >
+                  <div>
+                    <p className="font-semibold text-white">
+                      Version {revision.version} · {reviewStatusLabel(revision.action)}
+                    </p>
+                    <p className="mt-1 text-xs text-[#777]">
+                      {revision.actorName || revision.actorEmail || "Reviewer"}
+                    </p>
+                  </div>
+                  <p className="text-xs text-[#8A8A8A]">
+                    {revision.createdAt
+                      ? new Date(revision.createdAt).toLocaleString()
+                      : ""}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+  </Section>
+)}
+
+
 {/* UNIFIED OVERVIEW — merged into Overview tab */}
 {activeTab === "overview" && data && (
 <Section title="Intelligence Summary">
