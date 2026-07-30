@@ -5053,7 +5053,64 @@ const dashboardFirst30DayActions =
 const dashboardKeywordResearch =
   getKeywordResearchDisplay(data);
 
-const shouldShowSection = (section: string) => {
+const isAdminUser =
+  currentUser?.role === "admin";
+
+const isPromoUser =
+  currentUser?.isPromoAccess === true;
+
+/*
+ * null means the current-user request is
+ * still loading. This prevents an incorrect
+ * Upgrade Plan flash before access resolves.
+ */
+const hasAiAccess: boolean | null =
+  !currentUser
+    ? null
+    : isAdminUser ||
+      isPromoUser ||
+      currentUser?.package?.allowAi ===
+        true;
+
+const hasTrafficAccess:
+  | boolean
+  | null = !currentUser
+    ? null
+    : isAdminUser ||
+      isPromoUser ||
+      currentUser?.package
+        ?.allowTraffic === true;
+
+const hasKeywordAccess:
+  | boolean
+  | null = !currentUser
+    ? null
+    : isAdminUser ||
+      isPromoUser ||
+      currentUser?.package
+        ?.allowKeywords === true;
+
+const hasBacklinkAccess:
+  | boolean
+  | null = !currentUser
+    ? null
+    : isAdminUser ||
+      isPromoUser ||
+      currentUser?.package
+        ?.allowBacklinks === true;
+
+const hasLocalSeoAccess:
+  | boolean
+  | null = !currentUser
+    ? null
+    : isAdminUser ||
+      isPromoUser ||
+      currentUser?.package
+        ?.allowLocalSeo === true;
+
+const shouldShowSection = (
+  section: string
+) => {
   if (
   section === "overview" ||
   section === "history" ||
@@ -7741,9 +7798,13 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
     </Section>
   ) : (
     <LockedCard
-      title="AI Visibility Intelligence"
-      description="Unlock AI search visibility, brand mentions, model coverage, and AI recommendation signals."
-    />
+  title="AI Visibility Intelligence"
+  description="Unlock AI search visibility, brand mentions, model coverage, and AI recommendation signals."
+  hasAccess={hasAiAccess}
+  isProcessing={
+    data?.renderReady !== true
+  }
+/>
   )
 )}
 {/* KEYWORDS */}
@@ -7896,9 +7957,13 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
     </Section>
   ) : (
     <LockedCard
-      title="Keyword Gap Intelligence"
-      description="Unlock missing keywords, competitor gaps, keyword opportunities, and content ideas."
-    />
+  title="Keyword Gap Intelligence"
+  description="Unlock missing keywords, competitor gaps, keyword opportunities, and content ideas."
+  hasAccess={hasKeywordAccess}
+  isProcessing={
+    data?.renderReady !== true
+  }
+/>
   )
 )}
 
@@ -8252,10 +8317,14 @@ const impactClass = impact.toLowerCase().includes("high")
     </div>
     </Section>
   ) : (
-    <LockedCard
-      title="Backlink Intelligence"
-      description="Unlock backlink authority, referring domains, top backlinks, and trust signals."
-    />
+ <LockedCard
+  title="Backlink Intelligence"
+  description="Unlock backlink authority, referring domains, top backlinks, and trust signals."
+  hasAccess={hasBacklinkAccess}
+  isProcessing={
+    data?.renderReady !== true
+  }
+/>
   )
 )}
 {/* SERP RANKINGS */}
@@ -8616,10 +8685,14 @@ const impactClass = impact.toLowerCase().includes("high")
     </div>
     </Section>
   ) : (
-    <LockedCard
-      title="Traffic Intelligence"
-      description="Unlock estimated organic traffic, keyword traffic signals, and visibility confidence."
-    />
+<LockedCard
+  title="Traffic Intelligence"
+  description="Unlock estimated organic traffic, keyword traffic signals, and visibility confidence."
+  hasAccess={hasTrafficAccess}
+  isProcessing={
+    data?.renderReady !== true
+  }
+/>
   )
 )}
 
@@ -8738,10 +8811,14 @@ const impactClass = impact.toLowerCase().includes("high")
     </div>
     </Section>
   ) : (
-    <LockedCard
-      title="Competitor Intelligence"
-      description="Unlock competitor threat scores, shared keyword overlap, and traffic signals."
-    />
+<LockedCard
+  title="Competitor Intelligence"
+  description="Unlock competitor threat scores, shared keyword overlap, and traffic signals."
+  hasAccess={hasTrafficAccess}
+  isProcessing={
+    data?.renderReady !== true
+  }
+/>
   )
 )}
           </>
@@ -8824,10 +8901,67 @@ function getScoreExplainer(label: string, score: number) {
 function LockedCard({
   title,
   description,
+  hasAccess = false,
+  isProcessing = false,
 }: {
   title: string;
   description: string;
+  hasAccess?: boolean | null;
+  isProcessing?: boolean;
 }) {
+  /*
+   * User details have not finished loading.
+   * Never show an upgrade prompt until the
+   * current account access is known.
+   */
+  if (hasAccess === null) {
+    return (
+      <div className="rounded-2xl border border-[#252525] bg-[#111111] p-6">
+        <div className="mb-4 inline-flex rounded-full border border-[#3A3A3A] bg-[#1A1A1A] px-3 py-1 text-xs font-semibold text-[#A0A0A0]">
+          Checking Access
+        </div>
+
+        <h3 className="text-lg font-bold text-white">
+          {title}
+        </h3>
+
+        <p className="mt-2 text-sm leading-6 text-[#A0A0A0]">
+          Confirming your account permissions.
+        </p>
+      </div>
+    );
+  }
+
+  /*
+   * The user owns this module, but this audit
+   * has not returned its final data yet.
+   */
+  if (hasAccess) {
+    return (
+      <div className="rounded-2xl border border-[#00D4AA]/25 bg-[#0D1D21] p-6">
+        <div className="mb-4 inline-flex rounded-full border border-[#00D4AA]/25 bg-[#00D4AA]/10 px-3 py-1 text-xs font-semibold text-[#00D4AA]">
+          {isProcessing
+            ? "Module Processing"
+            : "No Verified Data"}
+        </div>
+
+        <h3 className="text-lg font-bold text-white">
+          {title}
+        </h3>
+
+        <p className="mt-2 text-sm leading-6 text-[#A0A0A0]">
+          {isProcessing
+            ? "This module is included in your account. Its data is still being finalized and will appear automatically when processing completes."
+            : "This module is included in your account, but no verified data was returned for this audit. This is not a plan or permission restriction."}
+        </p>
+      </div>
+    );
+  }
+
+  /*
+   * Upgrade messaging is shown only when the
+   * account genuinely does not own the module.
+   */
   return (
     <div className="relative overflow-hidden rounded-2xl border border-[#C5FF3D]/25 bg-[#0d1500] p-6">
       <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
@@ -8845,9 +8979,12 @@ function LockedCard({
           {description}
         </p>
 
-        <button className="mt-5 rounded-xl bg-[#C5FF3D] px-4 py-2 text-sm font-bold text-black hover:opacity-90">
+        <Link
+          href="/pricing"
+          className="mt-5 inline-flex rounded-xl bg-[#C5FF3D] px-4 py-2 text-sm font-bold text-black hover:opacity-90"
+        >
           Upgrade Plan
-        </button>
+        </Link>
       </div>
     </div>
   );
