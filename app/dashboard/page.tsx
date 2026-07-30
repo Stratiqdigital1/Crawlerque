@@ -1173,7 +1173,7 @@ const buildFoundationRoadmapActions = (
           "Add descriptive ALT text to important images",
         detail:
           "Add concise, descriptive ALT text to every important image that is currently missing it. Validate the homepage first, then the remaining audited pages.",
-        impact: "High",
+        impact: "Medium",
         effort: "Low",
         owner: "SEO / Content",
         timeline: "0–30 days",
@@ -1287,6 +1287,27 @@ const buildFoundationRoadmapActions = (
         factor?.label || ""
       );
 
+      if (
+        /structured data|schema/i.test(label) &&
+        !/faq schema/i.test(label)
+      ) {
+        addAction({
+          id: "foundation-structured-data",
+          title:
+            "Add validated organization and service structured data",
+          detail:
+            "Add appropriate Organization, WebSite, and service-level schema that matches the visible page content and verified business details.",
+          impact: "High",
+          effort: "Medium",
+          owner: "SEO / Developer",
+          timeline: "0–30 days",
+          sourceModule:
+            "AI Citation Readiness",
+          validationStatus: "validated",
+          evidence: [label],
+        });
+      }
+
       if (/faq schema/i.test(label)) {
         addAction({
           id: "foundation-faq-schema",
@@ -1312,7 +1333,7 @@ const buildFoundationRoadmapActions = (
             "Add descriptive ALT text to important images",
           detail:
             "Add concise, descriptive ALT text to every important image that is currently missing it.",
-          impact: "High",
+          impact: "Medium",
           effort: "Low",
           owner: "SEO / Content",
           timeline: "0–30 days",
@@ -1363,8 +1384,16 @@ const buildFoundationRoadmapActions = (
     });
   }
 
-  return actions.slice(0, 5);
+  return actions.slice(0, 8);
 };
+
+const getCanonicalRecommendationSet = (
+  report: any
+) =>
+  mergeRoadmapActions(
+    report?.recommendations,
+    buildFoundationRoadmapActions(report)
+  );
 
 const keywordStopWords = new Set([
   "a",
@@ -1414,6 +1443,15 @@ const keywordTokens = (value: any) =>
         !keywordStopWords.has(token)
     );
 
+const blockedKeywordResearchTerms =
+  /crossword|movie|song|youtube|tiktok|reddit|birthday|cemetery|archive|download|github|jobs|careers|quiz|worksheet|definition answer/i;
+
+const compactKeywordValue = (value: any) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
+
 const getKeywordResearchDisplay = (
   report: any
 ) => {
@@ -1422,6 +1460,47 @@ const getKeywordResearchDisplay = (
   )
     ? report.keywordResearch.suggestions
     : [];
+
+  const domainStem = String(
+    report?.normalizedDomain ||
+      report?.domain ||
+      ""
+  )
+    .replace(/^www\./, "")
+    .split(".")[0];
+
+  const brandAliasValues = Array.from(
+    new Set(
+      [
+        domainStem,
+        report?.title,
+        report?.keywordResearch?.brandName,
+      ]
+        .map(compactKeywordValue)
+        .filter(
+          (value) => value.length >= 4
+        )
+    )
+  );
+
+  const isLikelyBrandedKeyword = (
+    value: any
+  ) => {
+    const compact = compactKeywordValue(
+      value
+    );
+
+    if (!compact) return false;
+
+    return brandAliasValues.some(
+      (alias) =>
+        compact === alias ||
+        (alias.length >= 6 &&
+          compact.includes(alias)) ||
+        (compact.length >= 5 &&
+          alias.includes(compact))
+    );
+  };
 
   const brandTokens = new Set([
     ...keywordTokens(
@@ -1575,8 +1654,22 @@ const getKeywordResearchDisplay = (
 
   const qualifiedSuggestions =
     rawSuggestions.filter((item: any) => {
+      const keyword = String(
+        item?.keyword || ""
+      ).trim();
+
+      if (
+        !keyword ||
+        blockedKeywordResearchTerms.test(
+          keyword
+        ) ||
+        isLikelyBrandedKeyword(keyword)
+      ) {
+        return false;
+      }
+
       const tokens = keywordTokens(
-        item?.keyword
+        keyword
       );
 
       const contextMatches = tokens.filter(
@@ -1627,9 +1720,19 @@ const getKeywordResearchDisplay = (
         item?.source ||
         "Validated audit intelligence",
     }))
-    .filter((item: any) =>
-      Boolean(item.keyword)
-    );
+    .filter((item: any) => {
+      const keyword = String(
+        item?.keyword || ""
+      ).trim();
+
+      return (
+        Boolean(keyword) &&
+        !blockedKeywordResearchTerms.test(
+          keyword
+        ) &&
+        !isLikelyBrandedKeyword(keyword)
+      );
+    });
 
   const dedupeSuggestions = (
     items: any[]
@@ -1664,7 +1767,7 @@ const getKeywordResearchDisplay = (
 
   const nicheLabel = niche
     .replace(/_/g, " ")
-    .replace(/\w/g, (character) =>
+    .replace(/\b\w/g, (character) =>
       character.toUpperCase()
     );
 
@@ -3077,13 +3180,60 @@ bg:      [11, 25, 41] as RGB,
 
   // Competition arrives as 0.0099999997-style floats on a 0–1 scale
   const fmtCompetition = (v: any): string => {
-    const x = n(v); if (x === null) return "—";
+    const x = n(v);
+    if (x === null) return "—";
+
     if (x <= 1) {
       const pct = Math.round(x * 100);
-      const lvl = pct >= 67 ? "High" : pct >= 34 ? "Medium" : "Low";
-      return `${lvl} (${formatPercentage(pct, 0, "—")})`;
+      return pct >= 67
+        ? "High"
+        : pct >= 34
+          ? "Medium"
+          : "Low";
     }
-    return String(Math.round(x));
+
+    return x >= 67
+      ? "High"
+      : x >= 34
+        ? "Medium"
+        : "Low";
+  };
+
+  const fmtIntent = (value: any): string => {
+    const normalizedValue = String(
+      value || ""
+    )
+      .trim()
+      .toLowerCase();
+
+    if (!normalizedValue || normalizedValue === "unknown") {
+      return "Unknown";
+    }
+
+    if (normalizedValue.includes("commercial")) return "Commercial";
+    if (normalizedValue.includes("comparison")) return "Comparison";
+    if (normalizedValue.includes("transaction")) return "Transactional";
+    if (normalizedValue.includes("information")) return "Informational";
+    if (normalizedValue.includes("general")) return "General";
+
+    return normalizedValue
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (character) =>
+        character.toUpperCase()
+      );
+  };
+
+  const fmtDailyVisits = (
+    monthlyValue: any,
+    dailyValue: any
+  ): string => {
+    const monthly = n(monthlyValue);
+
+    if (monthly !== null && monthly > 0 && monthly < 30) {
+      return "<1/day";
+    }
+
+    return fmt(dailyValue);
   };
 
   // Catch raw float junk no matter where it slips in: if a string looks like
@@ -3215,7 +3365,7 @@ bg:      [11, 25, 41] as RGB,
   };
 
   const secTitle = (title: string, s?: string) => {
-    ensure(20); gap(3);
+    ensure(36); gap(3);
     doc.setFillColor(...C.accent); doc.rect(ML, y - 1, 2.5, 8, "F");
     doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(...C.white); doc.text(ell(cl(title), CW - 10), ML + 6, y + 5.5);
     y += 11; if (s) { sub(s); } gap(2);
@@ -3223,32 +3373,57 @@ bg:      [11, 25, 41] as RGB,
 
   // ── KPI CARD ROW (auto-fit values — nothing can overflow) ─────────────
   const kpiRow = (cards: { label: string; value: any; sub?: string; col?: RGB }[]) => {
-    const H = 28;
+    const H = 31;
     ensure(H + 4);
-    const count = cards.length, g3 = 3, w = (CW - g3 * (count - 1)) / count;
-    cards.forEach((c, i) => {
-      const x = ML + i * (w + g3), yy = y;
-      const inner = w - 8; // 4mm padding each side
-      doc.setFillColor(...C.card); doc.setDrawColor(...C.border); doc.roundedRect(x, yy, w, H, 2, 2, "FD");
-      const col = c.col || sCol(c.value);
-      doc.setFillColor(...col); doc.roundedRect(x, yy, w, 1.5, 0.5, 0.5, "F");
+    const count = cards.length;
+    const g3 = 3;
+    const w = (CW - g3 * (count - 1)) / count;
 
-      // label — single line, ellipsized
-      doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(...C.muted);
+    cards.forEach((c, i) => {
+      const x = ML + i * (w + g3);
+      const yy = y;
+      const inner = w - 8;
+      const col = c.col || sCol(c.value);
+
+      doc.setFillColor(...C.card);
+      doc.setDrawColor(...C.border);
+      doc.roundedRect(x, yy, w, H, 2, 2, "FD");
+      doc.setFillColor(...col);
+      doc.roundedRect(x, yy, w, 1.5, 0.5, 0.5, "F");
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6.5);
+      doc.setTextColor(...C.muted);
       doc.text(ell(cl(c.label, "").toUpperCase(), inner), x + 4, yy + 7);
 
-      // value — shrink to fit (15pt → 8pt), then ellipsize; floats formatted
       const valText = fmtSmart(c.value ?? "—");
-      const vs = fitSize(valText, inner, 15, 8, "bold");
-      doc.setFont("helvetica", "bold"); doc.setFontSize(vs); doc.setTextColor(...col);
-      doc.text(ell(valText, inner), x + 4, yy + 17);
+      doc.setFont("helvetica", "bold");
 
-      // sub — single line, ellipsized
+      if (doc.getTextWidth(valText) > inner && valText.length > 10) {
+        doc.setFontSize(7.5);
+        const valueLines = doc
+          .splitTextToSize(valText, inner)
+          .slice(0, 2)
+          .map((line: string, lineIndex: number, lines: string[]) =>
+            lineIndex === lines.length - 1 ? ell(line, inner) : line
+          );
+        doc.setTextColor(...col);
+        doc.text(valueLines, x + 4, yy + 15);
+      } else {
+        const valueSize = fitSize(valText, inner, 15, 8, "bold");
+        doc.setFontSize(valueSize);
+        doc.setTextColor(...col);
+        doc.text(ell(valText, inner), x + 4, yy + 18);
+      }
+
       if (c.sub) {
-        doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(...C.muted);
-        doc.text(ell(cl(c.sub, ""), inner), x + 4, yy + 23.5);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.2);
+        doc.setTextColor(...C.muted);
+        doc.text(ell(cl(c.sub, ""), inner), x + 4, yy + 27);
       }
     });
+
     y += H + 4;
   };
 
@@ -3281,10 +3456,12 @@ bg:      [11, 25, 41] as RGB,
     y += h + 4;
   };
 
-  // ── DATA TABLE (per-cell ellipsis, URL-aware, wrapping first column) ──
+  // ── DATA TABLE (repeats headers after page breaks) ────────────────────
   type TR = { col1: string; col2: string; col3?: string; col4?: string; col5?: string; col6?: string; col7?: string };
+
   const tbl = (headers: string[], rows: TR[], colW?: number[]) => {
     if (!rows.length) { body_("No data available."); return; }
+
     const nc = headers.length;
     const def = colW || (
       nc === 2 ? [70, CW - 70] :
@@ -3294,49 +3471,52 @@ bg:      [11, 25, 41] as RGB,
     );
     const keys = (["col1", "col2", "col3", "col4", "col5", "col6", "col7"] as (keyof TR)[]).slice(0, nc);
 
-    // header
-    ensure(14);
-    doc.setFillColor(24, 24, 24); doc.setDrawColor(...C.border); doc.roundedRect(ML, y, CW, 9, 1.5, 1.5, "FD");
-    let cx = ML;
-    headers.forEach((h_, i) => {
-      doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(...C.accent);
-      doc.text(ell(cl(h_).toUpperCase(), def[i] - 6), cx + 4, y + 6);
-      cx += def[i];
-    });
-    y += 9;
-
-    rows.forEach((row, ri) => {
-      // First column may wrap to two lines; measure first
+    const rowHeight = (row: TR) => {
       doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
-      const firstVal = fmtSmart(row.col1 ?? "");
-      const firstLines = doc.splitTextToSize(firstVal, def[0] - 6).slice(0, 2);
-      const rh = firstLines.length > 1 ? 12.5 : 9;
-      ensure(rh + 2);
+      const firstLines = doc.splitTextToSize(fmtSmart(row.col1 ?? ""), def[0] - 6).slice(0, 2);
+      return firstLines.length > 1 ? 12.5 : 9;
+    };
 
-      doc.setFillColor(...(ri % 2 === 0 ? C.card : C.card2)); doc.setDrawColor(...C.faint); doc.rect(ML, y, CW, rh, "FD");
-      cx = ML;
-      keys.forEach((k, ci) => {
-        const raw = fmtSmart(row[k] ?? "");
-        const cellW = def[ci] - 6;
-        if (ci === 0) {
+    const drawTableHeader = () => {
+      doc.setFillColor(24, 24, 24); doc.setDrawColor(...C.border); doc.roundedRect(ML, y, CW, 9, 1.5, 1.5, "FD");
+      let cx = ML;
+      headers.forEach((header, index) => {
+        doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(...C.accent);
+        doc.text(ell(cl(header).toUpperCase(), def[index] - 6), cx + 4, y + 6);
+        cx += def[index];
+      });
+      y += 9;
+    };
+
+    if (y + 9 + rowHeight(rows[0]) > BOT) newPage();
+    drawTableHeader();
+
+    rows.forEach((row, rowIndex) => {
+      const rh = rowHeight(row);
+      if (y + rh > BOT) { newPage(); drawTableHeader(); }
+
+      doc.setFillColor(...(rowIndex % 2 === 0 ? C.card : C.card2)); doc.setDrawColor(...C.faint); doc.rect(ML, y, CW, rh, "FD");
+      let cx = ML;
+      keys.forEach((key, columnIndex) => {
+        const raw = fmtSmart(row[key] ?? "");
+        const cellW = def[columnIndex] - 6;
+        if (columnIndex === 0) {
           doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(...C.soft);
-          const ls = firstLines.map((l: string, li: number) => li === firstLines.length - 1 ? ell(l, cellW) : l);
-          doc.text(ls, cx + 4, y + 5.8);
+          const lines = doc.splitTextToSize(raw, cellW).slice(0, 2).map((line: string, index: number, allLines: string[]) => index === allLines.length - 1 ? ell(line, cellW) : line);
+          doc.text(lines, cx + 4, y + 5.8);
         } else {
           const looksUrl = /^https?:\/\//.test(raw) || raw.length > 45;
           doc.setFont("helvetica", "normal"); doc.setFontSize(looksUrl ? 6.5 : 7.5); doc.setTextColor(...C.muted);
           doc.text(looksUrl ? ellMid(raw, cellW) : ell(raw, cellW), cx + 4, y + 5.8);
         }
-        cx += def[ci];
+        cx += def[columnIndex];
       });
-y += rh;
+      y += rh;
     });
     y += 5;
   };
 
-  // ── WRAPPING TABLE — last column wraps to multiple lines instead of
-  // being ellipsized. Use for tables where the final column is the most
-  // important content (e.g. AI response snippets). ─────────────────────
+  // ── WRAPPING TABLE — repeats headers after page breaks ───────────────
   const tblWrap = (headers: string[], rows: TR[], colW: number[], maxLines = 4) => {
     if (!rows.length) { body_("No data available."); return; }
     const nc = headers.length;
@@ -3344,42 +3524,45 @@ y += rh;
     const keys = (["col1", "col2", "col3", "col4", "col5", "col6", "col7"] as (keyof TR)[]).slice(0, nc);
     const lastIdx = nc - 1;
 
-    // header
-    ensure(14);
-    doc.setFillColor(24, 24, 24); doc.setDrawColor(...C.border); doc.roundedRect(ML, y, CW, 9, 1.5, 1.5, "FD");
-    let cx = ML;
-    headers.forEach((h_, i) => {
-      doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(...C.accent);
-      doc.text(ell(cl(h_).toUpperCase(), def[i] - 6), cx + 4, y + 6);
-      cx += def[i];
-    });
-    y += 9;
-
-    rows.forEach((row, ri) => {
+    const wrappedLastLines = (row: TR) => {
       doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
-      const lastVal = fmtSmart(row[keys[lastIdx]] ?? "");
-      const lastLines = doc.splitTextToSize(lastVal, def[lastIdx] - 6).slice(0, maxLines);
-      const lineH = 4.2;
-      const rh = Math.max(9, lastLines.length * lineH + 4);
-      ensure(rh + 2);
+      return doc.splitTextToSize(fmtSmart(row[keys[lastIdx]] ?? ""), def[lastIdx] - 6).slice(0, maxLines);
+    };
+    const rowHeight = (row: TR) => Math.max(9, wrappedLastLines(row).length * 4.2 + 4);
 
-      doc.setFillColor(...(ri % 2 === 0 ? C.card : C.card2)); doc.setDrawColor(...C.faint); doc.rect(ML, y, CW, rh, "FD");
-      cx = ML;
-      keys.forEach((k, ci) => {
-        const raw = fmtSmart(row[k] ?? "");
-        const cellW = def[ci] - 6;
-        const cellY = y + 5.8; // first line baseline, regardless of row height
-        if (ci === lastIdx) {
-          doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(...C.muted);
-          doc.text(lastLines, cx + 4, cellY);
-        } else if (ci === 0) {
-          doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(...C.soft);
-          doc.text(ell(raw, cellW), cx + 4, cellY);
+    const drawTableHeader = () => {
+      doc.setFillColor(24, 24, 24); doc.setDrawColor(...C.border); doc.roundedRect(ML, y, CW, 9, 1.5, 1.5, "FD");
+      let cx = ML;
+      headers.forEach((header, index) => {
+        doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(...C.accent);
+        doc.text(ell(cl(header).toUpperCase(), def[index] - 6), cx + 4, y + 6);
+        cx += def[index];
+      });
+      y += 9;
+    };
+
+    if (y + 9 + rowHeight(rows[0]) > BOT) newPage();
+    drawTableHeader();
+
+    rows.forEach((row, rowIndex) => {
+      const lastLines = wrappedLastLines(row);
+      const rh = Math.max(9, lastLines.length * 4.2 + 4);
+      if (y + rh > BOT) { newPage(); drawTableHeader(); }
+
+      doc.setFillColor(...(rowIndex % 2 === 0 ? C.card : C.card2)); doc.setDrawColor(...C.faint); doc.rect(ML, y, CW, rh, "FD");
+      let cx = ML;
+      keys.forEach((key, columnIndex) => {
+        const raw = fmtSmart(row[key] ?? "");
+        const cellW = def[columnIndex] - 6;
+        const cellY = y + 5.8;
+        if (columnIndex === lastIdx) {
+          doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(...C.muted); doc.text(lastLines, cx + 4, cellY);
+        } else if (columnIndex === 0) {
+          doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(...C.soft); doc.text(ell(raw, cellW), cx + 4, cellY);
         } else {
-          doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(...C.muted);
-          doc.text(ell(raw, cellW), cx + 4, cellY);
+          doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(...C.muted); doc.text(ell(raw, cellW), cx + 4, cellY);
         }
-        cx += def[ci];
+        cx += def[columnIndex];
       });
       y += rh;
     });
@@ -3502,11 +3685,26 @@ y += rh;
           "Medium"
       ).trim();
 
-      const impactLabel = /critical|high/i.test(rawImpact)
-        ? "High"
-        : /low/i.test(rawImpact)
-          ? "Low"
-          : "Medium";
+      const issueText = [
+        title,
+        item?.detail,
+        item?.description,
+        item?.impact,
+        item?.fix,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      const isAltIssue = /alt text|alt attribute|missing alt/.test(issueText);
+
+      const impactLabel = isAltIssue
+        ? "Medium"
+        : /critical|high/i.test(rawImpact)
+          ? "High"
+          : /low/i.test(rawImpact)
+            ? "Low"
+            : "Medium";
 
       const descriptiveImpact =
         item?.impact &&
@@ -3534,7 +3732,9 @@ y += rh;
       actCard(
         title,
         impactLabel,
-        item?.timeline || "0–30 days",
+        /title|meta description|h1|alt text|alt attribute|schema|broken link/.test(issueText)
+          ? "0–30 days"
+          : item?.timeline || "31–60 days",
         detail,
         impactLabel === "High"
           ? "high"
@@ -3816,7 +4016,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
     secHdr(nextSec(),"Organic Traffic Intelligence","Modelled from ranked keyword visibility and CTR curves. Treat as directional organic visibility, not exact analytics data.");
     kpiRow([
       {label:"Est. Monthly Visits",value:fmt(pdfData?.traffic?.rawMonthly??pdfData?.traffic?.monthly),sub:`Confidence: ${cl(normalized.traffic.confidence)}`,col:C.accent},
-      {label:"Daily Visits",value:fmt(normalized.traffic.daily),sub:"Monthly ÷ 30",col:C.blue},
+      {label:"Daily Visits",value:fmtDailyVisits(pdfData?.traffic?.rawMonthly??pdfData?.traffic?.monthly, normalized.traffic.daily),sub:"Monthly ÷ 30",col:C.blue},
       {label:"Keyword Footprint",value:fmt(normalized.traffic.keywordCount),sub:"Ranked keywords",col:C.amber},
       {label:"Traffic Score",value:cl(String(pdfData?.traffic?.score??"—")),sub:"High / Medium / Low",col:sCol(pdfData?.traffic?.score==="High"?85:pdfData?.traffic?.score==="Medium"?60:30)},
     ]);
@@ -3826,7 +4026,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
     secTitle("Traffic Intelligence Summary");
     tblWrap(["Metric","Value","Notes"],[
       {col1:"Est. Monthly Visits",col2:fmt(pdfData?.traffic?.rawMonthly??pdfData?.traffic?.monthly),col3:"Organic visibility estimate"},
-      {col1:"Est. Daily Visits",col2:fmt(normalized.traffic.daily),col3:"Monthly ÷ 30"},
+      {col1:"Est. Daily Visits",col2:fmtDailyVisits(pdfData?.traffic?.rawMonthly??pdfData?.traffic?.monthly, normalized.traffic.daily),col3:"Monthly ÷ 30"},
       {col1:"Keyword Footprint",col2:fmt(normalized.traffic.keywordCount),col3:"500+ moderate, 2,000+ strong"},
       {col1:"Filtered Keywords",col2:fmt(pdfData?.traffic?.filteredKeywordCount),col3:"Low-volume (<10) removed"},
       {col1:"Confidence",col2:cl(normalized.traffic.confidence),col3:"High requires 2,000+ ranked keywords"},
@@ -3873,16 +4073,16 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
     secHdr(nextSec(),"SEO Foundation Audit","Core SEO elements: metadata, heading structure, alt text, and basic on-page signals.");
     kpiRow([
       {label:"SEO Score",value:`${cl(String(pdfData?.seoScore??"—"))}/100`,sub:sLbl(pdfData?.seoScore),col:sCol(pdfData?.seoScore)},
-      {label:"UX Score",value:`${cl(String(pdfData?.uxScore??"—"))}/100`,sub:sLbl(pdfData?.uxScore),col:sCol(pdfData?.uxScore)},
+      {label:"On-Page UX Signal",value:`${cl(String(pdfData?.uxScore??"—"))}/100`,sub:sLbl(pdfData?.uxScore),col:sCol(pdfData?.uxScore)},
       {label:"Page Title",value:normalized.seo.title?"Found":"Missing",sub:normalized.seo.title?"Detected":"Not detected",col:normalized.seo.title?C.accent:C.red},
       {label:"Meta Description",value:normalized.seo.metaDescription?"Found":"Missing",sub:normalized.seo.metaDescription?"Detected":"Not detected",col:normalized.seo.metaDescription?C.accent:C.red},
     ]);
     secTitle("On-Page SEO Check");
     tbl(["Element","Status","Recommendation"],[
-      {col1:"Page Title",col2:cl(normalized.seo.title,"Not detected"),col3:"Unique, 50–60 chars, includes primary keyword"},
-      {col1:"Meta Description",col2:cl(normalized.seo.metaDescription,"Not detected"),col3:"Unique, 140–160 chars, includes CTA"},
-      {col1:"H1 Heading",col2:cl(normalized.seo.h1,"Not detected"),col3:"One clear H1 defining main topic or offer"},
-      {col1:"Image ALT Text",col2:cl(normalized.seo.missingAlt,"Not checked"),col3:"Descriptive ALT on all important images"},
+      {col1:"Page Title",col2:pdfData?.seoQuality?.titleNeedsContext?"Needs rewrite":cl(normalized.seo.title,"Not detected"),col3:"Unique, 50–60 chars, includes primary service or topic"},
+      {col1:"Meta Description",col2:pdfData?.seoQuality?.descriptionNeedsRewrite?"Needs rewrite":cl(normalized.seo.metaDescription,"Not detected"),col3:"Unique, 140–160 chars, accurately describes the business"},
+      {col1:"H1 Heading",col2:pdfData?.seoQuality?.h1NeedsContext?"Needs context":cl(normalized.seo.h1,"Not detected"),col3:"One clear H1 defining the main service or offer"},
+      {col1:"Image ALT Coverage",col2:pdfData?.imageCount!==null&&pdfData?.imageCount!==undefined?`${fmt(pdfData?.imagesWithAlt)} descriptive / ${fmt(pdfData?.imagesMissingAlt)} missing attribute`:"Not checked",col3:"Empty ALT is acceptable only for decorative images"},
     ],[38,60,CW-98]);
     if(normalized.seo.title){
       secTitle("Detected Page Title");
@@ -4004,14 +4204,17 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
           [CW - 75, 25, 25, 25]);
       }
       if (av.citations?.length) {
-        secTitle("Pages AI Cited");
+        secTitle(
+          "Brand-Probe Citation Evidence",
+          "These citations come from brand-awareness probes and do not count toward the unbranded category visibility score."
+        );
         tbl(["URL", "Cited by"], av.citations.slice(0, 6).map((c: any) => ({ col1: cl(c.url), col2: cl((c.models||[]).join(", ")) })), [CW - 50, 50]);
       }
       if (av.rankedPages?.length) {
         secTitle("Your Pages & The Keywords They Rank For");
         tbl(["Page", "Top Keywords", "Vol"], av.rankedPages.slice(0, 8).map((p: any) => ({ col1: cl(p.path || p.url), col2: cl((p.keywords||[]).slice(0,4).map((k:any)=>k.keyword).join(", ")), col3: fmt(p.totalVolume) })), [CW - 95, 70, 25]);
       }
-      const blockedAiCompetitorTokens = /^(strong|tools?|software|platforms?|solutions?|best|top|it's|its|their|they)$/i;
+      const blockedAiCompetitorTokens = /^(strong|tools?|software|platforms?|solutions?|best|top|it's|its|their|they|create|seo|optimize|search|website|content|marketing|analysis|strategy|strategies)$/i;
       const cleanAiCompetitors = Array.from(
         new Set(
           (Array.isArray(av.topCompetitors) ? av.topCompetitors : [])
@@ -4142,7 +4345,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
       tbl(["Keyword","Position","Volume","CPC","Intent","KD","Opportunity"],
         pdfData.dataforseo.topKeywords.slice(0,15).map((k:any)=>({
           col1:cl(k.keyword),col2:cl(String(k.position??"—")),col3:fmt(k.volume),
-          col4:cl(k.cpc?`$${Number(k.cpc).toFixed(2)}`:"—"),col5:cl(k.intent,"—"),
+          col4:cl(k.cpc?`$${Number(k.cpc).toFixed(2)}`:"—"),col5:fmtIntent(k.intent),
           col6:cl(String(k.difficulty??"—")),col7:cl(String(k.opportunity??"—")),
         })),[55,18,22,18,18,12,CW-143]);
     }
@@ -4169,8 +4372,8 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
     tbl(["Keyword","Volume","CPC","Comp.","Intent","KD"],
       pdfKeywordResearch.suggestions.slice(0,20).map((k:any)=>({
         col1:cl(k.keyword),col2:fmt(k.volume),col3:cl(k.cpc?`$${Number(k.cpc).toFixed(2)}`:"—"),
-        col4:fmtCompetition(k.competition),col5:cl(k.intent,"—"),col6:cl(String(k.difficulty??"—")),
-      })),[65,22,18,22,18,CW-145]);
+        col4:fmtCompetition(k.competition),col5:fmtIntent(k.intent),col6:cl(String(k.difficulty??"—")),
+      })),[62,20,20,24,28,CW-154]);
   }
 
   // ════════════════════════════════════════════════════════════════════
@@ -4203,17 +4406,30 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
       pdfData?.dataforseo?.backlinkRank ??
         normalized.backlinks.rank
     );
+    const referringDomainsValue = n(
+      pdfData?.backlinks?.referringDomains ??
+        normalized.backlinks.referringDomains
+    ) ?? 0;
+    const backlinkAuthorityScore = n(pdfData?.backlinkAuthorityScore) ?? (
+      referringDomainsValue >= 200 ? 90 :
+      referringDomainsValue >= 50 ? 75 :
+      referringDomainsValue >= 20 ? 60 :
+      referringDomainsValue >= 5 ? 40 :
+      referringDomainsValue >= 1 ? 20 : 0
+    );
     kpiRow([
-      {label:"Backlink Rank",value:backlinkRankValue !== null ? String(backlinkRankValue) : "—",sub:"Authority signal",col:sCol(backlinkRankValue)},
+      {label:"Provider Backlink Rank",value:backlinkRankValue !== null ? String(backlinkRankValue) : "—",sub:"Raw provider metric",col:C.blue},
       {label:"Total Backlinks",value:fmt(pdfData?.backlinks?.backlinks??normalized.backlinks.total),col:C.accent},
       {label:"Referring Domains",value:fmt(pdfData?.backlinks?.referringDomains??normalized.backlinks.referringDomains),col:C.blue},
       {label:"Referring Pages",value:fmt(pdfData?.backlinks?.referringPages??normalized.backlinks.referringDomains),col:C.amber},
     ]);
-    if (backlinkRankValue !== null) {
-      scoreBar("Backlink Authority Signal",backlinkRankValue,"50+ referring domains = moderate authority");
-    }
+    scoreBar(
+      "Backlink Authority Score",
+      backlinkAuthorityScore,
+      "Calculated primarily from unique referring domains"
+    );
     tbl(["Metric","Value","Benchmark"],[
-      {col1:"Backlink Rank",col2:backlinkRankValue !== null ? String(backlinkRankValue) : "—",col3:"Higher = better; compare vs direct competitors"},
+      {col1:"Provider Backlink Rank",col2:backlinkRankValue !== null ? String(backlinkRankValue) : "—",col3:"Raw provider metric; do not read as a 0–100 authority score"},
       {col1:"Total Backlinks",col2:fmt(pdfData?.backlinks?.backlinks),col3:"Quality matters more than raw count"},
       {col1:"Referring Domains",col2:fmt(pdfData?.backlinks?.referringDomains),col3:"50+ moderate, 200+ strong authority"},
       {col1:"Referring Pages",col2:fmt(pdfData?.backlinks?.referringPages),col3:"More pages = broader link surface"},
@@ -4232,7 +4448,17 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
         normalized.backlinks.samples.slice(0,10).map((l:any)=>({col1:cl(l.anchor,"No anchor"),col2:cl(l.source,"—"),col3:cl(l.target,"—")})),
         [42,68,CW-110]);
     }
-    hiBox("Authority Insight",pdfData?.backlinks?.referringDomains?`${domain} has ${cl(String(pdfData.backlinks.referringDomains))} referring domains and ${cl(String(pdfData.backlinks.backlinks??"unknown"))} total backlinks. Focus on earning quality industry mentions and relevant authority links.`:"No verified backlink data was returned for this audit.","blue");
+    const totalBacklinksValue = n(pdfData?.backlinks?.backlinks) ?? 0;
+    const linkConcentration = referringDomainsValue > 0
+      ? totalBacklinksValue / referringDomainsValue
+      : 0;
+    hiBox(
+      "Authority Insight",
+      referringDomainsValue > 0
+        ? `${domain} has ${referringDomainsValue} unique referring domain(s) and ${totalBacklinksValue} total backlinks. ${linkConcentration >= 20 ? "The link profile is highly concentrated in a small number of domains, so additional independent industry sources should be prioritised." : "Focus on earning additional relevant and trustworthy industry mentions."}`
+        : "No verified backlink authority evidence was returned for this audit.",
+      "blue"
+    );
   }
 
   // ════════════════════════════════════════════════════════════════════
@@ -4240,42 +4466,49 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   if(pdfSections.technicalCrawl){
     secHdr(nextSec(),"Technical SEO Audit","OnPage crawl status, page-level issues, broken links, and crawl signals from Crawler Que OnPage API.");
+    const crawledPageCount = n(pdfData?.onPage?.crawledPages ?? pdfData?.onPage?.completedPages ?? pdfData?.onPage?.pages?.length) ?? 0;
+    const discoveredPageCount = n(pdfData?.onPage?.discoveredPages) ?? 0;
+    const hasTechnicalEvidence = crawledPageCount > 0 || (Array.isArray(pdfData?.onPage?.pages) && pdfData.onPage.pages.length > 0);
     kpiRow([
-      {label:"Pages Discovered",value:fmt(pdfData?.onPage?.discoveredPages),col:C.blue},
-      {label:"Pages Crawled",value:fmt(pdfData?.onPage?.crawledPages),col:C.accent},
-      {label:"Coverage",value:pdfData?.onPage?.coveragePercent!==null&&pdfData?.onPage?.coveragePercent!==undefined?`${fmt(pdfData.onPage.coveragePercent)}%`:"—",col:(n(pdfData?.onPage?.coveragePercent)??0)>=90?C.green:C.amber},
+      {label:"Pages Discovered",value:hasTechnicalEvidence?fmt(discoveredPageCount):"Unavailable",col:hasTechnicalEvidence?C.blue:C.muted},
+      {label:"Pages Crawled",value:hasTechnicalEvidence?fmt(crawledPageCount):"Unavailable",col:hasTechnicalEvidence?C.accent:C.muted},
+      {label:"Coverage",value:hasTechnicalEvidence&&pdfData?.onPage?.coveragePercent!==null&&pdfData?.onPage?.coveragePercent!==undefined?`${fmt(pdfData.onPage.coveragePercent)}%`:"Unavailable",col:hasTechnicalEvidence&&(n(pdfData?.onPage?.coveragePercent)??0)>=90?C.green:C.muted},
       {label:"Crawl Page Limit",value:fmt(pdfData?.onPage?.pageLimit),col:C.muted},
     ]);
     kpiRow([
-      {label:"Completed Pages",value:fmt(pdfData?.onPage?.completedPages),col:C.green},
-      {label:"Failed Pages",value:fmt(pdfData?.onPage?.failedPages),col:(n(pdfData?.onPage?.failedPages)??0)>0?C.red:C.green},
-      {label:"Remaining Pages",value:fmt(pdfData?.onPage?.remainingPages),col:(n(pdfData?.onPage?.remainingPages)??0)>0?C.amber:C.green},
-      {label:"Crawl Confidence",value:cl(pdfData?.onPage?.confidence??pdfData?.reconciliation?.technical?.confidence,"Unknown"),col:pdfData?.onPage?.confidence==="high"?C.green:C.amber},
+      {label:"Completed Pages",value:hasTechnicalEvidence?fmt(pdfData?.onPage?.completedPages):"Unavailable",col:hasTechnicalEvidence?C.green:C.muted},
+      {label:"Failed Pages",value:hasTechnicalEvidence?fmt(pdfData?.onPage?.failedPages):"Not assessed",col:hasTechnicalEvidence&&(n(pdfData?.onPage?.failedPages)??0)>0?C.red:C.muted},
+      {label:"Remaining Pages",value:hasTechnicalEvidence?fmt(pdfData?.onPage?.remainingPages):"Not assessed",col:hasTechnicalEvidence&&(n(pdfData?.onPage?.remainingPages)??0)>0?C.amber:C.muted},
+      {label:"Crawl Confidence",value:hasTechnicalEvidence?cl(pdfData?.onPage?.confidence??pdfData?.reconciliation?.technical?.confidence,"Unknown"):"Insufficient data",col:hasTechnicalEvidence&&pdfData?.onPage?.confidence==="high"?C.green:C.amber},
     ]);
+    if (!hasTechnicalEvidence) {
+      hiBox("Technical Crawl Evidence Unavailable","The crawler reached a final state but returned no crawled-page evidence. Zero values are not presented as verified technical results; rerun the crawl or review the provider task before relying on this section.","amber");
+    }
     if(pdfData?.onPage?.limitation||pdfData?.reconciliation?.technical?.limitation){
       hiBox("Technical Coverage Limitation",cl(pdfData?.onPage?.limitation??pdfData?.reconciliation?.technical?.limitation),"amber");
     }
+    const technicalResult = (value: any) => hasTechnicalEvidence ? fmt(value) : "Not assessed";
     tbl(["Check","Result","Notes"],[
-      {col1:"Crawl Status",col2:cl(pdfData?.onPage?.crawlStatus,"—"),col3:"Final status from the saved OnPage task"},
-      {col1:"Confidence",col2:cl(pdfData?.onPage?.confidence??pdfData?.reconciliation?.technical?.confidence,"—"),col3:"Limited when the crawl times out or returns partial coverage"},
-      {col1:"Pages Discovered",col2:fmt(pdfData?.onPage?.discoveredPages),col3:"Pages identified by the crawl"},
-      {col1:"Pages Crawled",col2:fmt(pdfData?.onPage?.crawledPages),col3:"Pages with returned technical evidence"},
-      {col1:"Pages Remaining",col2:fmt(pdfData?.onPage?.remainingPages),col3:"Unprocessed in-scope pages at finalization"},
+      {col1:"Crawl Status",col2:hasTechnicalEvidence?cl(pdfData?.onPage?.crawlStatus,"—"):"No evidence returned",col3:"Final state is separate from whether usable page evidence was returned"},
+      {col1:"Confidence",col2:hasTechnicalEvidence?cl(pdfData?.onPage?.confidence??pdfData?.reconciliation?.technical?.confidence,"—"):"insufficient-data",col3:"Limited when the crawl times out, returns zero pages, or provides partial coverage"},
+      {col1:"Pages Discovered",col2:hasTechnicalEvidence?fmt(discoveredPageCount):"Unavailable",col3:"Pages identified by the crawl"},
+      {col1:"Pages Crawled",col2:hasTechnicalEvidence?fmt(crawledPageCount):"Unavailable",col3:"Pages with returned technical evidence"},
+      {col1:"Pages Remaining",col2:technicalResult(pdfData?.onPage?.remainingPages),col3:"Unprocessed in-scope pages at finalization"},
       {col1:"Crawl Page Limit",col2:fmt(pdfData?.onPage?.pageLimit),col3:"Maximum pages requested for this audit"},
-      {col1:"Outside Crawl Limit",col2:fmt(pdfData?.onPage?.outsideLimitPages),col3:"Discovered pages excluded by the visible crawl cap"},
-      {col1:"Coverage",col2:pdfData?.onPage?.coveragePercent!==null&&pdfData?.onPage?.coveragePercent!==undefined?`${fmt(pdfData.onPage.coveragePercent)}%`:"—",col3:"Returned pages divided by in-scope discovered pages"},
-      {col1:"Broken Links",col2:fmt(pdfData?.onPage?.brokenLinks),col3:"All evidenced broken links should be fixed or redirected"},
-      {col1:"Missing Titles",col2:fmt(pdfData?.onPage?.missingTitle),col3:"Every important page needs a unique title"},
-      {col1:"Missing Descriptions",col2:fmt(pdfData?.onPage?.missingDescription),col3:"Descriptions improve search CTR"},
-      {col1:"Duplicate Titles",col2:fmt(pdfData?.onPage?.duplicateTitle),col3:"Duplicate titles reduce topical clarity"},
-    ],[42,30,CW-72]);
-    if(pdfData?.onPage?.pages?.length){
+      {col1:"Outside Crawl Limit",col2:technicalResult(pdfData?.onPage?.outsideLimitPages),col3:"Discovered pages excluded by the visible crawl cap"},
+      {col1:"Coverage",col2:hasTechnicalEvidence&&pdfData?.onPage?.coveragePercent!==null&&pdfData?.onPage?.coveragePercent!==undefined?`${fmt(pdfData.onPage.coveragePercent)}%`:"Unavailable",col3:"Returned pages divided by in-scope discovered pages"},
+      {col1:"Broken Links",col2:technicalResult(pdfData?.onPage?.brokenLinks),col3:"All evidenced broken links should be fixed or redirected"},
+      {col1:"Missing Titles",col2:technicalResult(pdfData?.onPage?.missingTitle),col3:"Every important page needs a unique title"},
+      {col1:"Missing Descriptions",col2:technicalResult(pdfData?.onPage?.missingDescription),col3:"Descriptions improve search CTR"},
+      {col1:"Duplicate Titles",col2:technicalResult(pdfData?.onPage?.duplicateTitle),col3:"Duplicate titles reduce topical clarity"},
+    ],[42,34,CW-76]);
+    if(hasTechnicalEvidence && pdfData?.onPage?.pages?.length){
       secTitle("Sample Crawled Pages");
-      tbl(["Title","URL","Status","Load Time"],
+      tbl(["Title","URL","HTTP","Load Time"],
         pdfData.onPage.pages.slice(0,12).map((p:any)=>({
           col1:cl(p.title,"Untitled"),col2:cl(p.url,"—"),
           col3:cl(String(p.statusCode??"—")),col4:cl(p.loadTime?`${p.loadTime}ms`:"—"),
-        })),[55,65,14,CW-134]);
+        })),[55,63,18,CW-136]);
     }
   }
 
@@ -4304,7 +4537,11 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
           col1:cl(item.title??item.mainTopic,"Untitled"),
           col2:item.score!==null&&item.score!==undefined?`${cl(String(item.score))}/100`:"—",
           col3:fmt(item.wordCount??item.contentLength),
-          col4:Array.isArray(item.issues)&&item.issues.length?cl(item.issues[0]):"No major issue",
+          col4:(()=>{
+            const issues = Array.isArray(item?.issues) ? item.issues : [];
+            const filteredIssues = issues.filter((issue:any) => !(/image\(s\).*missing alt|missing alt text/i.test(String(issue || "")) && Number(pdfData?.imagesMissingAlt || 0) === 0));
+            return filteredIssues.length ? cl(filteredIssues[0]) : "No major issue";
+          })(),
           col5:cl(item.url,"—"),
         })),[45,18,18,40,CW-121]);
     }
@@ -4333,12 +4570,12 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   if(pdfSections.recommendations){
     secHdr(nextSec(),"Evidence-Backed Recommendations","Prioritised actions tied to source modules, affected URLs, validation status, and supporting evidence.");
-    const canonicalRecommendations = Array.isArray(pdfData?.recommendations)
-      ? pdfData.recommendations.filter(isValidPdfAction).slice(0, 10)
-      : [];
+    const canonicalRecommendations = getCanonicalRecommendationSet(pdfData)
+      .filter(isValidPdfAction)
+      .slice(0, 10);
     kpiRow([
       {label:"Recommendations",value:fmt(canonicalRecommendations.length),col:C.accent},
-      {label:"Source",value:cl(pdfData?.aiRecommendations?.source,"Evidence Engine"),col:C.muted},
+      {label:"Source",value:"Evidence Engine",col:C.muted},
       {label:"Primary Opportunity",value:cl(pdfData?.unifiedOverview?.primaryOpportunity),col:C.amber},
       {label:"Suppressed Branded Gaps",value:fmt(pdfData?.aiRecommendations?.suppressedCompetitorBrandedKeywords),col:C.blue},
     ]);
@@ -4397,18 +4634,21 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
     safeItems.slice(0,5).forEach((raw:any,index:number)=>{
       const rec = typeof raw === "string" ? {title:String(raw).split(".")[0],detail:raw} : raw || {};
       const evidence = Array.isArray(rec.evidence) ? rec.evidence.slice(0,2).join(" | ") : "";
+      const itemImpact = String(rec?.impact || (priority === "high" ? "High" : "Medium"));
+      const itemPriority: "high" | "medium" | "low" = itemImpact.toLowerCase().includes("high") ? "high" : itemImpact.toLowerCase().includes("low") ? "low" : "medium";
       actCard(
         cl(rec.title,`Action ${index+1}`),
-        cl(rec.impact,priority==="high"?"High":"Medium"),
+        itemImpact,
         cl(rec.timeline,timeline),
         `${cl(rec.detail,"Execute this evidence-backed action.")}  |  Owner: ${cl(rec.owner,"Growth Team")}${evidence?`  |  Evidence: ${evidence}`:""}`,
-        priority
+        itemPriority
       );
     });
   };
+  const canonicalRoadmapRecommendations = getCanonicalRecommendationSet(pdfData);
   const first30DayActions = mergeRoadmapActions(
     roadmap?.first30Days,
-    buildFoundationRoadmapActions(pdfData)
+    canonicalRoadmapRecommendations.filter((item: any) => /0\s*[–-]\s*30|first|immediate|14 day/i.test(String(item?.timeline || "")))
   );
 
   roadmapPhase("First 30 Days — Fix Validated Foundations","0–30 days",first30DayActions,"high");
@@ -4500,10 +4740,18 @@ const dashboardRoadmap =
   data?.aiRecommendations?.roadmap ||
   {};
 
+const dashboardRecommendations =
+  getCanonicalRecommendationSet(data);
+
 const dashboardFirst30DayActions =
   mergeRoadmapActions(
     dashboardRoadmap?.first30Days,
-    buildFoundationRoadmapActions(data)
+    dashboardRecommendations.filter(
+      (item: any) =>
+        /0\s*[–-]\s*30|first|immediate|14 day/i.test(
+          String(item?.timeline || "")
+        )
+    )
   );
 
 const dashboardKeywordResearch =
@@ -6740,7 +6988,7 @@ value={
       <MetricCard label="SEO Score" value={data?.seoScore ?? "Data not available"} score={Number(data?.seoScore || 0)} />
 <MetricCard label="Mobile Speed" value={data?.mobilePerformance ?? "Data not available"} score={Number(data?.mobilePerformance || 0)} />
 <MetricCard label="Desktop Speed" value={data?.desktopPerformance ?? "Data not available"} score={Number(data?.desktopPerformance || 0)} />
-<MetricCard label="UX Score" value={data?.uxScore ?? "Data not available"} score={Number(data?.uxScore || 0)} />
+<MetricCard label="On-Page UX Signal" value={data?.uxScore ?? "Data not available"} score={Number(data?.uxScore || 0)} />
     </div>
 
     <div className="mb-6 grid gap-4 lg:grid-cols-2">
@@ -6794,10 +7042,9 @@ value={
         SEO Recommendations
       </h3>
 
-{Array.isArray(data?.recommendations) &&
-data.recommendations.length > 0 ? (
+{dashboardRecommendations.length > 0 ? (
   <ul className="list-disc space-y-3 pl-5 text-sm text-slate-600">
-    {data.recommendations
+    {dashboardRecommendations
       .slice(0, 8)
       .map((rawRec: any, i: number) => {
         const rec =
@@ -7352,7 +7599,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
     <div className="mb-6 grid gap-4 md:grid-cols-4">
       <MetricCard
         label="Recommendations"
-        value={data?.recommendations?.length ?? "Data not available"}
+        value={dashboardRecommendations.length}
       />
       <MetricCard
         label="Source"
@@ -7369,8 +7616,8 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
     </div>
 
     <div className="grid gap-5 lg:grid-cols-2">
-      {data?.recommendations?.length > 0 ? (
-        data.recommendations.slice(0, 10).map((rawRec: any, i: number) => {
+      {dashboardRecommendations.length > 0 ? (
+        dashboardRecommendations.slice(0, 10).map((rawRec: any, i: number) => {
           const rec = typeof rawRec === "string"
             ? {
                 title: String(rawRec).split(".")[0],

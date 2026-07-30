@@ -179,6 +179,132 @@ function getFirstH1(html: string) {
   return decodeHtmlEntities(raw.replace(/<[^>]+>/g, " "));
 }
 
+function getBodyText(html: string) {
+  return decodeHtmlEntities(
+    String(html || "")
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+  );
+}
+
+function getImageAltStats(html: string) {
+  const tags = String(html || "").match(/<img\b[^>]*>/gi) || [];
+
+  let missingAttribute = 0;
+  let emptyAlt = 0;
+  let descriptiveAlt = 0;
+
+  tags.forEach((tag) => {
+    if (!/\balt\s*=/i.test(tag)) {
+      missingAttribute += 1;
+      return;
+    }
+
+    if (/\balt\s*=\s*(?:"\s*"|'\s*')/i.test(tag)) {
+      emptyAlt += 1;
+      return;
+    }
+
+    descriptiveAlt += 1;
+  });
+
+  return {
+    imageCount: tags.length,
+    descriptiveAlt,
+    emptyAlt,
+    missingAttribute,
+  };
+}
+
+function compactPhrase(value: string) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
+}
+
+function inferBusinessSeed(input: {
+  bodyText: string;
+  title: string;
+  description: string;
+  h1: string;
+}) {
+  const text = [
+    input.title,
+    input.description,
+    input.h1,
+    input.bodyText.slice(0, 12000),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  const candidates = [
+    {
+      seed: "digital marketing services",
+      terms: [
+        "digital marketing",
+        "search engine optimization",
+        "seo services",
+        "ppc",
+        "paid advertising",
+        "social media marketing",
+        "amazon marketing",
+        "website development",
+      ],
+    },
+    {
+      seed: "business software",
+      terms: [
+        "saas",
+        "business software",
+        "software reviews",
+        "crm software",
+        "project management software",
+      ],
+    },
+    {
+      seed: "ecommerce services",
+      terms: [
+        "ecommerce",
+        "online store",
+        "shopify",
+        "amazon seller",
+      ],
+    },
+    {
+      seed: "real estate services",
+      terms: [
+        "real estate",
+        "property management",
+        "realtor",
+        "brokerage",
+      ],
+    },
+    {
+      seed: "legal services",
+      terms: ["law firm", "lawyer", "attorney", "legal services"],
+    },
+    {
+      seed: "healthcare services",
+      terms: ["healthcare", "medical clinic", "doctor", "dental"],
+    },
+  ];
+
+  const ranked = candidates
+    .map((candidate) => ({
+      ...candidate,
+      score: candidate.terms.reduce(
+        (total, term) => total + (text.includes(term) ? 1 : 0),
+        0
+      ),
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  return ranked[0]?.score > 0 ? ranked[0].seed : "";
+}
+
 function countMatches(html: string, regex: RegExp) {
   return (html.match(regex) || []).length;
 }
@@ -190,6 +316,9 @@ function buildIssues(input: {
   imageCount: number;
   imagesMissingAlt: number;
   mobileScore: number;
+  titleNeedsContext: boolean;
+  descriptionNeedsRewrite: boolean;
+  h1NeedsContext: boolean;
 }) {
   const issues: any[] = [];
 
@@ -220,12 +349,49 @@ function buildIssues(input: {
     });
   }
 
+  if (input.titleNeedsContext) {
+    issues.push({
+      title: "Homepage title lacks descriptive service context",
+      severity: "medium",
+      timeline: "0–30 days",
+      impact:
+        "The title is present, but it is too short or too generic to communicate the page topic and search intent clearly.",
+      fix:
+        "Rewrite the title to approximately 50–60 characters and include the primary service or category.",
+    });
+  }
+
+  if (input.descriptionNeedsRewrite) {
+    issues.push({
+      title: "Homepage meta description needs rewriting",
+      severity: "high",
+      timeline: "0–30 days",
+      impact:
+        "The description is too short, too long, generic, or appears to contain template copy that does not accurately describe the audited business.",
+      fix:
+        "Replace it with a unique 140–160 character description focused on the business offer and user intent.",
+    });
+  }
+
+  if (input.h1NeedsContext) {
+    issues.push({
+      title: "Homepage H1 lacks service context",
+      severity: "medium",
+      timeline: "0–30 days",
+      impact:
+        "A brand-only H1 provides limited topical context for users, search engines, and answer engines.",
+      fix:
+        "Use one clear H1 that combines the brand with the primary service or value proposition.",
+    });
+  }
+
   if (input.imagesMissingAlt > 0) {
     issues.push({
-      title: "Images missing alt text",
+      title: "Images missing alt attributes",
       severity: "medium",
+      timeline: "0–30 days",
       impact: "Accessibility and image SEO signals are weaker.",
-      fix: "Add descriptive alt text to important images.",
+      fix: 'Add descriptive alt text to important images. Keep alt="" only for genuinely decorative images.',
     });
   }
 
@@ -233,6 +399,7 @@ function buildIssues(input: {
     issues.push({
       title: "Low mobile performance",
       severity: "high",
+      timeline: "0–30 days",
       impact: "Slow mobile speed can reduce conversions and organic visibility.",
       fix: "Optimize images, scripts, caching, and Core Web Vitals.",
     });
@@ -987,22 +1154,51 @@ await updateAuditJob(auditJob.id, {
 
     const h1Count = countMatches(html, /<h1[\s>]/gi);
     const h1 = getFirstH1(html);
-    const imageCount = countMatches(html, /<img[\s>]/gi);
-    const imagesWithAlt = countMatches(
-      html,
-      /<img[^>]+alt=["'][^"']+["'][^>]*>/gi
+    const bodyText = getBodyText(html);
+    const bodyWordCount = bodyText
+      .split(" ")
+      .map((word) => word.trim())
+      .filter(Boolean).length;
+
+    const imageAltStats = getImageAltStats(html);
+    const imageCount = imageAltStats.imageCount;
+    const imagesWithAlt = imageAltStats.descriptiveAlt;
+    const imagesEmptyAlt = imageAltStats.emptyAlt;
+    const imagesMissingAlt = imageAltStats.missingAttribute;
+
+    const titleLength = title.trim().length;
+    const descriptionLength = description.trim().length;
+    const normalizedBrand = compactPhrase(brandNameForAudit);
+    const normalizedH1 = compactPhrase(h1);
+
+    const titleNeedsContext = Boolean(
+      title && (titleLength < 30 || titleLength > 65)
     );
-const imagesMissingAlt = Math.max(0, imageCount - imagesWithAlt);
+
+    const descriptionNeedsRewrite = Boolean(
+      description &&
+        (descriptionLength < 120 ||
+          descriptionLength > 170 ||
+          /webflow template|website template|theme demo|template created|placeholder copy/i.test(
+            description
+          ))
+    );
+
+    const h1NeedsContext = Boolean(
+      h1 &&
+        normalizedH1 &&
+        normalizedBrand &&
+        (normalizedH1 === normalizedBrand || h1.trim().length < 20)
+    );
+
+    const inferredServiceSeed = inferBusinessSeed({
+      bodyText,
+      title,
+      description,
+      h1,
+    });
 
     // ── AI CITATION READINESS — computed from the same HTML fetch above ──
-    const bodyWordCount = html
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .split(" ")
-      .filter(Boolean).length;
 
     const ldJsonBlocks =
       html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
@@ -1133,11 +1329,36 @@ const keywordResearchSeedMap: Record<string, string> = {
   healthcare: "healthcare services",
   restaurant: "restaurant services",
   local_service: "local professional services",
-  general: cleanSeedKeyword,
+  general: inferredServiceSeed || cleanSeedKeyword,
 };
 
 const blockedResearchSeedTerms =
-  /crossword|movie|song|youtube|tiktok|reddit|birthday|cemetery|olive|archive|download|github|jobs|careers|contact number/i;
+  /crossword|movie|song|youtube|tiktok|reddit|birthday|cemetery|olive|archive|download|github|jobs|careers|contact number|quiz|worksheet|definition answer/i;
+
+const brandAliasValues = Array.from(
+  new Set(
+    [
+      domain.split(".")[0],
+      brandNameForAudit,
+      title?.split(/[|–—-]/)[0],
+    ]
+      .map((value) => compactPhrase(String(value || "")))
+      .filter((value) => value.length >= 4)
+  )
+);
+
+const isLikelyBrandedKeyword = (value: any) => {
+  const compactKeyword = compactPhrase(String(value || ""));
+
+  if (!compactKeyword) return false;
+
+  return brandAliasValues.some((alias) => {
+    if (compactKeyword === alias) return true;
+    if (alias.length >= 6 && compactKeyword.includes(alias)) return true;
+    if (compactKeyword.length >= 5 && alias.includes(compactKeyword)) return true;
+    return false;
+  });
+};
 
 const validatedGapSeed =
   (dataforseo?.keywordGap?.missingKeywords || [])
@@ -1150,7 +1371,8 @@ const validatedGapSeed =
       return (
         keyword.length >= 4 &&
         volume >= 20 &&
-        !blockedResearchSeedTerms.test(keyword)
+        !blockedResearchSeedTerms.test(keyword) &&
+        !isLikelyBrandedKeyword(keyword)
       );
     })
     .sort(
@@ -1173,6 +1395,7 @@ const validatedRankingSeed =
         position <= 50 &&
         volume >= 20 &&
         item?.branded !== true &&
+        !isLikelyBrandedKeyword(keyword) &&
         !blockedResearchSeedTerms.test(keyword)
       );
     }
@@ -1184,6 +1407,7 @@ const keywordResearchSeed = String(
     keywordResearchSeedMap[
       String(dataforseo?.detectedNiche || "general")
     ] ||
+    inferredServiceSeed ||
     cleanSeedKeyword
 ).trim();
 
@@ -1192,8 +1416,8 @@ try {
   const serpKeywords = Array.from(
   new Set(
     [
-      cleanSeedKeyword,
-      isPakistanDomain ? `${cleanSeedKeyword} pakistan` : null,
+      keywordResearchSeed,
+      isPakistanDomain ? `${keywordResearchSeed} pakistan` : null,
       ...(dataforseo?.topKeywords || [])
         .map((k: any) => k.keyword)
         .filter((keyword: string) => {
@@ -1202,11 +1426,8 @@ try {
           return (
             value.length > 3 &&
             !/^\d/.test(value) &&
-            !value.includes("movie") &&
-            !value.includes("song") &&
-            !value.includes("youtube") &&
-            !value.includes("tiktok") &&
-            !value.includes("reddit")
+            !blockedResearchSeedTerms.test(value) &&
+            !isLikelyBrandedKeyword(value)
           );
         })
         .slice(0, 3),
@@ -1247,7 +1468,11 @@ try {
 
       try {
         const categoryKeywords = (dataforseo?.topKeywords || [])
-          .filter((keyword: any) => keyword?.branded !== true)
+          .filter(
+            (keyword: any) =>
+              keyword?.branded !== true &&
+              !isLikelyBrandedKeyword(keyword?.keyword)
+          )
           .map((keyword: any) => String(keyword?.keyword || "").trim())
           .filter(Boolean)
           .slice(0, 8);
@@ -1492,6 +1717,22 @@ body: JSON.stringify({
 
       const keywordResearchJson = await keywordResearchRes.json();
       keywordResearch = keywordResearchJson?.keywordResearch || null;
+
+      if (keywordResearch && Array.isArray(keywordResearch.suggestions)) {
+        keywordResearch = {
+          ...keywordResearch,
+          seedKeyword: keywordResearchSeed,
+          suggestions: keywordResearch.suggestions.filter((item: any) => {
+            const keyword = String(item?.keyword || "").trim();
+
+            return (
+              keyword.length >= 4 &&
+              !blockedResearchSeedTerms.test(keyword) &&
+              !isLikelyBrandedKeyword(keyword)
+            );
+          }),
+        };
+      }
   } catch (error) {
   console.error("Keyword Research inside audit failed:", error);
 
@@ -1502,17 +1743,34 @@ body: JSON.stringify({
   (!keywordResearch?.suggestions || keywordResearch.suggestions.length === 0) &&
   dataforseo?.topKeywords?.length > 0
 ) {
-keywordResearch = {
-  seedKeyword: keywordResearchSeed,
-  suggestions: dataforseo.topKeywords.map((k: any) => ({
+  const fallbackKeywords = dataforseo.topKeywords
+    .filter((k: any) => {
+      const keyword = String(k?.keyword || "").trim();
+
+      return (
+        keyword.length >= 4 &&
+        k?.branded !== true &&
+        !isLikelyBrandedKeyword(keyword) &&
+        !blockedResearchSeedTerms.test(keyword)
+      );
+    })
+    .map((k: any) => ({
       keyword: k.keyword,
       volume: k.volume,
       cpc: k.cpc,
       competition: k.competition || null,
       position: k.position,
       url: k.url,
-    })),
-    source: "DataForSEO ranked keywords fallback",
+      intent: k.intent || null,
+      difficulty: k.difficulty || null,
+    }));
+
+  keywordResearch = {
+    seedKeyword: keywordResearchSeed,
+    suggestions: fallbackKeywords,
+    source: fallbackKeywords.length
+      ? "DataForSEO non-branded ranked keyword fallback"
+      : "Insufficient non-branded keyword evidence",
   };
 }
 
@@ -1544,6 +1802,66 @@ try {
       }
 
       contentAnalysis = contentAnalysisJson?.contentAnalysis || null;
+
+      if (contentAnalysis && Array.isArray(contentAnalysis.results)) {
+        const normalizePageUrl = (value: any) => {
+          try {
+            const parsed = new URL(String(value || ""));
+            return `${parsed.hostname.replace(/^www\./, "")}${parsed.pathname.replace(/\/+$/, "") || "/"}`;
+          } catch {
+            return String(value || "").replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "");
+          }
+        };
+
+        const auditedPageKey = normalizePageUrl(auditTargetUrl);
+
+        const normalizedResults = contentAnalysis.results.map((item: any) => {
+          if (normalizePageUrl(item?.url) !== auditedPageKey) {
+            return item;
+          }
+
+          const originalIssues = Array.isArray(item?.issues) ? item.issues : [];
+          const hadAltIssue = originalIssues.some((issue: any) =>
+            /image\(s\).*missing alt|missing alt text/i.test(String(issue || ""))
+          );
+          const filteredIssues = originalIssues.filter(
+            (issue: any) =>
+              !/image\(s\).*missing alt|missing alt text/i.test(String(issue || ""))
+          );
+
+          if (imagesMissingAlt > 0) {
+            filteredIssues.unshift(
+              `${imagesMissingAlt} image(s) missing an ALT attribute`
+            );
+          }
+
+          const adjustedScore =
+            hadAltIssue && imagesMissingAlt === 0 && Number.isFinite(Number(item?.score))
+              ? Math.min(100, Number(item.score) + 15)
+              : item?.score;
+
+          return {
+            ...item,
+            score: adjustedScore,
+            issues: filteredIssues,
+          };
+        });
+
+        const scoredResults = normalizedResults
+          .map((item: any) => Number(item?.score))
+          .filter((score: number) => Number.isFinite(score));
+
+        contentAnalysis = {
+          ...contentAnalysis,
+          results: normalizedResults,
+          averageScore: scoredResults.length
+            ? Math.round(
+                scoredResults.reduce((sum: number, score: number) => sum + score, 0) /
+                  scoredResults.length
+              )
+            : contentAnalysis.averageScore,
+        };
+      }
     } catch (error) {
   console.error("Content Analysis inside audit failed:", error);
 
@@ -1588,6 +1906,9 @@ try {
           (!title ? 15 : 0) -
           (!description ? 15 : 0) -
           (h1Count === 0 ? 15 : 0) -
+          (titleNeedsContext ? 8 : 0) -
+          (descriptionNeedsRewrite ? 12 : 0) -
+          (h1NeedsContext ? 5 : 0) -
           (imagesMissingAlt > 0 ? 10 : 0)
       )
     );
@@ -1597,7 +1918,11 @@ try {
       Math.min(
         100,
         95 -
-          (primaryPageSpeed.score > 0 && primaryPageSpeed.score < 60 ? 15 : 0) -
+          (primaryPageSpeed.score > 0 && primaryPageSpeed.score < 60
+            ? 20
+            : primaryPageSpeed.score > 0 && primaryPageSpeed.score < 75
+              ? 10
+              : 0) -
           (imagesMissingAlt > 0 ? 5 : 0)
       )
     );
@@ -1660,14 +1985,22 @@ const trafficScore = organicTraffic
 
     const gapScore = Math.max(0, 100 - keywordGapPenalty * 3);
 
+const referringDomainCount = Number(
+  dataforseo?.backlinks?.referringDomains || 0
+);
+
 const backlinkScore =
-  dataforseo?.backlinks?.referringDomains > 50
-    ? 85
-    : dataforseo?.backlinks?.referringDomains > 20
-    ? 65
-    : dataforseo?.backlinks?.referringDomains > 5
-    ? 45
-    : 25;
+  referringDomainCount >= 200
+    ? 90
+    : referringDomainCount >= 50
+      ? 75
+      : referringDomainCount >= 20
+        ? 60
+        : referringDomainCount >= 5
+          ? 40
+          : referringDomainCount >= 1
+            ? 20
+            : 0;
 
 const organicTrafficForScore = Number(organicTraffic || 0);
 
@@ -1695,6 +2028,9 @@ const overallScore = Math.round(
       imageCount,
       imagesMissingAlt,
       mobileScore: mobileSpeed.score,
+      titleNeedsContext,
+      descriptionNeedsRewrite,
+      h1NeedsContext,
     });
 
     if (onPage) {
@@ -1861,7 +2197,7 @@ if (runRecommendations || runAI) {
         detail:
           "Add concise, descriptive ALT text to every important image that is currently missing it. Validate the homepage first, then the remaining audited pages.",
         sourceModule: "SEO Foundation",
-        impact: "High",
+        impact: "Medium",
         effort: "Low",
         owner: "SEO / Content",
         timeline: "0–30 days",
@@ -1871,6 +2207,60 @@ if (runRecommendations || runAI) {
         evidence: [
           `Images missing ALT text: ${imagesMissingAlt}`,
         ],
+        validationStatus: "validated",
+        confidence: "high",
+      });
+    }
+
+    if (/title lacks descriptive service context/.test(issueText)) {
+      addFoundationRecommendation({
+        id: "foundation-title-context",
+        title: "Rewrite the homepage title with service context",
+        detail:
+          "Expand the homepage title to clearly communicate the primary service, category, and search intent while keeping it concise.",
+        sourceModule: "SEO Foundation",
+        impact: "Medium",
+        effort: "Low",
+        owner: "SEO / Content",
+        timeline: "0–30 days",
+        affectedUrls: [auditTargetUrl],
+        evidence: [`Current title: ${title || "Not detected"}`],
+        validationStatus: "validated",
+        confidence: "high",
+      });
+    }
+
+    if (/meta description needs rewriting/.test(issueText)) {
+      addFoundationRecommendation({
+        id: "foundation-meta-rewrite",
+        title: "Replace generic or template meta description copy",
+        detail:
+          "Write a unique 140–160 character homepage description that accurately explains the business offer and includes a clear reason to click.",
+        sourceModule: "SEO Foundation",
+        impact: "High",
+        effort: "Low",
+        owner: "SEO / Content",
+        timeline: "0–30 days",
+        affectedUrls: [auditTargetUrl],
+        evidence: [`Current meta description: ${description || "Not detected"}`],
+        validationStatus: "validated",
+        confidence: "high",
+      });
+    }
+
+    if (/h1 lacks service context/.test(issueText)) {
+      addFoundationRecommendation({
+        id: "foundation-h1-context",
+        title: "Rewrite the homepage H1 with service context",
+        detail:
+          "Use one primary H1 that combines the brand with the main service or value proposition.",
+        sourceModule: "SEO Foundation",
+        impact: "Medium",
+        effort: "Low",
+        owner: "SEO / Content",
+        timeline: "0–30 days",
+        affectedUrls: [auditTargetUrl],
+        evidence: [`Current H1: ${h1 || "Not detected"}`],
         validationStatus: "validated",
         confidence: "high",
       });
@@ -1932,6 +2322,24 @@ if (runRecommendations || runAI) {
       });
     }
   });
+
+  if (!hasSchema) {
+    addFoundationRecommendation({
+      id: "foundation-structured-data",
+      title: "Add validated organization and service structured data",
+      detail:
+        "Add appropriate Organization, WebSite, and service-level schema that matches the visible page content and verified business details.",
+      sourceModule: "AI Citation Readiness",
+      impact: "High",
+      effort: "Medium",
+      owner: "SEO / Developer",
+      timeline: "0–30 days",
+      affectedUrls: [auditTargetUrl],
+      evidence: ["No structured data block was detected on the audited page."],
+      validationStatus: "validated",
+      confidence: "high",
+    });
+  }
 
   if (!hasFaqSchema) {
     addFoundationRecommendation({
@@ -2295,7 +2703,17 @@ const draftReport = {
       description,
       h1,
       h1Count,
+      imageCount,
+      imagesWithAlt,
+      imagesEmptyAlt,
       imagesMissingAlt,
+      seoQuality: {
+        titleLength,
+        descriptionLength,
+        titleNeedsContext,
+        descriptionNeedsRewrite,
+        h1NeedsContext,
+      },
       searchContext: {
         country: locationName,
         countryCode:
@@ -2315,6 +2733,7 @@ const draftReport = {
       overallScore,
       seoScore,
       uxScore,
+      backlinkAuthorityScore: backlinkScore,
 
       speedScore: primaryPageSpeed.score,
       primaryPerformanceDevice:
