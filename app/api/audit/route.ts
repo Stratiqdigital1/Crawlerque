@@ -2,7 +2,6 @@ import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { withSecurityHeaders } from "@/lib/security-headers";
 import { prisma } from "@/lib/prisma";
-import { checkFreeAuditRateLimit } from "@/lib/rate-limit";
 import { verifySessionToken } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { hasAuditLimit, canUseModule } from "@/lib/permissions";
@@ -346,35 +345,20 @@ const customPrompts: string[] = Array.isArray(body?.customPrompts)
   : [];
 const clientIp = getClientIp(req);
 
-   if (isFreeAudit) {
-      const { allowed } = await checkFreeAuditRateLimit(clientIp);
-
-      if (!allowed) {
-        await prisma.auditLog.create({
-          data: {
-            userId: null,
-            email: null,
-            ip: clientIp,
-            domain: body?.url || "unknown",
-            auditMode: "free",
-            reportTypes: body?.reportTypes || [],
-            status: "blocked",
-            message: "Free audit rate limit reached",
-          },
-        });
-
-        return withSecurityHeaders(
-          NextResponse.json(
-            {
-              success: false,
-              error:
-                "Free audit limit reached. You can run 2 free audits per day. Please log in or upgrade to continue.",
-            },
-            { status: 429 }
-          )
-        );
+if (isFreeAudit) {
+  return withSecurityHeaders(
+    NextResponse.json(
+      {
+        success: false,
+        error:
+          "Free audits are no longer available. Start a 7-day trial to run complete audits.",
+      },
+      {
+        status: 410,
       }
-    }
+    )
+  );
+}
 
     const cookieStore = await cookies();
     const token = cookieStore.get("stratiq_session")?.value;
@@ -620,8 +604,8 @@ if (permittedReportTypes.length === 0) {
 
 /*
  * Authenticated audits use the real user ID.
- * A legacy free audit receives a temporary identity
- * based on its client IP.
+ * Legacy unauthenticated requests receive a temporary identity
+ * based on the trusted client IP.
  */
 const auditOwnerIdentity =
   user?.id ||
@@ -2336,7 +2320,7 @@ aiVisibility,
                 : promoAccess
                   ? "Promotional full audit completed"
                   : isFreeAudit
-                    ? "Free audit completed"
+                    ? "Legacy unauthenticated audit completed"
                     : "Paid audit completed",
         },
       });

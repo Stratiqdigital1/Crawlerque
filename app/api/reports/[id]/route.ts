@@ -7,6 +7,15 @@ import { reconcileAuditReport } from "@/lib/audit-reconciliation";
 import { canReviewAuditReports } from "@/lib/permissions";
 import { applyApprovedReviewSnapshot } from "@/lib/report-review";
 
+function privateNoStore(response: NextResponse) {
+  response.headers.set(
+    "Cache-Control",
+    "private, no-store, max-age=0, must-revalidate"
+  );
+  response.headers.set("Pragma", "no-cache");
+  return withSecurityHeaders(response);
+}
+
 async function getUserFromCookie() {
   const cookieStore = await cookies();
   const token = cookieStore.get(
@@ -181,7 +190,7 @@ export async function GET(
           )
         : null;
 
-    return withSecurityHeaders(
+    return privateNoStore(
       NextResponse.json({
         success: true,
         report: {
@@ -232,7 +241,7 @@ export async function GET(
         {
           success: false,
           error:
-            "Failed to load report",
+            "The report could not be loaded. Please try again.",
         },
         {
           status: 500,

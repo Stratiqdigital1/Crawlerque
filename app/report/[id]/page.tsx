@@ -6,6 +6,12 @@ import {
   buildSmartRecommendations,
   normalizeAuditData,
 } from "@/lib/audit-normalizer";
+import {
+  formatCompactNumber,
+} from "@/lib/report-format";
+import {
+  getPublicErrorMessage,
+} from "@/lib/public-error";
 
 export default function ReportDetailPage({
   params,
@@ -42,9 +48,10 @@ export default function ReportDetailPage({
         setReview(json.report?.review || null);
       } catch (loadError) {
         setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Failed to load report. Please check your connection and try again."
+          getPublicErrorMessage(
+            loadError,
+            "The report could not be loaded. Please check your connection and try again."
+          )
         );
       } finally {
         setLoading(false);
@@ -85,7 +92,7 @@ export default function ReportDetailPage({
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#0A0A0A] p-8 text-white">
+      <main aria-busy="true" className="min-h-screen bg-[#0A0A0A] p-8 text-white">
         Loading report...
       </main>
     );
@@ -670,7 +677,7 @@ function Notice({
         };
 
   return (
-    <div className={`mb-6 rounded-2xl border p-5 ${classes.wrap}`}>
+    <div role="status" aria-live="polite" className={`mb-6 rounded-2xl border p-5 ${classes.wrap}`}>
       <p className={`font-semibold ${classes.title}`}>{title}</p>
       <p className={`mt-2 text-sm leading-6 ${classes.body}`}>{children}</p>
     </div>
@@ -703,7 +710,5 @@ function EmptyText({ text }: { text: string }) {
 }
 
 function formatNumber(value: any) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return "N/A";
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(number);
+  return formatCompactNumber(value, "N/A");
 }

@@ -66,6 +66,11 @@ function cleanText(
   )
     .replace(/\u0000/g, "")
     .replace(/\r\n/g, "\n")
+    .replace(/â€”/g, "—")
+    .replace(/â€“/g, "–")
+    .replace(/â€¦/g, "…")
+    .replace(/â†’/g, "→")
+    .replace(/Â·/g, "·")
     .trim();
 
   return text.slice(0, maxLength);

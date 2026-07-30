@@ -12,15 +12,17 @@ export function normalizeAuditData(report: any) {
     report?.unifiedOverview?.overallScore,
   ]);
 
-  const mobileScore =
-    toNumber(report?.pageSpeed?.mobile?.score) ||
-    toNumber(report?.performance?.mobileScore) ||
-    toNumber(report?.coreWebVitals?.mobileScore);
+  const mobileScore = firstNumber([
+    report?.pageSpeed?.mobile?.score,
+    report?.performance?.mobileScore,
+    report?.coreWebVitals?.mobileScore,
+  ]);
 
-  const desktopScore =
-    toNumber(report?.pageSpeed?.desktop?.score) ||
-    toNumber(report?.performance?.desktopScore) ||
-    toNumber(report?.coreWebVitals?.desktopScore);
+  const desktopScore = firstNumber([
+    report?.pageSpeed?.desktop?.score,
+    report?.performance?.desktopScore,
+    report?.coreWebVitals?.desktopScore,
+  ]);
 
 const aiScore = firstNumber([
   report?.aiScore,
@@ -154,7 +156,7 @@ technicalCrawl: getTechnicalCrawl(report),
 
     traffic: {
       monthly: traffic,
-      daily: traffic ? Math.round(traffic / 30) : null,
+      daily: traffic === null ? null : Math.round(traffic / 30),
       keywordCount,
       confidence:
         report?.traffic?.confidence ||

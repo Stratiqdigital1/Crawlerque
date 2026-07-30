@@ -3,13 +3,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   Search, Sparkles, FileText, FileSearch, KeyRound, TrendingUp,
   Swords, Link2, Lightbulb, ScanLine, Globe, BarChart3, MapPin, Bot,
 } from "lucide-react";
 
 /* ── MODULE DATA ─────────────────────────────────────────────────────── */
-/* 3 flagship modules ("famous for") + 9 supporting modules */
+/* 3 flagship capabilities plus supporting audit capabilities. */
 const FAMOUS_FOR: { t: string; d: string; href: string; Icon: any }[] = [
   { t: "SEO Audit", d: "Our flagship modular website audit", href: "/#modules", Icon: Search },
   { t: "AI Search Visibility", d: "See if ChatGPT, Claude & Gemini recommend you", href: "/ai-search-visibility", Icon: Sparkles },
@@ -43,18 +44,48 @@ const links: [string, string][] = [
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--cq-line-soft)] bg-[var(--cq-ink)]/95 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8">
-        <a href="/" className="flex items-center gap-3">
-          <img src="/logo-full.png" alt="Crawler Que" className="h-7 w-auto" />
-        </a>
+        <Link
+  href="/"
+  className="flex items-center gap-3"
+>
+  <img
+    src="/logo-full.png"
+    alt="Crawler Que"
+    className="h-7 w-auto"
+  />
+</Link>
 
         <nav className="hidden items-center gap-1 md:flex">
           {/* Features mega-menu */}
-          <div className="relative" onMouseEnter={() => setFeat(true)} onMouseLeave={() => setFeat(false)}>
-            <button className="flex items-center gap-1 rounded-lg px-4 py-2 text-[15px] font-medium text-[var(--cq-text-2)] transition-colors hover:bg-[var(--cq-surface)] hover:text-[var(--cq-text)]">
-              Features <span className={`text-xs transition-transform ${feat ? "rotate-180" : ""}`}>▾</span>
+          <div
+            className="relative"
+            onMouseEnter={() => setFeat(true)}
+            onMouseLeave={() => setFeat(false)}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) {
+                setFeat(false);
+              }
+            }}
+          >
+            <button
+              type="button"
+              aria-expanded={feat}
+              aria-haspopup="menu"
+              aria-controls="crawler-que-features-menu"
+              onClick={() => setFeat((value) => !value)}
+              onFocus={() => setFeat(true)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  setFeat(false);
+                  event.currentTarget.focus();
+                }
+              }}
+              className="flex items-center gap-1 rounded-lg px-4 py-2 text-[15px] font-medium text-[var(--cq-text-2)] transition-colors hover:bg-[var(--cq-surface)] hover:text-[var(--cq-text)]"
+            >
+              Features <span aria-hidden="true" className={`text-xs transition-transform ${feat ? "rotate-180" : ""}`}>▾</span>
             </button>
             {feat && (
-              <div className="absolute left-1/2 top-full w-[720px] -translate-x-1/2 pt-3">
+              <div id="crawler-que-features-menu" role="menu" aria-label="Crawler Que features" className="absolute left-1/2 top-full w-[720px] -translate-x-1/2 pt-3">
                 <div className="cq-card cq-frame overflow-hidden !rounded-none p-6 shadow-2xl">
                   <p className="cq-eyebrow cq-eyebrow--signal mb-3">We&apos;re famous for</p>
                   <div className="grid grid-cols-3 gap-3">
@@ -87,15 +118,27 @@ const links: [string, string][] = [
         </nav>
 
         <div className="flex items-center gap-3">
-          <a href="/#pricing" className="cq-btn cq-btn--primary hidden !py-2.5 md:inline-flex">Get started</a>
-          <button onClick={() => setOpen(!open)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--cq-line)] text-[var(--cq-text-2)] md:hidden">
+          <Link
+  href="/#pricing"
+  className="cq-btn cq-btn--primary hidden !py-2.5 md:inline-flex"
+>
+  Get started
+</Link>
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls="crawler-que-mobile-menu"
+            aria-label={open ? "Close navigation menu" : "Open navigation menu"}
+            onClick={() => setOpen(!open)}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--cq-line)] text-[var(--cq-text-2)] md:hidden"
+          >
             {open ? "✕" : "☰"}
           </button>
         </div>
       </div>
 
       {open && (
-        <div className="max-h-[80vh] overflow-y-auto border-t border-[var(--cq-line-soft)] bg-[var(--cq-surface)] px-5 py-5 md:hidden">
+        <div id="crawler-que-mobile-menu" className="max-h-[80vh] overflow-y-auto border-t border-[var(--cq-line-soft)] bg-[var(--cq-surface)] px-5 py-5 md:hidden">
           <p className="cq-eyebrow cq-eyebrow--signal mb-2">Features</p>
           {FAMOUS_FOR.map(({ t, href, Icon }) => (
             <a key={t} href={href} onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-lg px-4 py-2.5 text-[15px] font-semibold text-[var(--cq-text)] hover:text-[var(--cq-signal)]">
@@ -113,7 +156,13 @@ const links: [string, string][] = [
               {label}
             </a>
           ))}
-          <a href="/#pricing" className="cq-btn cq-btn--primary mt-3 w-full">Get started</a>
+          <Link
+  href="/#pricing"
+  onClick={() => setOpen(false)}
+  className="cq-btn cq-btn--primary mt-3 w-full"
+>
+  Get started
+</Link>
         </div>
       )}
       <div className="cq-scanline" />
@@ -129,7 +178,7 @@ const FOOTER_COLS: { title: string; links: [string, string][] }[] = [
   },
   {
     title: "Solutions",
-    links: [["/for-agencies", "For agencies"], ["/for-seo-teams", "For SEO teams"], ["/for-consultants", "For consultants"], ["/testimonials", "Testimonials"]],
+    links: [["/for-agencies", "For agencies"], ["/for-seo-teams", "For SEO teams"], ["/for-consultants", "For consultants"]],
   },
   {
     title: "Company",
@@ -147,9 +196,16 @@ export function SiteFooter() {
       <div className="mx-auto max-w-7xl">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
           <div>
-            <a href="/" className="flex items-center gap-3">
-              <img src="/logo-full.png" alt="Crawler Que" className="h-7 w-auto" />
-            </a>
+            <Link
+  href="/"
+  className="flex items-center gap-3"
+>
+  <img
+    src="/logo-full.png"
+    alt="Crawler Que"
+    className="h-7 w-auto"
+  />
+</Link>
             <p className="mt-4 text-sm leading-relaxed text-[var(--cq-text-3)]">
               AI website growth intelligence for agencies, consultants, and SEO teams.
             </p>

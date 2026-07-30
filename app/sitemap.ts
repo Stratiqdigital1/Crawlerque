@@ -23,7 +23,6 @@ export default async function sitemap(): Promise<
       "/for-agencies",
       "/for-seo-teams",
       "/for-consultants",
-      "/testimonials",
       "/affiliate-program",
       "/contact",
       "/changelog",

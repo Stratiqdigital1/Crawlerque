@@ -33,6 +33,14 @@ import {
   AUDIT_CRAWL_LIMIT_OPTIONS,
   AUDIT_LANGUAGE_OPTIONS,
 } from "@/lib/audit-scope";
+import {
+  formatCompactNumber,
+  formatCurrency,
+  formatPercentage,
+} from "@/lib/report-format";
+import {
+  getPublicErrorMessage,
+} from "@/lib/public-error";
 
 const PROMO_REPORT_TYPES = [
   "seo",
@@ -187,8 +195,10 @@ const pollOnPage = async (
         !json?.success
       ) {
         throw new Error(
-          json?.error ||
+          getPublicErrorMessage(
+            json,
             "Technical crawl status could not be loaded."
+          )
         );
       }
 
@@ -421,16 +431,16 @@ const pollOnPage = async (
 };
 
 const reportOptions = [
-  ["seo", "SEO"],
-  ["technical", "Technical"],
-  ["traffic", "Traffic"],
-  ["keywords", "Keywords"],
-  ["competitors", "Competitors"],
-  ["ai", "AI Visibility"],
-  ["backlinks", "Backlinks"],
+  ["seo", "SEO Intelligence"],
+  ["technical", "Technical SEO"],
+  ["traffic", "Traffic Intelligence"],
+  ["keywords", "Keyword Research"],
+  ["competitors", "Competitor Intelligence"],
+  ["ai", "AI Search Visibility"],
+  ["backlinks", "Backlink Authority"],
   ["recommendations", "Recommendations"],
   ["localSeo", "Local SEO"],
-  ["content", "Content"],
+  ["content", "Content Quality"],
 ];
 
 const toggleReportType = (type: string) => {
@@ -682,12 +692,12 @@ body: JSON.stringify({
       const startJson = await startRes.json();
 
 if (!startRes.ok || !startJson?.success) {
-        const errMsg = typeof startJson?.error === "string"
-          ? startJson.error
-          : startJson?.error?.message
-          ? startJson.error.message
-          : "Failed to start audit job. Please try again.";
-        throw new Error(errMsg);
+        throw new Error(
+          getPublicErrorMessage(
+            startJson,
+            "Failed to start the audit. Please try again."
+          )
+        );
       }
 
 const startedJobId =
@@ -754,12 +764,12 @@ body: JSON.stringify({
       const json = await res.json();
 
 if (!res.ok || json?.success === false) {
-  const errMsg = typeof json?.error === "string"
-    ? json.error
-    : json?.error?.message
-    ? json.error.message
-    : "Audit failed. Please try again.";
-  throw new Error(errMsg);
+  throw new Error(
+    getPublicErrorMessage(
+      json,
+      "The audit could not be completed. Please try again."
+    )
+  );
 }
 
 if (
@@ -897,12 +907,12 @@ if (
 await loadCurrentUser();
 } catch (e: any) {
   console.error(e);
-  const errMsg = typeof e?.message === "string"
-    ? e.message
-    : typeof e === "string"
-    ? e
-    : "Something went wrong while running the audit. Please try again.";
-  setError(errMsg);
+  setError(
+    getPublicErrorMessage(
+      e,
+      "Something went wrong while running the audit. Please try again."
+    )
+  );
   setAuditCurrentModule("Failed");
 
   trackAnalyticsEvent("audit_failed", {
@@ -958,8 +968,10 @@ const cancelAudit = async () => {
         !json?.success
       ) {
         throw new Error(
-          json?.error ||
+          getPublicErrorMessage(
+            json,
             "The audit could not be cancelled."
+          )
         );
       }
 
@@ -984,9 +996,10 @@ const cancelAudit = async () => {
       );
 
       setError(
-        cancelError instanceof Error
-          ? cancelError.message
-          : "The audit could not be cancelled."
+        getPublicErrorMessage(
+          cancelError,
+          "The audit could not be cancelled."
+        )
       );
     }
   } else {
@@ -1722,7 +1735,10 @@ const loadSavedReport = async (id: string) => {
 
     if (!res.ok || !json?.success) {
       throw new Error(
-        json?.error || "Failed to load report."
+        getPublicErrorMessage(
+          json,
+          "The saved report could not be loaded."
+        )
       );
     }
 
@@ -1911,8 +1927,10 @@ const loadSavedReport = async (id: string) => {
     );
 
     setError(
-      error?.message ||
-        "Failed to load saved report."
+      getPublicErrorMessage(
+        error,
+        "The saved report could not be loaded."
+      )
     );
   }
 };
@@ -1994,7 +2012,12 @@ const deleteReport = async (id: string) => {
     const json = await res.json();
 
     if (!res.ok || !json?.success) {
-      throw new Error(json?.error || "Failed to delete report.");
+      throw new Error(
+        getPublicErrorMessage(
+          json,
+          "The report could not be deleted."
+        )
+      );
     }
 
     setHistory((prev) => prev.filter((item) => item.id !== id));
@@ -2003,7 +2026,12 @@ const deleteReport = async (id: string) => {
     if (compareB?.id === id) setCompareB(null);
   } catch (error: any) {
     console.error("Report delete failed:", error);
-    setError(error?.message || "Failed to delete report.");
+    setError(
+      getPublicErrorMessage(
+        error,
+        "The report could not be deleted."
+      )
+    );
   }
 };
 const exportComparisonPDF = async () => {
@@ -2043,7 +2071,12 @@ const exportComparisonPDF = async () => {
       const json = await res.json();
 
       if (!res.ok || !json?.success) {
-        throw new Error(json?.error || "Failed to load comparison reports.");
+        throw new Error(
+          getPublicErrorMessage(
+            json,
+            "The comparison reports could not be loaded."
+          )
+        );
       }
 
       comparisonA = {
@@ -2058,7 +2091,12 @@ const exportComparisonPDF = async () => {
     }
   } catch (error: any) {
     console.error("Comparison load failed:", error);
-    setError(error?.message || "Failed to load comparison reports.");
+    setError(
+      getPublicErrorMessage(
+        error,
+        "The comparison reports could not be loaded."
+      )
+    );
     return;
   }
 
@@ -2305,20 +2343,12 @@ bg:      [11, 25, 41] as RGB,
   const n = (v: any): number | null => { const x = Number(v); return Number.isFinite(x) ? x : null; };
   const clamp = (v: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
 
-  const fmt = (v: any): string => {
-    const x = n(v); if (x === null) return "—";
-    if (x >= 1_000_000) return `${(x / 1_000_000).toFixed(1)}M`;
-    if (x >= 1_000)     return `${(x / 1_000).toFixed(1)}K`;
-    return String(Math.round(x));
-  };
+  const fmt = (v: any): string =>
+    formatCompactNumber(v, "—");
 
   // "$75.2K" instead of "75198.56722317677"
-  const fmtMoney = (v: any): string => {
-    const x = n(v); if (x === null) return "—";
-    if (x >= 1_000_000) return `$${(x / 1_000_000).toFixed(1)}M`;
-    if (x >= 1_000)     return `$${(x / 1_000).toFixed(1)}K`;
-    return `$${x.toFixed(2)}`;
-  };
+  const fmtMoney = (v: any): string =>
+    formatCurrency(v, "USD", "—");
 
   // Competition arrives as 0.0099999997-style floats on a 0–1 scale
   const fmtCompetition = (v: any): string => {
@@ -2326,7 +2356,7 @@ bg:      [11, 25, 41] as RGB,
     if (x <= 1) {
       const pct = Math.round(x * 100);
       const lvl = pct >= 67 ? "High" : pct >= 34 ? "Medium" : "Low";
-      return `${lvl} (${pct}%)`;
+      return `${lvl} (${formatPercentage(pct, 0, "—")})`;
     }
     return String(Math.round(x));
   };
@@ -2694,6 +2724,39 @@ y += rh;
     return (map[sec] || []).some(m => selectedModules.includes(m));
   };
 
+  const pdfSections = {
+    traffic: pdfShow("traffic"),
+    domainAnalytics: pdfShow("domainAnalytics"),
+    seo: pdfShow("seo"),
+    technical: pdfShow("technical"),
+    technicalCrawl:
+      pdfShow("technical") &&
+      Boolean(pdfData?.onPage),
+    ai:
+      pdfShow("ai") &&
+      Boolean(
+        pdfData?.aiSearchVisibility ||
+        pdfData?.aiVisibility
+      ),
+    competitors:
+      pdfShow("competitors") &&
+      Array.isArray(pdfData?.competitors) &&
+      pdfData.competitors.length > 0,
+    keywords: pdfShow("keywords") || pdfShow("labs"),
+    keywordResearch:
+      pdfShow("keywords") &&
+      Array.isArray(pdfData?.keywordResearch?.suggestions) &&
+      pdfData.keywordResearch.suggestions.length > 0,
+    serp: pdfShow("serp") && Boolean(pdfData?.serpData),
+    backlinks: pdfShow("backlinks") && Boolean(pdfData?.backlinks),
+    content: pdfShow("content"),
+    local:
+      pdfShow("local") &&
+      Array.isArray(pdfData?.businessData?.listings) &&
+      pdfData.businessData.listings.length > 0,
+    recommendations: pdfShow("recommendations"),
+  };
+
   // ── simpleList ────────────────────────────────────────────────────────
   const simpleList = (items: any[], empty = "No items available.") => {
     const safe = Array.isArray(items) ? items : [];
@@ -2754,46 +2817,46 @@ sub("From executive summary to action roadmap — everything your team needs to 
   const toc = [
     [tocN(),"Executive Snapshot","Reconciled scores, risks, opportunities, and confidence"],
     [tocN(),"Audit Methodology & Scope","URLs, market, language, device, search engine, and crawl limits"],
-    ...(pdfShow("traffic")
+    ...(pdfSections.traffic
       ? [[tocN(),"Organic Traffic Intelligence","Canonical modeled traffic and keyword footprint"]]
       : []),
-    ...(pdfShow("domainAnalytics")
+    ...(pdfSections.domainAnalytics
       ? [[tocN(),"Domain Analytics — Provider Signals","Separate provider metrics excluded from executive traffic"]]
       : []),
-    ...(pdfShow("seo")
+    ...(pdfSections.seo
       ? [[tocN(),"SEO Foundation","Resolved homepage metadata, headings, and ALT signals"]]
       : []),
-    ...(pdfShow("technical")
-      ? [
-          [tocN(),"Performance & Core Web Vitals","PageSpeed scores, LCP, CLS, FCP, and TBT"],
-          [tocN(),"Technical SEO Audit","Final crawl state, coverage, and page-level evidence"],
-        ]
+    ...(pdfSections.technical
+      ? [[tocN(),"Performance & Core Web Vitals","PageSpeed scores, LCP, CLS, FCP, and TBT"]]
       : []),
-    ...(pdfShow("ai")
+    ...(pdfSections.technicalCrawl
+      ? [[tocN(),"Technical SEO Audit","Final crawl state, coverage, and page-level evidence"]]
+      : []),
+    ...(pdfSections.ai
       ? [[tocN(),"AI Search Visibility","Unbranded prompts across ChatGPT, Claude, and Gemini"]]
       : []),
-    ...(pdfShow("competitors")
+    ...(pdfSections.competitors
       ? [[tocN(),"Competitor Intelligence","Threat scores, shared keywords, and evidence"]]
       : []),
-    ...(pdfShow("keywords") || pdfShow("labs")
+    ...(pdfSections.keywords
       ? [[tocN(),"Keyword Gap & Labs","Non-branded gaps, opportunities, and content ideas"]]
       : []),
-    ...(pdfShow("keywords") && pdfData?.keywordResearch?.suggestions?.length
+    ...(pdfSections.keywordResearch
       ? [[tocN(),"Keyword Research","Seed keyword suggestions and intent signals"]]
       : []),
-    ...(pdfShow("serp") && pdfData?.serpData
+    ...(pdfSections.serp
       ? [[tocN(),"SERP Rankings","Live Google rank positions per keyword"]]
       : []),
-    ...(pdfShow("backlinks") && pdfData?.backlinks
+    ...(pdfSections.backlinks
       ? [[tocN(),"Backlink Authority","Referring domains and backlink evidence"]]
       : []),
-    ...(pdfShow("content")
+    ...(pdfSections.content
       ? [[tocN(),"Content Quality","Audited-site content signals and evidence"]]
       : []),
-    ...(pdfShow("local") && pdfData?.businessData?.listings?.length
+    ...(pdfSections.local
       ? [[tocN(),"Local SEO","Business listings, ratings, and reviews"]]
       : []),
-    ...(pdfShow("recommendations")
+    ...(pdfSections.recommendations
       ? [[tocN(),"Recommendations","Prioritised actions from reconciled evidence"]]
       : []),
     [tocN(),"Action Roadmap","Issue-driven 30/60/90 day execution plan"],
@@ -2811,7 +2874,7 @@ sub("From executive summary to action roadmap — everything your team needs to 
     y+=9;
   });
   gap(5); divLine();
-  body_("Traffic, keyword, and AI visibility estimates are directional intelligence derived from keyword visibility and CTR modelling. They should not be read as exact analytics pdfData.");
+  body_("Traffic, keyword, and AI visibility estimates are directional intelligence derived from keyword visibility and CTR modelling. They should not be read as exact analytics data.");
 
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 01 — EXECUTIVE SNAPSHOT
@@ -2875,8 +2938,8 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 03 — ORGANIC TRAFFIC
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("traffic")){
-    secHdr(nextSec(),"Organic Traffic Intelligence","Modelled from ranked keyword visibility and CTR curves. Treat as directional organic visibility, not exact analytics pdfData.");
+  if(pdfSections.traffic){
+    secHdr(nextSec(),"Organic Traffic Intelligence","Modelled from ranked keyword visibility and CTR curves. Treat as directional organic visibility, not exact analytics data.");
     kpiRow([
       {label:"Est. Monthly Visits",value:fmt(pdfData?.traffic?.rawMonthly??pdfData?.traffic?.monthly),sub:`Confidence: ${cl(normalized.traffic.confidence)}`,col:C.accent},
       {label:"Daily Visits",value:fmt(normalized.traffic.daily),sub:"Monthly ÷ 30",col:C.blue},
@@ -2913,7 +2976,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 04 — DOMAIN ANALYTICS
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("domainAnalytics")){
+  if(pdfSections.domainAnalytics){
     secHdr(nextSec(),"Domain Analytics — Provider Signals","Separate organic and paid provider signals. These figures do not replace the canonical Traffic Intelligence estimate.");
     kpiRow([
       {label:"Organic Keywords",value:fmt(pdfData?.domainAnalytics?.organicKeywords),col:C.accent},
@@ -2932,13 +2995,13 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 05 — SEO FOUNDATION
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("seo")){
+  if(pdfSections.seo){
     secHdr(nextSec(),"SEO Foundation Audit","Core SEO elements: metadata, heading structure, alt text, and basic on-page signals.");
     kpiRow([
       {label:"SEO Score",value:`${cl(String(pdfData?.seoScore??"—"))}/100`,sub:sLbl(pdfData?.seoScore),col:sCol(pdfData?.seoScore)},
       {label:"UX Score",value:`${cl(String(pdfData?.uxScore??"—"))}/100`,sub:sLbl(pdfData?.uxScore),col:sCol(pdfData?.uxScore)},
-      {label:"Page Title",value:pdfData?.title?"Found":"Missing",sub:pdfData?.title?"Detected":"Not detected",col:pdfData?.title?C.accent:C.red},
-      {label:"Meta Description",value:pdfData?.description?"Found":"Missing",sub:pdfData?.description?"Detected":"Not detected",col:pdfData?.description?C.accent:C.red},
+      {label:"Page Title",value:normalized.seo.title?"Found":"Missing",sub:normalized.seo.title?"Detected":"Not detected",col:normalized.seo.title?C.accent:C.red},
+      {label:"Meta Description",value:normalized.seo.metaDescription?"Found":"Missing",sub:normalized.seo.metaDescription?"Detected":"Not detected",col:normalized.seo.metaDescription?C.accent:C.red},
     ]);
     secTitle("On-Page SEO Check");
     tbl(["Element","Status","Recommendation"],[
@@ -2947,13 +3010,13 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
       {col1:"H1 Heading",col2:cl(normalized.seo.h1,"Not detected"),col3:"One clear H1 defining main topic or offer"},
       {col1:"Image ALT Text",col2:cl(normalized.seo.missingAlt,"Not checked"),col3:"Descriptive ALT on all important images"},
     ],[38,60,CW-98]);
-    if(pdfData?.title){
+    if(normalized.seo.title){
       secTitle("Detected Page Title");
-      hiBox("Page Title",cl(pdfData.title),"blue");
+      hiBox("Page Title",cl(normalized.seo.title),"blue");
     }
-    if(pdfData?.description){
+    if(normalized.seo.metaDescription){
       secTitle("Detected Meta Description");
-      hiBox("Meta Description",cl(pdfData.description),"blue");
+      hiBox("Meta Description",cl(normalized.seo.metaDescription),"blue");
     }
     if(pdfData?.issues?.length){
 
@@ -2966,7 +3029,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 06 — PERFORMANCE & CORE WEB VITALS
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("technical")){
+  if(pdfSections.technical){
     secHdr(nextSec(),"Performance & Core Web Vitals","PageSpeed scores and Core Web Vitals from Google PageSpeed Insights API.");
     const mob=pdfData?.pageSpeed?.mobile||{}, dsk=pdfData?.pageSpeed?.desktop||{};
     kpiRow([
@@ -2991,7 +3054,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 07 — AI VISIBILITY
   // ════════════════════════════════════════════════════════════════════
-    if(pdfShow("ai")&&(pdfData?.aiSearchVisibility||pdfData?.aiOptimization||pdfData?.aiVisibility)){
+    if(pdfSections.ai){
     secHdr(nextSec(),"AI Search Visibility & GEO Readiness","Brand discoverability in AI-generated responses, generative search, and answer engines.");
     // 🆕 LIVE AI MODEL VISIBILITY (ChatGPT, Claude, Gemini)
     if (pdfData?.aiSearchVisibility) {
@@ -3055,16 +3118,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
       {col1:"Confidence",col2:aiConf,col3:"Reliability of AI visibility measurement"},
       {col1:"Methodology",col2:"Unbranded category prompts",col3:"Brand-named probes are evidence only and excluded from scoring"},
     ],[42,35,CW-77]);
-if(pdfData?.aiOptimization?.models?.length){
-      secTitle("Model-Level Results");
-      tblWrap(["Model","Mentioned","Response Snippet"],
-        pdfData.aiOptimization.models.slice(0,10).map((m:any)=>({
-          col1:cl(m.model),
-          col2:m.mentioned?"Yes":"No",
-          col3:m.responseSnippet&&m.responseSnippet!=="{}"?cl(m.responseSnippet):"No response",
-        })),[38,24,CW-62],4);
-    }
-    const opportunity=pdfData?.aiSearchVisibility
+const opportunity=pdfData?.aiSearchVisibility
       ? aiMent===0
         ? "The brand was not mentioned across the scored unbranded category prompts. Improve entity signals, trusted citations, category content, and topical authority."
         : aiConf.toLowerCase()==="low"
@@ -3086,7 +3140,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 08 — COMPETITOR INTELLIGENCE
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("competitors")&&pdfData?.competitors?.length){
+  if(pdfSections.competitors){
     secHdr(nextSec(),"Competitor Threat Intelligence","Domains capturing organic visibility through stronger content, authority, or keyword coverage.");
     kpiRow([
       {label:"Competitors Found",value:String(pdfData.competitors.length),sub:"Organic overlap",col:C.accent},
@@ -3109,7 +3163,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 09 — KEYWORD GAP & LABS
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("keywords")||pdfShow("labs")){
+  if(pdfSections.keywords){
     secHdr(nextSec(),"Keyword Gap & SEO Labs Intelligence","Missing keywords competitors rank for, plus ranked keyword intelligence from Crawler Que Labs.");
     if(pdfData?.dataforseo?.keywordGap){
       kpiRow([
@@ -3160,7 +3214,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 10 — KEYWORD RESEARCH
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("keywords")&&pdfData?.keywordResearch?.suggestions?.length){
+  if(pdfSections.keywordResearch){
     secHdr(nextSec(),"Keyword Research","Seed keyword suggestions from Crawler Que Keyword Suggestions API with intent and CPC signals.");
     kpiRow([
       {label:"Seed Keyword",value:cl(pdfData?.keywordResearch?.seedKeyword),col:C.accent},
@@ -3178,7 +3232,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 11 — SERP RANKINGS
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("serp")&&pdfData?.serpData){
+  if(pdfSections.serp){
     secHdr(nextSec(),"Live SERP Rankings","Google rank positions checked by Crawler Que SERP API for tracked keywords.");
     kpiRow([
       {label:"Keywords Checked",value:cl(String(pdfData?.serpData?.checkedKeywords??"—")),col:C.accent},
@@ -3199,7 +3253,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 12 — BACKLINK AUTHORITY
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("backlinks")&&pdfData?.backlinks){
+  if(pdfSections.backlinks){
     secHdr(nextSec(),"Backlink Authority & Trust Signals","Domain trust, referring domains, and top backlink sources from Crawler Que Backlinks API.");
     kpiRow([
       {label:"Backlink Rank",value:cl(String(pdfData?.dataforseo?.backlinkRank??normalized.backlinks.rank??"—")),sub:"Authority signal",col:sCol(n(normalized.backlinks.rank))},
@@ -3228,13 +3282,13 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
         normalized.backlinks.samples.slice(0,10).map((l:any)=>({col1:cl(l.anchor,"No anchor"),col2:cl(l.source,"—"),col3:cl(l.target,"—")})),
         [42,68,CW-110]);
     }
-    hiBox("Authority Insight",pdfData?.backlinks?.referringDomains?`${domain} has ${cl(String(pdfData.backlinks.referringDomains))} referring domains and ${cl(String(pdfData.backlinks.backlinks??"unknown"))} total backlinks. Focus on earning quality industry mentions and relevant authority links.`:"Data not available from Crawler Que Backlinks API.","blue");
+    hiBox("Authority Insight",pdfData?.backlinks?.referringDomains?`${domain} has ${cl(String(pdfData.backlinks.referringDomains))} referring domains and ${cl(String(pdfData.backlinks.backlinks??"unknown"))} total backlinks. Focus on earning quality industry mentions and relevant authority links.`:"No verified backlink data was returned for this audit.","blue");
   }
 
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 13 — TECHNICAL SEO AUDIT
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("technical")&&pdfData?.onPage){
+  if(pdfSections.technicalCrawl){
     secHdr(nextSec(),"Technical SEO Audit","OnPage crawl status, page-level issues, broken links, and crawl signals from Crawler Que OnPage API.");
     kpiRow([
       {label:"Pages Discovered",value:fmt(pdfData?.onPage?.discoveredPages),col:C.blue},
@@ -3278,7 +3332,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 14 — CONTENT QUALITY
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("content")){
+  if(pdfSections.content){
     secHdr(nextSec(),"First-Party Content Quality","Only pages from the audited domain are scored. External pages are excluded from this module.");
     kpiRow([
       {label:"Pages Requested",value:fmt(pdfData?.contentAnalysis?.requestedPages),col:C.blue},
@@ -3309,7 +3363,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 15 — LOCAL SEO
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("local")&&pdfData?.businessData?.listings?.length){
+  if(pdfSections.local){
     secHdr(nextSec(),"Local SEO & Business Listings","Business listing visibility, ratings, and review signals from Crawler Que Business Data API.");
     kpiRow([
       {label:"Listings Found",value:fmt(pdfData?.businessData?.listings?.length),col:C.accent},
@@ -3327,7 +3381,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 16 — RECOMMENDATIONS
   // ════════════════════════════════════════════════════════════════════
-  if(pdfShow("recommendations")){
+  if(pdfSections.recommendations){
     secHdr(nextSec(),"Evidence-Backed Recommendations","Prioritised actions tied to source modules, affected URLs, validation status, and supporting evidence.");
     const canonicalRecommendations = Array.isArray(pdfData?.recommendations)
       ? pdfData.recommendations.slice(0, 10)
@@ -3955,6 +4009,9 @@ const renderReviewItems = (
 
   <div className="grid gap-4 lg:grid-cols-[1fr_360px_auto_auto] lg:items-stretch">
   <input
+    aria-label="Website URL to audit"
+    inputMode="url"
+    autoComplete="url"
     value={url}
     disabled={loading}
     onChange={(e) => setUrl(e.target.value)}
@@ -4025,6 +4082,7 @@ const renderReviewItems = (
       Custom AI Prompts (optional) — One per line, maximum 5.
     </p>
     <textarea
+      aria-label="Custom AI prompts"
       value={customPrompts}
       onChange={(e) => setCustomPrompts(e.target.value)}
       disabled={loading}
@@ -4036,6 +4094,8 @@ const renderReviewItems = (
 )}
 
   <button
+    type="button"
+    aria-label="Run the selected website audit modules"
     onClick={() => {
       void runAudit();
     }}
@@ -4046,6 +4106,8 @@ const renderReviewItems = (
   </button>
 
 <button
+  type="button"
+  aria-label="Export the finalized report as PDF"
   onClick={exportPDF}
   disabled={
     !data ||
@@ -5064,7 +5126,7 @@ value={
         </div>
       ) : (
         <p className="text-sm text-[#8A8A8A]">
-          Data not available from connected sources.
+          No verified source data was returned for this section.
         </p>
       )}
     </div>
@@ -5100,8 +5162,8 @@ value={
       <>
         <div className="mb-6 grid gap-4 md:grid-cols-4">
           {[
-            ["Crawler Que", data?.moduleStatus?.dataforseo],
-            ["AI Optimization", data?.moduleStatus?.aiOptimization],
+            ["SEO & Traffic Data", data?.moduleStatus?.dataforseo],
+            ["AI Search Visibility", data?.moduleStatus?.aiOptimization],
             ["SERP API", data?.moduleStatus?.serp],
             ["OnPage API", data?.moduleStatus?.onPage],
             ["Backlinks API", data?.backlinks ? "available" : "not_available"],
@@ -5111,8 +5173,8 @@ value={
           ]
           .filter(([name]: any) => {
             const keyMap: any = {
-              "Crawler Que": "traffic",
-              "AI Optimization": "ai",
+              "SEO & Traffic Data": "traffic",
+              "AI Search Visibility": "ai",
               "SERP API": "serp",
               "OnPage API": "technical",
               "Backlinks API": "backlinks",
@@ -5139,14 +5201,14 @@ value={
               : "bg-red-500";
 
             const statusText = isOk
-              ? "Connected Successfully"
+              ? "Completed"
               : isPartial
               ? "Partial data returned"
               : isSkipped
               ? "Not selected for this audit"
               : isPending
-              ? "Pending or not available"
-              : "Data not available";
+              ? "Pending"
+              : "No verified data returned";
 
             const borderColor = isOk
               ? "border-[#C5FF3D]/15"
@@ -5158,7 +5220,7 @@ value={
               <div key={i} className={`rounded-2xl border ${borderColor} bg-[#111] p-4`}>
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-white">{name}</p>
-                  <div className={`h-2.5 w-2.5 rounded-full ${dotColor}`} />
+                  <div aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${dotColor}`} />
                 </div>
                 <p className={`mt-2 text-xs ${isSkipped ? "text-[#555]" : "text-[#8A8A8A]"}`}>
                   {statusText}
@@ -5500,7 +5562,7 @@ value={
             ))}
           </div>
         ) : (
-          <p className="text-sm text-slate-500">Data not available from Crawler Que Labs.</p>
+          <p className="text-sm text-slate-500">No verified SEO Labs data was returned for this audit.</p>
         )}
       </div>
 
@@ -5687,7 +5749,7 @@ value={
       <p className="text-sm leading-6 text-slate-600">
         {data?.domainAnalytics
           ? "This section shows the domain’s organic and paid visibility signals from Crawler Que. Use this to compare whether the website is relying more on organic discovery or paid acquisition."
-          : "Data not available from Crawler Que Domain Analytics."}
+          : "No verified domain analytics signal was returned for this audit."}
       </p>
     </div>
   </Section>
@@ -5765,7 +5827,7 @@ value={
         </ul>
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available from recommendation source.
+          No evidence-backed recommendations were returned for this audit.
         </p>
       )}
     </div>
@@ -6086,8 +6148,8 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
     )}
 
     <div className="mb-6 rounded-2xl border border-[#C5FF3D]/25 bg-[#0d1500] p-5">
-      <h3 className="font-semibold text-slate-950">AI Opportunity Insight</h3>
-      <p className="mt-2 text-sm leading-6 text-slate-700">
+      <h3 className="font-semibold text-white">AI Opportunity Insight</h3>
+      <p className="mt-2 text-sm leading-6 text-[#B7C59A]">
         {data?.aiSearchVisibility
           ? Number(data.aiSearchVisibility.brandMentionCount || 0) === 0
             ? "The brand was not mentioned across the scored unbranded category prompts. Build stronger entity signals, trusted citations, category content, and topical authority."
@@ -6098,44 +6160,8 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
       </p>
     </div>
 
-    <div className="grid gap-4">
-      {data?.aiOptimization?.models?.length > 0 ? (
-        data.aiOptimization.models.map((item: any, i: number) => (
-<div
-            key={i}
-            className="rounded-2xl border border-[#222] bg-[#111] p-5"
-          >
-            <div className="mb-3 flex items-center justify-between gap-4">
-              <p className="font-semibold text-white">{item.model}</p>
-
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  item.mentioned
-                    ? "bg-green-50 text-green-600"
-                    : "bg-red-50 text-red-600"
-                }`}
-              >
-                {item.mentioned ? "Mentioned" : "Not Mentioned"}
-              </span>
-            </div>
-
-            <p className="text-sm leading-6 text-slate-600 break-words">
-                            {item.responseSnippet && item.responseSnippet !== "{}"
-  ? String(item.responseSnippet).replace(/\*\*|__|`/g, "").trim()
-      .replace(/\\n/g, " ")
-      .replace(/\s+/g, " ")
-      .slice(0, 700)
-  : item.error && item.error !== "{}"
-  ? item.error
-  : "No canonical model response snippet was available."}
-            </p>
-          </div>
-        ))
-      ) : (
-        <p className="text-sm text-slate-500">
-          Data not available from AI Optimization API.
-        </p>
-      )}
+    <div className="rounded-2xl border border-[#222] bg-[#111] p-5 text-sm leading-6 text-[#A0A0A0]">
+      Model-level evidence is shown from the canonical AI Search Visibility results above. Legacy AI Optimization responses are excluded from the report.
     </div>
     </Section>
   ) : (
@@ -6252,7 +6278,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
         </div>
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available from Crawler Que keyword gap analysis.
+          No verified keyword-gap opportunities were returned for this audit.
         </p>
       )}
 
@@ -6510,10 +6536,10 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
                       {i + 1}. {k.keyword || "Unknown keyword"}
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
-                      CPC: {k.cpc || "Data not available"} | Competition:{" "}
+                      CPC: {formatCurrency(k.cpc, "USD", "Not available")} | Competition:{" "}
 {Number.isFinite(Number(k.competition))
-  ? `${Math.round(Number(k.competition) * 100)}%`
-  : "Data not available"} | Intent:{" "}
+  ? formatPercentage(Math.round(Number(k.competition) * 100), 0, "Not available")
+  : "Not available"} | Intent:{" "}
 {k.intent || "N/A"} | KD: {k.difficulty || "N/A"}
                     </p>
                   </div>
@@ -6547,7 +6573,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
         </div>
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available from Crawler Que Keyword Suggestions API.
+          No verified keyword suggestions were returned for this audit.
         </p>
       )}
     </div>
@@ -6573,7 +6599,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
       <p className="text-sm leading-6 text-slate-600">
         {data?.backlinks?.referringDomains
           ? `This domain has ${data.backlinks.referringDomains} referring domains and ${data.backlinks.backlinks} backlinks. Growth should focus on quality industry mentions and relevant authority links.`
-          : "Data not available from Crawler Que Backlinks API."}
+          : "No verified backlink data was returned for this audit."}
       </p>
     </div>
 
@@ -6610,7 +6636,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
         </div>
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available from Crawler Que Backlinks API.
+          No verified backlink data was returned for this audit.
         </p>
       )}
     </div>
@@ -6711,7 +6737,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
         </div>
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available from Crawler Que SERP API.
+          No verified SERP ranking data was returned for this audit.
         </p>
       )}
     </div>
@@ -6771,7 +6797,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h3 className="mb-3 font-semibold text-slate-950">Crawl Status</h3>
         <p className="text-sm leading-6 text-slate-600">
-          {data?.onPage?.crawlStatus || "Data not available from Crawler Que OnPage API."}
+          {data?.onPage?.crawlStatus || "No finalized technical crawl data was returned for this audit."}
         </p>
         <p className="mt-2 text-xs text-slate-500">
           Confidence: {data?.onPage?.confidence || data?.reconciliation?.technical?.confidence || "unknown"}
@@ -6967,14 +6993,14 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
                 <span>•</span>
                 <span>Estimated Traffic: {k.traffic || "Data not available"}</span>
                 <span>•</span>
-                <span>CPC: {k.cpc || "Data not available"}</span>
+                <span>CPC: {formatCurrency(k.cpc, "USD", "Not available")}</span>
               </div>
             </div>
           ))}
         </div>
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available from Crawler Que organic keyword source.
+          No verified organic keyword data was returned for this audit.
         </p>
       )}
     </div>
@@ -7096,7 +7122,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
         })
       ) : (
         <p className="text-sm text-slate-500">
-          Data not available from Crawler Que competitor source.
+          No verified competitor data was returned for this audit.
         </p>
       )}
     </div>
@@ -7122,7 +7148,7 @@ const MODULE_STATUS_UI: Record<string, { label: string; cls: string }> = {
   partial:   { label: "Partial",   cls: "border-amber-400/40 bg-amber-400/10 text-amber-300" },
   failed:    { label: "Failed",    cls: "border-red-400/40 bg-red-400/10 text-red-300" },
   available: { label: "No data",   cls: "border-[var(--cq-line)] bg-[var(--cq-surface-2)] text-[var(--cq-text-2)]" },
-  pending_or_not_available: { label: "Pending", cls: "border-[var(--cq-line)] bg-[var(--cq-surface-2)] text-[var(--cq-text-2)]" },
+  pending_or_not_available: { label: "Unavailable", cls: "border-[var(--cq-line)] bg-[var(--cq-surface-2)] text-[var(--cq-text-2)]" },
 };
 const moduleStatusUI = (s: any) =>
   MODULE_STATUS_UI[String(s || "").toLowerCase()] ??
@@ -7762,8 +7788,10 @@ function MetricCard({
         value?.title ||
         value?.name ||
         value?.value ||
-        "Data available"
-      : String(value);
+        "Verified data available"
+      : typeof value === "number"
+        ? formatCompactNumber(value, "--")
+        : String(value);
 
   const numericScore =
     typeof score === "number"
@@ -7783,6 +7811,9 @@ function MetricCard({
 
             {tooltip && (
               <span
+                role="note"
+                tabIndex={0}
+                aria-label={tooltip}
                 title={tooltip}
                 className="cursor-help rounded-full border border-[var(--cq-line)] bg-[var(--cq-surface-2)] px-1.5 py-0.5 text-[11px] font-bold text-[var(--cq-text-2)]"
               >
