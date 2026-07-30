@@ -2377,8 +2377,95 @@ bg:      [11, 25, 41] as RGB,
     return s || fb;
   };
 
-  const n = (v: any): number | null => { const x = Number(v); return Number.isFinite(x) ? x : null; };
+  const n = (v: any): number | null => {
+    if (v === null || v === undefined || v === "") return null;
+    const x = Number(v);
+    return Number.isFinite(x) ? x : null;
+  };
   const clamp = (v: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
+
+  const hasMetricValue = (value: any): boolean => {
+    if (value === null || value === undefined) return false;
+    const normalizedValue = String(value).trim().toLowerCase();
+    return !["", "--", "—", "n/a", "na", "null", "undefined"].includes(normalizedValue);
+  };
+
+  const hasPageSpeedEvidence = (snapshot: any): boolean => {
+    if (!snapshot || typeof snapshot !== "object") return false;
+
+    const hasReturnedMetric = [
+      snapshot?.lcp,
+      snapshot?.fcp,
+      snapshot?.cls,
+      snapshot?.tbt,
+      snapshot?.speedIndex,
+    ].some(hasMetricValue);
+
+    const score = n(snapshot?.score);
+    return hasReturnedMetric || (score !== null && score > 0);
+  };
+
+  const mobileSnapshot = pdfData?.pageSpeed?.mobile || {};
+  const desktopSnapshot = pdfData?.pageSpeed?.desktop || {};
+  const mobilePageSpeedAvailable = hasPageSpeedEvidence(mobileSnapshot);
+  const desktopPageSpeedAvailable = hasPageSpeedEvidence(desktopSnapshot);
+  const mobilePerformanceScore = mobilePageSpeedAvailable
+    ? n(mobileSnapshot?.score)
+    : null;
+  const desktopPerformanceScore = desktopPageSpeedAvailable
+    ? n(desktopSnapshot?.score)
+    : null;
+  const configuredPrimaryDevice =
+    String(
+      pdfData?.auditConfig?.device ||
+        pdfData?.searchContext?.device ||
+        "mobile"
+    ).toLowerCase() === "desktop"
+      ? "desktop"
+      : "mobile";
+  const primaryPerformanceDevice =
+    configuredPrimaryDevice === "desktop" && desktopPerformanceScore !== null
+      ? "desktop"
+      : configuredPrimaryDevice === "mobile" && mobilePerformanceScore !== null
+        ? "mobile"
+        : desktopPerformanceScore !== null
+          ? "desktop"
+          : mobilePerformanceScore !== null
+            ? "mobile"
+            : null;
+  const primaryPerformanceScore =
+    primaryPerformanceDevice === "desktop"
+      ? desktopPerformanceScore
+      : primaryPerformanceDevice === "mobile"
+        ? mobilePerformanceScore
+        : null;
+  const primaryPerformanceLabel = primaryPerformanceDevice
+    ? `${primaryPerformanceDevice === "desktop" ? "Desktop" : "Mobile"} Performance`
+    : "Performance";
+
+  const getPdfActionText = (item: any): string => {
+    if (typeof item === "string") return item;
+
+    return [
+      item?.title,
+      item?.detail,
+      item?.description,
+      item?.recommendation,
+      item?.action,
+      ...(Array.isArray(item?.evidence) ? item.evidence : []),
+    ]
+      .filter(Boolean)
+      .join(" ");
+  };
+
+  const isValidPdfAction = (item: any): boolean => {
+    const actionText = getPdfActionText(item);
+    const isMobilePerformanceAction =
+      /mobile/i.test(actionText) &&
+      /(pagespeed|performance|loading|lcp|core web vitals)/i.test(actionText);
+
+    return mobilePageSpeedAvailable || !isMobilePerformanceAction;
+  };
 
   const fmt = (v: any): string =>
     formatCompactNumber(v, "—");
@@ -2798,11 +2885,63 @@ y += rh;
   const simpleList = (items: any[], empty = "No items available.") => {
     const safe = Array.isArray(items) ? items : [];
     if (!safe.length) { body_(empty); return; }
+
     safe.slice(0, 10).forEach((item: any, i: number) => {
-      const t = cl(item?.title || item?.issue || item?.keyword || item?.domain || `Item ${i + 1}`);
-      const d = cl(item?.detail || item?.description || item?.recommendation || item?.action || item?.summary || "Review this item.");
-      const imp = String(item?.impact || "Medium").toLowerCase();
-      actCard(t, item?.impact || "Medium", item?.timeline || "30 days", d, imp.includes("high") ? "high" : imp.includes("low") ? "low" : "medium");
+      const title = cl(
+        item?.title ||
+          item?.issue ||
+          item?.keyword ||
+          item?.domain ||
+          `Item ${i + 1}`
+      );
+
+      const rawImpact = String(
+        item?.severity ||
+          item?.priority ||
+          item?.impact ||
+          "Medium"
+      ).trim();
+
+      const impactLabel = /critical|high/i.test(rawImpact)
+        ? "High"
+        : /low/i.test(rawImpact)
+          ? "Low"
+          : "Medium";
+
+      const descriptiveImpact =
+        item?.impact &&
+        !/^(critical|high|medium|low)$/i.test(String(item.impact).trim())
+          ? item.impact
+          : null;
+
+      const detailParts = [
+        item?.detail,
+        item?.description,
+        descriptiveImpact,
+        item?.fix,
+        item?.recommendation,
+        item?.action,
+        item?.summary,
+      ]
+        .filter(Boolean)
+        .map((value: any) => cl(value, ""))
+        .filter(Boolean);
+
+      const detail = detailParts.length
+        ? Array.from(new Set(detailParts)).join(" Recommended action: ")
+        : "Review this item and validate the affected page.";
+
+      actCard(
+        title,
+        impactLabel,
+        item?.timeline || "0–30 days",
+        detail,
+        impactLabel === "High"
+          ? "high"
+          : impactLabel === "Low"
+            ? "low"
+            : "medium"
+      );
     });
   };
 
@@ -2829,16 +2968,87 @@ y += rh;
   doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(...C.muted); doc.text("AUDITED DOMAIN",ML+8,106);
   doc.setFont("helvetica","bold"); doc.setFontSize(17); doc.setTextColor(...C.white); doc.text(cl(domain),ML+8,118);
   doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(...C.muted); doc.text(`Generated: ${generatedDate}`,ML+8,126); doc.text(`Prepared by: ${brandName}`,ML+8,131);
-  // pills
-  let px=ML+8;
-  (selectedModules.length?selectedModules:["seo","traffic","ai","competitors"]).slice(0,7).forEach((m:string)=>{ px+=pill_(m,px,138)+2; });
-  // gauges
-  const gscores=[{l:"Overall",v:n(normalized.scores.overall)??0},{l:"SEO",v:n(normalized.scores.seo)??0},{l:"Speed",v:n(normalized.scores.ux??normalized.scores.mobile)??0},{l:"AI",v:n(normalized.scores.ai)??0}];
-  const gyY=160, ggap=CW/4;
-  gscores.forEach((gs,i)=>{ const gx=ML+i*ggap+ggap/2; gauge(gx,gyY+10,11,gs.v,sCol(gs.v)); doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.setTextColor(...C.muted); doc.text(gs.l.toUpperCase(),gx,gyY+25,{align:"center"}); });
+  // pills — wrap every selected module instead of clipping the final pill
+  const coverModuleLabels: Record<string, string> = {
+    seo: "SEO",
+    technical: "Technical SEO",
+    traffic: "Traffic",
+    keywords: "Keywords",
+    competitors: "Competitors",
+    ai: "AI Visibility",
+    backlinks: "Backlinks",
+    recommendations: "Recommendations",
+    localSeo: "Local SEO",
+    content: "Content",
+    serp: "SERP",
+  };
+  const coverModules = Array.from(
+    new Set(
+      selectedModules.length
+        ? selectedModules
+        : ["seo", "traffic", "ai", "competitors"]
+    )
+  );
+  let px = ML + 8;
+  let py = 138;
+  coverModules.forEach((moduleKey: string) => {
+    const moduleLabel = coverModuleLabels[moduleKey] || moduleKey;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6);
+    const safeLabel = ell(cl(moduleLabel), 40);
+    const estimatedAdvance =
+      Math.max(20, doc.getTextWidth(safeLabel.toUpperCase()) + 10) + 5;
+
+    if (px + estimatedAdvance > PW - MR - 4) {
+      px = ML + 8;
+      py += 9;
+    }
+
+    px += pill_(moduleLabel, px, py) + 2;
+  });
+
+  // gauges — use verified PageSpeed for the configured primary device
+  const gscores = [
+    { l: "Overall", v: n(normalized.scores.overall) },
+    { l: "SEO", v: n(normalized.scores.seo) },
+    {
+      l: primaryPerformanceDevice === "desktop"
+        ? "Desktop Speed"
+        : primaryPerformanceDevice === "mobile"
+          ? "Mobile Speed"
+          : "Speed",
+      v: primaryPerformanceScore,
+    },
+    { l: "AI", v: n(normalized.scores.ai) },
+  ];
+  const gyY = py + 22;
+  const ggap = CW / 4;
+  gscores.forEach((gs, i) => {
+    const gx = ML + i * ggap + ggap / 2;
+    const score = n(gs.v);
+
+    if (score === null) {
+      doc.setFillColor(24, 24, 24);
+      doc.circle(gx, gyY + 10, 11, "F");
+      doc.setFillColor(...C.bg);
+      doc.circle(gx, gyY + 10, 7.5, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6.5);
+      doc.setTextColor(...C.muted);
+      doc.text("N/A", gx, gyY + 12, { align: "center" });
+    } else {
+      gauge(gx, gyY + 10, 11, score, sCol(score));
+    }
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6);
+    doc.setTextColor(...C.muted);
+    doc.text(gs.l.toUpperCase(), gx, gyY + 25, { align: "center" });
+  });
+
   // tagline
   doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...C.muted);
-  doc.text(doc.splitTextToSize("This report translates technical audit data into clear business intelligence — what is working, what is at risk, and what to prioritise first.",CW),ML,200);
+  doc.text(doc.splitTextToSize("This report translates technical audit data into clear business intelligence — what is working, what is at risk, and what to prioritise first.",CW),ML,gyY + 40);
   // bottom bar
   doc.setFillColor(...C.card); doc.rect(0,PH-20,PW,20,"F"); doc.setFillColor(...C.accent); doc.rect(0,PH-1.5,PW,1.5,"F");
   doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(...C.muted); doc.text(`${brandName}  ·  ${tagline}`,ML,PH-8); doc.setTextColor(...C.accent); doc.text("Page 1",PW-MR,PH-8,{align:"right"});
@@ -2866,9 +3076,6 @@ sub("From executive summary to action roadmap — everything your team needs to 
     ...(pdfSections.technical
       ? [[tocN(),"Performance & Core Web Vitals","PageSpeed scores, LCP, CLS, FCP, and TBT"]]
       : []),
-    ...(pdfSections.technicalCrawl
-      ? [[tocN(),"Technical SEO Audit","Final crawl state, coverage, and page-level evidence"]]
-      : []),
     ...(pdfSections.ai
       ? [[tocN(),"AI Search Visibility","Unbranded prompts across ChatGPT, Claude, and Gemini"]]
       : []),
@@ -2887,6 +3094,9 @@ sub("From executive summary to action roadmap — everything your team needs to 
     ...(pdfSections.backlinks
       ? [[tocN(),"Backlink Authority","Referring domains and backlink evidence"]]
       : []),
+    ...(pdfSections.technicalCrawl
+      ? [[tocN(),"Technical SEO Audit","Final crawl state, coverage, and page-level evidence"]]
+      : []),
     ...(pdfSections.content
       ? [[tocN(),"Content Quality","Audited-site content signals and evidence"]]
       : []),
@@ -2904,9 +3114,15 @@ sub("From executive summary to action roadmap — everything your team needs to 
     if(i%2===0){doc.setFillColor(14,14,14);doc.rect(ML,ry-1,CW,9,"F");}
     doc.setFillColor(...C.card2); doc.circle(ML+4,ry+3,3.5,"F");
     doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.setTextColor(...C.accent); doc.text(num,ML+4,ry+4.5,{align:"center"});
-    doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(...C.soft); doc.text(t,ML+12,ry+5);
-    doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.setTextColor(...C.muted); doc.text(d,PW-MR,ry+5,{align:"right"});
-    const tx=ML+12+doc.getTextWidth(t)+2, rx=PW-MR-doc.getTextWidth(d)-2;
+
+    const titleText = ell(cl(t), 78);
+    const descriptionText = ell(cl(d), 78);
+
+    doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(...C.soft); doc.text(titleText,ML+12,ry+5);
+    doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.setTextColor(...C.muted); doc.text(descriptionText,PW-MR,ry+5,{align:"right"});
+
+    const tx=ML+12+doc.getTextWidth(titleText)+2;
+    const rx=PW-MR-doc.getTextWidth(descriptionText)-2;
     doc.setFillColor(...C.faint); if(rx>tx+4){for(let dx=tx;dx<rx;dx+=3)doc.circle(dx,ry+4,0.25,"F");}
     y+=9;
   });
@@ -2920,7 +3136,18 @@ sub("From executive summary to action roadmap — everything your team needs to 
   kpiRow([
     {label:"Overall Score",value:`${cl(String(normalized.scores.overall??"—"))}/100`,sub:sLbl(normalized.scores.overall),col:sCol(normalized.scores.overall)},
     {label:"SEO Foundation",value:`${cl(String(normalized.scores.seo??"—"))}/100`,sub:sLbl(normalized.scores.seo),col:sCol(normalized.scores.seo)},
-    {label:"Performance",value:`${cl(String(normalized.scores.ux??normalized.scores.mobile??"—"))}/100`,sub:sLbl(normalized.scores.ux??normalized.scores.mobile),col:sCol(normalized.scores.ux??normalized.scores.mobile)},
+    {
+      label: primaryPerformanceLabel,
+      value: primaryPerformanceScore !== null
+        ? `${cl(String(primaryPerformanceScore))}/100`
+        : "Unavailable",
+      sub: primaryPerformanceScore !== null
+        ? sLbl(primaryPerformanceScore)
+        : "No verified PageSpeed result",
+      col: primaryPerformanceScore !== null
+        ? sCol(primaryPerformanceScore)
+        : C.muted,
+    },
     {label:"AI Visibility",value:`${cl(String(normalized.scores.ai??"—"))}/100`,sub:sLbl(normalized.scores.ai),col:sCol(normalized.scores.ai)},
   ]);
   kpiRow([
@@ -2932,7 +3159,15 @@ sub("From executive summary to action roadmap — everything your team needs to 
   secTitle("Visual Score Breakdown");
   scoreBar("Overall Growth Score",normalized.scores.overall,"Benchmark: 80+ recommended");
   scoreBar("SEO Foundation",normalized.scores.seo,"Benchmark: 80+ recommended");
-  scoreBar("Performance & UX",normalized.scores.ux??normalized.scores.mobile,"Benchmark: 75+ recommended");
+  if (primaryPerformanceScore !== null) {
+    scoreBar(primaryPerformanceLabel, primaryPerformanceScore, "Benchmark: 75+ recommended");
+  } else {
+    hiBox(
+      "Performance Data Unavailable",
+      "No verified PageSpeed score was returned for the tested device, so the PDF does not convert the missing result into a zero score.",
+      "muted"
+    );
+  }
   scoreBar("AI Visibility",normalized.scores.ai,"Benchmark: 70+ recommended");
   gap(3); divLine();
   secTitle("Key Business Insights");
@@ -2987,15 +3222,15 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
       hiBox("Insufficient Traffic Data","Fewer than 50 ranked keywords found. Increase keyword visibility to improve confidence.","amber");
     }
     secTitle("Traffic Intelligence Summary");
-    tbl(["Metric","Value","Notes"],[
+    tblWrap(["Metric","Value","Notes"],[
       {col1:"Est. Monthly Visits",col2:fmt(pdfData?.traffic?.rawMonthly??pdfData?.traffic?.monthly),col3:"Organic visibility estimate"},
       {col1:"Est. Daily Visits",col2:fmt(normalized.traffic.daily),col3:"Monthly ÷ 30"},
       {col1:"Keyword Footprint",col2:fmt(normalized.traffic.keywordCount),col3:"500+ moderate, 2,000+ strong"},
       {col1:"Filtered Keywords",col2:fmt(pdfData?.traffic?.filteredKeywordCount),col3:"Low-volume (<10) removed"},
       {col1:"Confidence",col2:cl(normalized.traffic.confidence),col3:"High requires 2,000+ ranked keywords"},
-      {col1:"Data Method",col2:cl(pdfData?.traffic?.method??"CTR curve"),col3:"Clickstream ETV → CTR fallback"},
-      {col1:"Traffic Note",col2:cl(pdfData?.traffic?.note??"Modelled estimate").slice(0,80),col3:"Directional, not analytics data"},
-    ],[50,35,CW-85]);
+      {col1:"Data Method",col2:cl(pdfData?.traffic?.method??"CTR curve"),col3:"Clickstream ETV -> CTR fallback"},
+      {col1:"Traffic Note",col2:"Disclosure",col3:cl(pdfData?.traffic?.note??"Modelled estimate; this is directional intelligence rather than verified analytics data.")},
+    ],[45,35,CW-80],3);
     if(normalized.topKeywords?.length){
       secTitle("Top Ranking Keywords");
       tbl(["Keyword","Position","Volume","Est. Traffic"],
@@ -3068,23 +3303,69 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   // ════════════════════════════════════════════════════════════════════
   if(pdfSections.technical){
     secHdr(nextSec(),"Performance & Core Web Vitals","PageSpeed scores and Core Web Vitals from Google PageSpeed Insights API.");
-    const mob=pdfData?.pageSpeed?.mobile||{}, dsk=pdfData?.pageSpeed?.desktop||{};
+    const mob = mobileSnapshot;
+    const dsk = desktopSnapshot;
+
     kpiRow([
-      {label:"Mobile Score",value:`${cl(String(mob.score??"—"))}/100`,sub:sLbl(mob.score),col:sCol(mob.score)},
-      {label:"Desktop Score",value:`${cl(String(dsk.score??"—"))}/100`,sub:sLbl(dsk.score),col:sCol(dsk.score)},
-      {label:"LCP (Mobile)",value:cl(mob.lcp,"—"),sub:"Target: < 2.5s",col:C.blue},
-      {label:"CLS (Mobile)",value:cl(mob.cls,"—"),sub:"Target: < 0.1",col:C.blue},
+      {
+        label:"Mobile Score",
+        value:mobilePerformanceScore !== null ? `${mobilePerformanceScore}/100` : "Unavailable",
+        sub:mobilePerformanceScore !== null ? sLbl(mobilePerformanceScore) : "No verified mobile result",
+        col:mobilePerformanceScore !== null ? sCol(mobilePerformanceScore) : C.muted,
+      },
+      {
+        label:"Desktop Score",
+        value:desktopPerformanceScore !== null ? `${desktopPerformanceScore}/100` : "Unavailable",
+        sub:desktopPerformanceScore !== null ? sLbl(desktopPerformanceScore) : "No verified desktop result",
+        col:desktopPerformanceScore !== null ? sCol(desktopPerformanceScore) : C.muted,
+      },
+      {
+        label:"LCP (Mobile)",
+        value:mobilePageSpeedAvailable ? cl(mob.lcp,"—") : "Unavailable",
+        sub:"Target: < 2.5s",
+        col:mobilePageSpeedAvailable ? C.blue : C.muted,
+      },
+      {
+        label:"CLS (Mobile)",
+        value:mobilePageSpeedAvailable ? cl(mob.cls,"—") : "Unavailable",
+        sub:"Target: < 0.1",
+        col:mobilePageSpeedAvailable ? C.blue : C.muted,
+      },
     ]);
-    scoreBar("Mobile Performance",mob.score,"Target 75+ for ranking advantage");
-    scoreBar("Desktop Performance",dsk.score,"Target 90+ for premium experience");
+
+    if (mobilePerformanceScore !== null) {
+      scoreBar("Mobile Performance",mobilePerformanceScore,"Target 75+ for ranking advantage");
+    } else {
+      hiBox(
+        "Mobile PageSpeed Unavailable",
+        "Google PageSpeed did not return a usable mobile score or mobile Core Web Vitals for this run. Missing data is shown as unavailable rather than 0/100.",
+        "muted"
+      );
+    }
+
+    if (desktopPerformanceScore !== null) {
+      scoreBar("Desktop Performance",desktopPerformanceScore,"Target 90+ for premium experience");
+    } else {
+      hiBox(
+        "Desktop PageSpeed Unavailable",
+        "Google PageSpeed did not return a usable desktop score for this run.",
+        "muted"
+      );
+    }
+
     secTitle("Core Web Vitals — Mobile vs Desktop");
     tbl(["Metric","Mobile","Desktop","Target"],[
-      {col1:"Performance Score",col2:cl(String(mob.score??"—")),col3:cl(String(dsk.score??"—")),col4:"75+ good, 90+ excellent"},
-      {col1:"LCP",col2:cl(mob.lcp,"—"),col3:cl(dsk.lcp,"—"),col4:"Under 2.5 seconds"},
-      {col1:"FCP",col2:cl(mob.fcp,"—"),col3:cl(dsk.fcp,"—"),col4:"Under 1.8 seconds"},
-      {col1:"CLS",col2:cl(mob.cls,"—"),col3:cl(dsk.cls,"—"),col4:"Under 0.1"},
-      {col1:"TBT",col2:cl(mob.tbt,"—"),col3:cl(dsk.tbt,"—"),col4:"Under 200ms"},
-      {col1:"Speed Index",col2:cl(mob.speedIndex,"—"),col3:cl(dsk.speedIndex,"—"),col4:"Under 3.4 seconds"},
+      {
+        col1:"Performance Score",
+        col2:mobilePerformanceScore !== null ? String(mobilePerformanceScore) : "Unavailable",
+        col3:desktopPerformanceScore !== null ? String(desktopPerformanceScore) : "Unavailable",
+        col4:"75+ good, 90+ excellent",
+      },
+      {col1:"LCP",col2:mobilePageSpeedAvailable?cl(mob.lcp,"—"):"Unavailable",col3:desktopPageSpeedAvailable?cl(dsk.lcp,"—"):"Unavailable",col4:"Under 2.5 seconds"},
+      {col1:"FCP",col2:mobilePageSpeedAvailable?cl(mob.fcp,"—"):"Unavailable",col3:desktopPageSpeedAvailable?cl(dsk.fcp,"—"):"Unavailable",col4:"Under 1.8 seconds"},
+      {col1:"CLS",col2:mobilePageSpeedAvailable?cl(mob.cls,"—"):"Unavailable",col3:desktopPageSpeedAvailable?cl(dsk.cls,"—"):"Unavailable",col4:"Under 0.1"},
+      {col1:"TBT",col2:mobilePageSpeedAvailable?cl(mob.tbt,"—"):"Unavailable",col3:desktopPageSpeedAvailable?cl(dsk.tbt,"—"):"Unavailable",col4:"Under 200ms"},
+      {col1:"Speed Index",col2:mobilePageSpeedAvailable?cl(mob.speedIndex,"—"):"Unavailable",col3:desktopPageSpeedAvailable?cl(dsk.speedIndex,"—"):"Unavailable",col4:"Under 3.4 seconds"},
     ],[40,33,33,CW-106]);
   }
 
@@ -3104,9 +3385,14 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
         { label: "Sentiment", value: `${av.sentimentScore ?? 0}/100`, sub: "Tone of mentions" },
       ]);
       if (av.brandKnowledge) {
-        hiBox("Does AI Know Your Brand?",
-          `Recognised by: ${(av.brandKnowledge.knownBy||[]).join(", ") || "none of the models yet"}. Per-model — ChatGPT ${av.modelBreakdown?.chatgpt ?? 0}%, Claude ${av.modelBreakdown?.claude ?? 0}%, Gemini ${av.modelBreakdown?.gemini ?? 0}%.`,
-          ((av.brandKnowledge.score ?? 0) >= 50 ? "green" : "amber"));
+        const knownByModels = Array.isArray(av.brandKnowledge?.knownBy)
+          ? av.brandKnowledge.knownBy.filter(Boolean)
+          : [];
+        hiBox(
+          "AI Brand Awareness vs Category Visibility",
+          `Brand-name awareness probes recognised the brand in: ${knownByModels.join(", ") || "none of the tested models"}. This is separate from unbranded category visibility, where the brand appeared in ${av.visibilityRate ?? 0}% of tested prompts.`,
+          ((av.brandKnowledge.score ?? 0) >= 50 ? "green" : "amber")
+        );
       }
       if (av.promptResults?.length) {
         secTitle("Category Prompt Results");
@@ -3123,7 +3409,18 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
         secTitle("Your Pages & The Keywords They Rank For");
         tbl(["Page", "Top Keywords", "Vol"], av.rankedPages.slice(0, 8).map((p: any) => ({ col1: cl(p.path || p.url), col2: cl((p.keywords||[]).slice(0,4).map((k:any)=>k.keyword).join(", ")), col3: fmt(p.totalVolume) })), [CW - 95, 70, 25]);
       }
-      if (av.topCompetitors?.length) hiBox("Top Competitors in AI Answers", (av.topCompetitors||[]).join(", "), "blue");
+      const blockedAiCompetitorTokens = /^(strong|tools?|software|platforms?|solutions?|best|top|it's|its|their|they)$/i;
+      const cleanAiCompetitors = Array.from(
+        new Set(
+          (Array.isArray(av.topCompetitors) ? av.topCompetitors : [])
+            .map((value: any) => cl(value, "").trim())
+            .filter((value: string) => value.length >= 3 && !blockedAiCompetitorTokens.test(value))
+        )
+      ).slice(0, 8);
+
+      if (cleanAiCompetitors.length) {
+        hiBox("Top Competitors in AI Answers", cleanAiCompetitors.join(", "), "blue");
+      }
       if (av.missedPrompts?.length) hiBox("Missed Opportunities (Content Ideas)", (av.missedPrompts||[]).slice(0,3).join("  -  "), "amber");
     }
     const aiScore=n(normalized.scores.ai)??0;
@@ -3148,13 +3445,13 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
 // ═══════════════════════════════════════════════════════════════════
 
     secTitle("AI Visibility Summary");
-    tbl(["Signal","Status","Implication"],[
-      {col1:"AI Visibility Score",col2:`${aiScore}/100`,col3:aiScore>=70?"Brand has detectable AI presence":"Brand is weak or absent in AI results"},
-      {col1:"Brand Mentions",col2:fmt(aiMent),col3:aiMent>0?"Brand appears in AI-generated responses":"Brand not detected in AI responses"},
-      {col1:"Model Coverage",col2:fmt(aiMods),col3:"Number of AI models tested for brand visibility"},
-      {col1:"Confidence",col2:aiConf,col3:"Reliability of AI visibility measurement"},
-      {col1:"Methodology",col2:"Unbranded category prompts",col3:"Brand-named probes are evidence only and excluded from scoring"},
-    ],[42,35,CW-77]);
+    tblWrap(["Signal","Status","Implication"],[
+      {col1:"AI Visibility Score",col2:`${aiScore}/100`,col3:aiScore>=70?"Brand has detectable AI presence":"Brand is weak or absent in unbranded category results"},
+      {col1:"Brand Mentions",col2:fmt(aiMent),col3:aiMent>0?"Brand appears in AI-generated category responses":"Brand not detected in the scored unbranded responses"},
+      {col1:"Model Coverage",col2:fmt(aiMods),col3:"Number of AI models tested for category visibility"},
+      {col1:"Confidence",col2:aiConf,col3:"Reliability of the unbranded category visibility measurement"},
+      {col1:"Methodology",col2:"Unbranded category prompts",col3:"Separate brand-name awareness probes are evidence only and are excluded from the competitive visibility score"},
+    ],[42,40,CW-82],3);
 const opportunity=pdfData?.aiSearchVisibility
       ? aiMent===0
         ? "The brand was not mentioned across the scored unbranded category prompts. Improve entity signals, trusted citations, category content, and topical authority."
@@ -3292,15 +3589,21 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   if(pdfSections.backlinks){
     secHdr(nextSec(),"Backlink Authority & Trust Signals","Domain trust, referring domains, and top backlink sources from Crawler Que Backlinks API.");
+    const backlinkRankValue = n(
+      pdfData?.dataforseo?.backlinkRank ??
+        normalized.backlinks.rank
+    );
     kpiRow([
-      {label:"Backlink Rank",value:cl(String(pdfData?.dataforseo?.backlinkRank??normalized.backlinks.rank??"—")),sub:"Authority signal",col:sCol(n(normalized.backlinks.rank))},
+      {label:"Backlink Rank",value:backlinkRankValue !== null ? String(backlinkRankValue) : "—",sub:"Authority signal",col:sCol(backlinkRankValue)},
       {label:"Total Backlinks",value:fmt(pdfData?.backlinks?.backlinks??normalized.backlinks.total),col:C.accent},
       {label:"Referring Domains",value:fmt(pdfData?.backlinks?.referringDomains??normalized.backlinks.referringDomains),col:C.blue},
       {label:"Referring Pages",value:fmt(pdfData?.backlinks?.referringPages??normalized.backlinks.referringDomains),col:C.amber},
     ]);
-    scoreBar("Backlink Authority Signal",normalized.backlinks.rank,"50+ referring domains = moderate authority");
+    if (backlinkRankValue !== null) {
+      scoreBar("Backlink Authority Signal",backlinkRankValue,"50+ referring domains = moderate authority");
+    }
     tbl(["Metric","Value","Benchmark"],[
-      {col1:"Backlink Rank",col2:cl(String(normalized.backlinks.rank??"—")),col3:"Higher = better; compare vs direct competitors"},
+      {col1:"Backlink Rank",col2:backlinkRankValue !== null ? String(backlinkRankValue) : "—",col3:"Higher = better; compare vs direct competitors"},
       {col1:"Total Backlinks",col2:fmt(pdfData?.backlinks?.backlinks),col3:"Quality matters more than raw count"},
       {col1:"Referring Domains",col2:fmt(pdfData?.backlinks?.referringDomains),col3:"50+ moderate, 200+ strong authority"},
       {col1:"Referring Pages",col2:fmt(pdfData?.backlinks?.referringPages),col3:"More pages = broader link surface"},
@@ -3421,7 +3724,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   if(pdfSections.recommendations){
     secHdr(nextSec(),"Evidence-Backed Recommendations","Prioritised actions tied to source modules, affected URLs, validation status, and supporting evidence.");
     const canonicalRecommendations = Array.isArray(pdfData?.recommendations)
-      ? pdfData.recommendations.slice(0, 10)
+      ? pdfData.recommendations.filter(isValidPdfAction).slice(0, 10)
       : [];
     kpiRow([
       {label:"Recommendations",value:fmt(canonicalRecommendations.length),col:C.accent},
@@ -3474,11 +3777,14 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
     priority:"high"|"medium"|"low"
   ) => {
     secTitle(title);
-    if(!Array.isArray(items) || items.length===0){
+    const safeItems = Array.isArray(items)
+      ? items.filter(isValidPdfAction)
+      : [];
+    if(safeItems.length===0){
       body_("No validated actions were assigned to this phase.");
       return;
     }
-    items.slice(0,5).forEach((raw:any,index:number)=>{
+    safeItems.slice(0,5).forEach((raw:any,index:number)=>{
       const rec = typeof raw === "string" ? {title:String(raw).split(".")[0],detail:raw} : raw || {};
       const evidence = Array.isArray(rec.evidence) ? rec.evidence.slice(0,2).join(" | ") : "";
       actCard(
