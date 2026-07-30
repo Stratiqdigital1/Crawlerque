@@ -242,6 +242,29 @@ function inferBusinessSeed(input: {
 
   const candidates = [
     {
+      seed: "creator subscription platforms",
+      terms: [
+        "creator subscription",
+        "subscription content platform",
+        "paid creator content",
+        "exclusive creator content",
+        "fan subscription platform",
+        "fan club",
+        "fanclub",
+        "content creators",
+        "creator monetization",
+        "creator monetisation",
+        "conteudos por assinatura",
+        "conteúdos por assinatura",
+        "produtores de conteudo",
+        "produtores de conteúdo",
+        "fotos videos audios e stories",
+        "fotos vídeos áudios e stories",
+        "apoie e fique ainda mais proximo",
+        "apoie e fique ainda mais próximo",
+      ],
+    },
+    {
       seed: "digital marketing services",
       terms: [
         "digital marketing",
@@ -1198,6 +1221,25 @@ await updateAuditJob(auditJob.id, {
       h1,
     });
 
+    const inferredBusinessIndustry =
+      inferredServiceSeed === "creator subscription platforms"
+        ? "creator subscription platform"
+        : inferredServiceSeed;
+
+    const inferredCategoryKeywords =
+      inferredServiceSeed === "creator subscription platforms"
+        ? [
+            "creator subscription platforms",
+            "exclusive creator content platform",
+            "paid content platform for creators",
+            "fan subscription platform",
+            "platforms like Patreon and OnlyFans",
+            "creator monetization platform",
+          ]
+        : inferredServiceSeed
+          ? [inferredServiceSeed]
+          : [];
+
     // ── AI CITATION READINESS — computed from the same HTML fetch above ──
 
     const ldJsonBlocks =
@@ -1206,17 +1248,84 @@ await updateAuditJob(auditJob.id, {
     const hasFaqSchema = ldJsonBlocks.some((b) => /FAQPage/i.test(b));
 
     const geoFactors = [
-      { label: "Has a clear H1 heading",         weight: 15, pass: h1Count > 0 },
-      { label: "Has a meta description",         weight: 10, pass: !!description },
-      { label: "Content depth (300+ words)",     weight: 20, pass: bodyWordCount >= 300 },
-      { label: "In-depth content (800+ words)",  weight: 10, pass: bodyWordCount >= 800 },
-      { label: "Has structured data (schema)",   weight: 20, pass: hasSchema },
-      { label: "Has FAQ schema (FAQPage)",       weight: 15, pass: hasFaqSchema },
-      { label: "All images have ALT text",       weight: 10, pass: imagesMissingAlt === 0 },
+      {
+        label: "Has a clear H1 heading",
+        weight: 15,
+        assessed: true,
+        pass: h1Count > 0,
+      },
+      {
+        label: "Has a meta description",
+        weight: 10,
+        assessed: true,
+        pass: Boolean(description.trim()),
+      },
+      {
+        label: "Content depth (300+ words)",
+        weight: 20,
+        assessed: true,
+        pass: bodyWordCount >= 300,
+      },
+      {
+        label: "In-depth content (800+ words)",
+        weight: 10,
+        assessed: true,
+        pass: bodyWordCount >= 800,
+      },
+      {
+        label: "Has structured data (schema)",
+        weight: 20,
+        assessed: true,
+        pass: hasSchema,
+      },
+      {
+        label: "Has FAQ schema (FAQPage)",
+        weight: 15,
+        assessed: true,
+        pass: hasFaqSchema,
+      },
+      {
+        label: "Image ALT coverage",
+        weight: 10,
+        assessed: imageCount > 0,
+        pass:
+          imageCount > 0
+            ? imagesMissingAlt === 0
+            : null,
+        note:
+          imageCount > 0
+            ? `${imagesWithAlt} descriptive ALT value(s), ${imagesMissingAlt} missing ALT attribute(s).`
+            : "No server-rendered images were detected, so ALT coverage was not assessed.",
+      },
     ];
-    const pageGeoScore = geoFactors.reduce((s, f) => s + (f.pass ? f.weight : 0), 0);
-    const pageGeoGrade = pageGeoScore >= 75 ? "Strong" : pageGeoScore >= 45 ? "Moderate" : "Needs Work";
-    const pageGeoTopIssue = geoFactors.filter((f) => !f.pass).sort((a, b) => b.weight - a.weight)[0]?.label || null;
+
+    const pageGeoScore = geoFactors.reduce(
+      (score, factor) =>
+        score +
+        (factor.assessed !== false &&
+        factor.pass === true
+          ? factor.weight
+          : 0),
+      0
+    );
+
+    const pageGeoGrade =
+      pageGeoScore >= 75
+        ? "Strong"
+        : pageGeoScore >= 45
+          ? "Moderate"
+          : "Needs Work";
+
+    const pageGeoTopIssue =
+      geoFactors
+        .filter(
+          (factor) =>
+            factor.assessed !== false &&
+            factor.pass !== true
+        )
+        .sort(
+          (a, b) => b.weight - a.weight
+        )[0]?.label || null;
     const pageGeoReadiness = {
       url: auditTargetUrl,
       score: pageGeoScore,
@@ -1234,15 +1343,61 @@ await updateAuditJob(auditJob.id, {
 const mobileSpeed = await getPageSpeed(auditTargetUrl, "mobile");
 const desktopSpeed = await getPageSpeed(auditTargetUrl, "desktop");
 
+const hasPageSpeedEvidence = (snapshot: any) =>
+  Boolean(
+    snapshot &&
+      (
+        Number(snapshot?.score || 0) > 0 ||
+        [
+          snapshot?.lcp,
+          snapshot?.fcp,
+          snapshot?.cls,
+          snapshot?.tbt,
+          snapshot?.speedIndex,
+        ].some(
+          (value) =>
+            value !== null &&
+            value !== undefined &&
+            !["", "--", "—", "n/a"].includes(
+              String(value).trim().toLowerCase()
+            )
+        )
+      )
+  );
+
     const tabletScore =
       mobileSpeed.score && desktopSpeed.score
         ? Math.round((mobileSpeed.score + desktopSpeed.score) / 2)
         : 0;
 
-    const primaryPageSpeed =
+    const selectedPageSpeed =
       selectedDevice === "desktop"
         ? desktopSpeed
         : mobileSpeed;
+
+    const fallbackPageSpeed =
+      selectedDevice === "desktop"
+        ? mobileSpeed
+        : desktopSpeed;
+
+    const primaryPageSpeed =
+      hasPageSpeedEvidence(selectedPageSpeed)
+        ? selectedPageSpeed
+        : hasPageSpeedEvidence(fallbackPageSpeed)
+          ? fallbackPageSpeed
+          : selectedPageSpeed;
+
+    const primaryPerformanceDevice =
+      hasPageSpeedEvidence(selectedPageSpeed)
+        ? selectedDevice
+        : hasPageSpeedEvidence(fallbackPageSpeed)
+          ? selectedDevice === "desktop"
+            ? "mobile"
+            : "desktop"
+          : selectedDevice;
+
+    const performanceFallbackUsed =
+      primaryPerformanceDevice !== selectedDevice;
 
 await updateAuditJob(auditJob.id, {
   progress: 35,
@@ -1401,13 +1556,21 @@ const validatedRankingSeed =
     }
   )?.keyword;
 
+const detectedNicheKey = String(
+  dataforseo?.detectedNiche || "general"
+);
+
+const detectedNicheSeed =
+  detectedNicheKey !== "general"
+    ? keywordResearchSeedMap[detectedNicheKey]
+    : "";
+
 const keywordResearchSeed = String(
   validatedGapSeed ||
-    validatedRankingSeed ||
-    keywordResearchSeedMap[
-      String(dataforseo?.detectedNiche || "general")
-    ] ||
+    detectedNicheSeed ||
     inferredServiceSeed ||
+    validatedRankingSeed ||
+    keywordResearchSeedMap.general ||
     cleanSeedKeyword
 ).trim();
 
@@ -1467,15 +1630,36 @@ try {
       });
 
       try {
-        const categoryKeywords = (dataforseo?.topKeywords || [])
+        const rankedCategoryKeywords = (
+          dataforseo?.topKeywords || []
+        )
           .filter(
             (keyword: any) =>
               keyword?.branded !== true &&
-              !isLikelyBrandedKeyword(keyword?.keyword)
+              !isLikelyBrandedKeyword(
+                keyword?.keyword
+              ) &&
+              !blockedResearchSeedTerms.test(
+                String(keyword?.keyword || "")
+              )
           )
-          .map((keyword: any) => String(keyword?.keyword || "").trim())
-          .filter(Boolean)
-          .slice(0, 8);
+          .map((keyword: any) =>
+            String(
+              keyword?.keyword || ""
+            ).trim()
+          )
+          .filter(Boolean);
+
+        const categoryKeywords =
+          inferredCategoryKeywords.length > 0
+            ? inferredCategoryKeywords.slice(0, 8)
+            : rankedCategoryKeywords.slice(0, 8);
+
+        const aiIndustry =
+          detectedNicheKey !== "general"
+            ? detectedNicheKey.replace(/_/g, " ")
+            : inferredBusinessIndustry ||
+              "general";
 
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 110000);
@@ -1487,8 +1671,12 @@ try {
             url: auditTargetUrl,
             domain,
             brandName: brandNameForAudit,
-            industry: dataforseo?.detectedNiche || "",
+            industry: aiIndustry,
             categoryKeywords,
+            categoryContext: aiIndustry,
+            pageTitle: title,
+            metaDescription: description,
+            pageH1: h1,
             country: locationName,
             countryCode:
               auditConfig.countryCode,
@@ -1722,6 +1910,7 @@ body: JSON.stringify({
         keywordResearch = {
           ...keywordResearch,
           seedKeyword: keywordResearchSeed,
+          displayMode: "opportunities",
           suggestions: keywordResearch.suggestions.filter((item: any) => {
             const keyword = String(item?.keyword || "").trim();
 
@@ -1768,8 +1957,9 @@ body: JSON.stringify({
   keywordResearch = {
     seedKeyword: keywordResearchSeed,
     suggestions: fallbackKeywords,
+    displayMode: "ranking-evidence",
     source: fallbackKeywords.length
-      ? "DataForSEO non-branded ranked keyword fallback"
+      ? "Validated current ranking evidence"
       : "Insufficient non-branded keyword evidence",
   };
 }
@@ -1862,8 +2052,56 @@ try {
             : contentAnalysis.averageScore,
         };
       }
+
+      const analyzedContentPages = Number(
+        contentAnalysis?.analyzedPages ||
+          contentAnalysis?.results?.length ||
+          0
+      );
+
+      if (contentAnalysis && analyzedContentPages === 0) {
+        contentAnalysis = {
+          ...contentAnalysis,
+          analyzedPages: 0,
+          failedPages: Math.max(
+            1,
+            Number(
+              contentAnalysis?.failedPages ||
+                contentAnalysis?.requestedPages ||
+                1
+            )
+          ),
+          averageScore: null,
+          unavailableReason:
+            contentAnalysis?.unavailableReason ||
+            "The selected first-party page could not be analyzed during this run. No content-quality score or content-derived recommendation has been generated.",
+          note:
+            contentAnalysis?.note ||
+            "The selected first-party page could not be analyzed during this run. No content-quality score or content-derived recommendation has been generated.",
+          results: [],
+        };
+      }
     } catch (error) {
   console.error("Content Analysis inside audit failed:", error);
+
+  contentAnalysis = {
+    requestedPages: Math.min(
+      20,
+      Math.max(
+        1,
+        auditConfig.contentPageLimit
+      )
+    ),
+    analyzedPages: 0,
+    failedPages: 1,
+    averageScore: null,
+    scope: "first-party",
+    results: [],
+    unavailableReason:
+      "The selected first-party page could not be analyzed during this run. No content-quality score or content-derived recommendation has been generated.",
+    note:
+      "The selected first-party page could not be analyzed during this run. No content-quality score or content-derived recommendation has been generated.",
+  };
 
   moduleStatus.contentAnalysis = "not_available";
 }
@@ -1937,14 +2175,56 @@ const aiVisibilityLabel = aiSearchVisibility
   ? "Canonical AI Search Visibility"
   : "AI visibility unavailable";
 
-const dfsTraffic = Number(dataforseo?.organicTraffic || 0);
+const dfsTraffic = Number(
+  dataforseo?.organicTraffic || 0
+);
 
-// SINGLE SOURCE OF TRUTH — do not merge with domain-analytics.
-const rawOrganicTraffic = Math.round(dfsTraffic || 0);
+const rankedKeywordTraffic = Math.round(
+  (
+    Array.isArray(
+      dataforseo?.trafficDebug
+    )
+      ? dataforseo.trafficDebug
+      : Array.isArray(
+            dataforseo?.topKeywords
+          )
+        ? dataforseo.topKeywords
+        : []
+  ).reduce(
+    (total: number, item: any) =>
+      total +
+      Number(
+        item?.estimatedVisits ??
+          item?.traffic ??
+          item?.estimatedTraffic ??
+          0
+      ),
+    0
+  )
+);
 
-// calibration removed — position-capping now controls range.
+const domainAnalyticsTrafficSignal =
+  Math.round(
+    Number(
+      domainAnalytics?.organicTrafficSignal ??
+        domainAnalytics?.organicTraffic ??
+        0
+    )
+  );
+
+const rawOrganicTraffic =
+  dfsTraffic > 0
+    ? Math.round(dfsTraffic)
+    : rankedKeywordTraffic > 0
+      ? rankedKeywordTraffic
+      : domainAnalyticsTrafficSignal > 0
+        ? domainAnalyticsTrafficSignal
+        : 0;
+
 let organicTraffic: number | null =
-  rawOrganicTraffic > 0 ? rawOrganicTraffic : null;
+  rawOrganicTraffic > 0
+    ? rawOrganicTraffic
+    : null;
 
 let trafficCapped = false;
 
@@ -1970,11 +2250,29 @@ if (
   );
 }
 
-const trafficSource = dataforseo?.trafficMethod || "ctr-curve";
+const trafficSource =
+  dfsTraffic > 0
+    ? dataforseo?.trafficMethod ||
+      "provider-organic-traffic"
+    : rankedKeywordTraffic > 0
+      ? "ranked-keyword-ctr-sum"
+      : domainAnalyticsTrafficSignal > 0
+        ? "domain-analytics-fallback"
+        : dataforseo?.trafficMethod ||
+          "insufficient-data";
 
 const trafficConfidence =
   dataforseo?.trafficConfidence ||
-  (organicTraffic ? "moderate" : "insufficient-data");
+  (
+    organicTraffic &&
+    Number(
+      dataforseo?.organicKeywords ||
+        dataforseo?.rankedKeywordCount ||
+        0
+    ) >= 50
+      ? "moderate"
+      : "insufficient-data"
+  );
 
 const trafficScore = organicTraffic
   ? Math.min(100, Math.round(organicTraffic / 50))
@@ -2109,8 +2407,16 @@ organicKeywords: dataforseo?.organicKeywords || null,
             serpData,
             backlinks: dataforseo?.backlinks || null,
             contentAnalysis,
-            businessType: dataforseo?.detectedNiche || "general",
-            detectedNiche: dataforseo?.detectedNiche || "general",
+            businessType:
+              detectedNicheKey !== "general"
+                ? detectedNicheKey
+                : inferredBusinessIndustry ||
+                  "general",
+            detectedNiche:
+              detectedNicheKey !== "general"
+                ? detectedNicheKey
+                : inferredBusinessIndustry ||
+                  "general",
             canonicalSeo: {
               title,
               metaDescription: description,
@@ -2393,6 +2699,75 @@ if (runRecommendations || runAI) {
   }
 }
 
+const recommendationFamily = (
+  item: any
+) => {
+  const text = [
+    item?.title,
+    item?.detail,
+    item?.sourceModule,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (/faq/.test(text) && /schema/.test(text)) {
+    return "faq-schema";
+  }
+
+  if (/structured data|organization schema|website schema|service schema/.test(text)) {
+    return "structured-data";
+  }
+
+  if (/\bh1\b|primary heading|heading structure/.test(text)) {
+    return "h1";
+  }
+
+  if (/meta description/.test(text)) {
+    return "meta-description";
+  }
+
+  if (/page title|seo title|title tag/.test(text)) {
+    return "page-title";
+  }
+
+  if (/alt text|alt attribute|image alt/.test(text)) {
+    return "image-alt";
+  }
+
+  if (/mobile|pagespeed|core web vitals|loading performance|\blcp\b|\btbt\b/.test(text)) {
+    return "performance";
+  }
+
+  if (/ai visibility|generative|unbranded ai|category visibility/.test(text)) {
+    return "ai-visibility";
+  }
+
+  if (/organic visibility|keyword footprint|traffic/.test(text)) {
+    return "organic-visibility";
+  }
+
+  if (/backlink|referring domain|authority/.test(text)) {
+    return "backlink-authority";
+  }
+
+  return String(
+    item?.title ||
+      item?.detail ||
+      ""
+  )
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+};
+
+const contentAnalysisValidated =
+  Number(
+    contentAnalysis?.analyzedPages ||
+      contentAnalysis?.results?.length ||
+      0
+  ) > 0;
+
 const recommendationKeys = new Set<string>();
 
 const finalRecommendations = [
@@ -2402,10 +2777,34 @@ const finalRecommendations = [
   .map(normalizeRecommendation)
   .filter(Boolean)
   .filter((item: any) => {
-    const key = String(item?.title || item?.detail || "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, " ")
-      .trim();
+    const sourceModule = String(
+      item?.sourceModule || ""
+    ).toLowerCase();
+
+    if (
+      !contentAnalysisValidated &&
+      (
+        sourceModule.includes(
+          "content quality"
+        ) ||
+        /audited content|content analysis/.test(
+          [
+            item?.title,
+            item?.detail,
+            ...(Array.isArray(item?.evidence)
+              ? item.evidence
+              : []),
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+        )
+      )
+    ) {
+      return false;
+    }
+
+    const key = recommendationFamily(item);
 
     if (!key || recommendationKeys.has(key)) {
       return false;
@@ -2736,8 +3135,10 @@ const draftReport = {
       backlinkAuthorityScore: backlinkScore,
 
       speedScore: primaryPageSpeed.score,
-      primaryPerformanceDevice:
+      configuredPrimaryDevice:
         selectedDevice,
+      primaryPerformanceDevice,
+      performanceFallbackUsed,
       mobilePerformance: mobileSpeed.score,
       desktopPerformance: desktopSpeed.score,
       tabletPerformance: tabletScore,

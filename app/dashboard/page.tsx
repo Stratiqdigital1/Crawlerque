@@ -1091,17 +1091,63 @@ const cancelAudit = async () => {
 
 const roadmapActionKey = (
   item: any
-) =>
-  String(
+) => {
+  const text = String(
     typeof item === "string"
       ? item
-      : item?.title ||
-          item?.detail ||
-          ""
-  )
-    .toLowerCase()
+      : [
+          item?.title,
+          item?.detail,
+          item?.sourceModule,
+        ]
+          .filter(Boolean)
+          .join(" ")
+  ).toLowerCase();
+
+  if (/faq/.test(text) && /schema/.test(text)) {
+    return "faq-schema";
+  }
+
+  if (/structured data|organization schema|website schema|service schema/.test(text)) {
+    return "structured-data";
+  }
+
+  if (/\bh1\b|primary heading|heading structure/.test(text)) {
+    return "h1";
+  }
+
+  if (/meta description/.test(text)) {
+    return "meta-description";
+  }
+
+  if (/page title|seo title|title tag/.test(text)) {
+    return "page-title";
+  }
+
+  if (/alt text|alt attribute|image alt/.test(text)) {
+    return "image-alt";
+  }
+
+  if (/mobile|pagespeed|core web vitals|loading performance|\blcp\b|\btbt\b/.test(text)) {
+    return "performance";
+  }
+
+  if (/ai visibility|generative|unbranded ai|category visibility/.test(text)) {
+    return "ai-visibility";
+  }
+
+  if (/organic visibility|keyword footprint|traffic/.test(text)) {
+    return "organic-visibility";
+  }
+
+  if (/backlink|referring domain|authority/.test(text)) {
+    return "backlink-authority";
+  }
+
+  return text
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+};
 
 const mergeRoadmapActions = (
   existingItems: any,
@@ -1228,21 +1274,26 @@ const buildFoundationRoadmapActions = (
       return;
     }
 
-    if (/missing h1|multiple h1/.test(issueText)) {
+    if (/missing h1/.test(issueText)) {
       addAction({
-        id: "foundation-heading-structure",
+        id: "foundation-h1",
         title:
-          "Correct the primary H1 heading structure",
+          "Add one clear H1 to the resolved homepage",
         detail:
-          "Use one clear primary H1 per page and convert additional top-level headings to the correct lower heading level.",
+          "Use one visible H1 that defines the page's primary product, service, or topic without relying on decorative text.",
         impact: "Medium",
         effort: "Low",
         owner: "SEO / Content",
         timeline: "0–30 days",
-        sourceModule: "Content Quality",
+        sourceModule: "SEO Foundation",
         validationStatus: "validated",
+        affectedUrls: [
+          report?.canonicalUrl ||
+            report?.resolvedUrl ||
+            report?.url,
+        ].filter(Boolean),
         evidence: [
-          "Heading-structure issue detected in the audited content.",
+          "Resolved homepage H1: missing",
         ],
       });
       return;
@@ -1279,8 +1330,10 @@ const buildFoundationRoadmapActions = (
     : [];
 
   geoFactors
-    .filter((factor: any) =>
-      factor?.pass === false
+    .filter(
+      (factor: any) =>
+        factor?.assessed !== false &&
+        factor?.pass === false
     )
     .forEach((factor: any) => {
       const label = String(
@@ -1326,7 +1379,7 @@ const buildFoundationRoadmapActions = (
         });
       }
 
-      if (/alt text/i.test(label)) {
+      if (/alt text|alt coverage/i.test(label)) {
         addAction({
           id: "foundation-alt-text",
           title:
@@ -1687,52 +1740,65 @@ const getKeywordResearchDisplay = (
       );
     });
 
-  const fallbackSuggestions = [
-    ...(Array.isArray(
+  const normalizeFallbackSuggestion = (
+    item: any
+  ) => ({
+    keyword: item?.keyword,
+    volume:
+      item?.volume ??
+      item?.search_volume ??
+      null,
+    cpc: item?.cpc ?? null,
+    competition:
+      item?.competition ?? null,
+    intent:
+      item?.intent || "General",
+    difficulty:
+      item?.difficulty ??
+      item?.keyword_difficulty ??
+      null,
+    source:
+      item?.source ||
+      "Validated audit intelligence",
+  });
+
+  const isAllowedFallbackSuggestion = (
+    item: any
+  ) => {
+    const keyword = String(
+      item?.keyword || ""
+    ).trim();
+
+    return (
+      Boolean(keyword) &&
+      !blockedKeywordResearchTerms.test(
+        keyword
+      ) &&
+      !isLikelyBrandedKeyword(keyword)
+    );
+  };
+
+  const gapFallbackSuggestions = (
+    Array.isArray(
       report?.dataforseo?.keywordGap
         ?.missingKeywords
     )
       ? report.dataforseo.keywordGap
           .missingKeywords
-      : []),
-    ...(Array.isArray(
+      : []
+  )
+    .map(normalizeFallbackSuggestion)
+    .filter(isAllowedFallbackSuggestion);
+
+  const rankingFallbackSuggestions = (
+    Array.isArray(
       report?.dataforseo?.topKeywords
     )
       ? report.dataforseo.topKeywords
-      : []),
-  ]
-    .map((item: any) => ({
-      keyword: item?.keyword,
-      volume:
-        item?.volume ??
-        item?.search_volume ??
-        null,
-      cpc: item?.cpc ?? null,
-      competition:
-        item?.competition ?? null,
-      intent:
-        item?.intent || "General",
-      difficulty:
-        item?.difficulty ??
-        item?.keyword_difficulty ??
-        null,
-      source:
-        item?.source ||
-        "Validated audit intelligence",
-    }))
-    .filter((item: any) => {
-      const keyword = String(
-        item?.keyword || ""
-      ).trim();
-
-      return (
-        Boolean(keyword) &&
-        !blockedKeywordResearchTerms.test(
-          keyword
-        ) &&
-        !isLikelyBrandedKeyword(keyword)
-      );
-    });
+      : []
+  )
+    .map(normalizeFallbackSuggestion)
+    .filter(isAllowedFallbackSuggestion);
 
   const dedupeSuggestions = (
     items: any[]
@@ -1755,15 +1821,37 @@ const getKeywordResearchDisplay = (
     });
   };
 
-  const useFallback =
+  const explicitDisplayMode = String(
+    report?.keywordResearch?.displayMode ||
+      ""
+  );
+
+  const useGapFallback =
     qualifiedSuggestions.length < 5 &&
-    fallbackSuggestions.length > 0;
+    gapFallbackSuggestions.length > 0;
+
+  const useRankingFallback =
+    qualifiedSuggestions.length < 5 &&
+    !useGapFallback &&
+    rankingFallbackSuggestions.length > 0;
+
+  const useFallback =
+    useGapFallback || useRankingFallback;
 
   const suggestions = dedupeSuggestions(
-    useFallback
-      ? fallbackSuggestions
-      : qualifiedSuggestions
+    useGapFallback
+      ? gapFallbackSuggestions
+      : useRankingFallback
+        ? rankingFallbackSuggestions
+        : qualifiedSuggestions
   ).slice(0, 20);
+
+  const displayMode =
+    explicitDisplayMode ===
+      "ranking-evidence" ||
+    useRankingFallback
+      ? "ranking-evidence"
+      : "opportunities";
 
   const nicheLabel = niche
     .replace(/_/g, " ")
@@ -1778,10 +1866,30 @@ const getKeywordResearchDisplay = (
         : report?.keywordResearch
             ?.seedKeyword ||
           "Audited website",
-    source: useFallback
-      ? "Validated keyword gap and ranking data"
-      : report?.keywordResearch?.source ||
-        "Crawler Que Keyword Suggestions",
+    source:
+      displayMode ===
+        "ranking-evidence"
+        ? "Validated current ranking evidence"
+        : useGapFallback
+          ? "Validated competitor keyword gaps"
+          : report?.keywordResearch?.source ||
+            "Crawler Que Keyword Suggestions",
+    title:
+      displayMode ===
+        "ranking-evidence"
+        ? "Validated Ranking Evidence"
+        : "Qualified Keyword Research",
+    description:
+      displayMode ===
+        "ranking-evidence"
+        ? "Current non-branded ranking terms found for the audited domain. These are evidence of existing visibility, not new keyword opportunities."
+        : "Relevant keyword opportunities qualified against the audited site niche, ranking footprint, and validated competitor gaps.",
+    itemLabel:
+      displayMode ===
+        "ranking-evidence"
+        ? "Ranking Terms"
+        : "Qualified Keywords",
+    displayMode,
     suggestions,
     filteredCount: Math.max(
       0,
@@ -2439,6 +2547,23 @@ useEffect(() => {
   loadCurrentUser();
   loadReportHistory();
 }, []);
+
+useEffect(() => {
+  const frame = window.requestAnimationFrame(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "auto",
+    });
+
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  });
+
+  return () => {
+    window.cancelAnimationFrame(frame);
+  };
+}, [activeTab]);
 
 useEffect(() => {
   if (
@@ -3143,8 +3268,13 @@ bg:      [11, 25, 41] as RGB,
       : primaryPerformanceDevice === "mobile"
         ? mobilePerformanceScore
         : null;
+  const performanceFallbackUsed =
+    primaryPerformanceDevice !== null &&
+    primaryPerformanceDevice !==
+      configuredPrimaryDevice;
+
   const primaryPerformanceLabel = primaryPerformanceDevice
-    ? `${primaryPerformanceDevice === "desktop" ? "Desktop" : "Mobile"} Performance`
+    ? `${primaryPerformanceDevice === "desktop" ? "Desktop" : "Mobile"} Performance${performanceFallbackUsed ? " (Fallback)" : ""}`
     : "Performance";
 
   const getPdfActionText = (item: any): string => {
@@ -3580,7 +3710,23 @@ bg:      [11, 25, 41] as RGB,
 
     // measure detail
     doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-    const detailLines = doc.splitTextToSize(cl(detail, ""), CW - 18).slice(0, 3);
+    const allDetailLines = doc.splitTextToSize(
+      cl(detail, ""),
+      CW - 18
+    );
+    const detailLines = allDetailLines.slice(0, 4);
+
+    if (
+      allDetailLines.length > detailLines.length &&
+      detailLines.length > 0
+    ) {
+      const lastIndex = detailLines.length - 1;
+      detailLines[lastIndex] = ell(
+        `${detailLines[lastIndex]}…`,
+        CW - 18
+      );
+    }
+
     const h = 14 + detailLines.length * 4.3;
     ensure(h + 5);
 
@@ -3681,9 +3827,11 @@ bg:      [11, 25, 41] as RGB,
       const rawImpact = String(
         item?.severity ||
           item?.priority ||
-          item?.impact ||
+          item?.impactLevel ||
           "Medium"
-      ).trim();
+      )
+        .trim()
+        .toLowerCase();
 
       const issueText = [
         title,
@@ -3700,9 +3848,11 @@ bg:      [11, 25, 41] as RGB,
 
       const impactLabel = isAltIssue
         ? "Medium"
-        : /critical|high/i.test(rawImpact)
+        : ["critical", "high"].includes(
+              rawImpact
+            )
           ? "High"
-          : /low/i.test(rawImpact)
+          : rawImpact === "low"
             ? "Low"
             : "Medium";
 
@@ -3815,9 +3965,13 @@ bg:      [11, 25, 41] as RGB,
     { l: "SEO", v: n(normalized.scores.seo) },
     {
       l: primaryPerformanceDevice === "desktop"
-        ? "Desktop Speed"
+        ? performanceFallbackUsed
+          ? "Desktop Fallback"
+          : "Desktop Speed"
         : primaryPerformanceDevice === "mobile"
-          ? "Mobile Speed"
+          ? performanceFallbackUsed
+            ? "Mobile Fallback"
+            : "Mobile Speed"
           : "Speed",
       v: primaryPerformanceScore,
     },
@@ -3888,7 +4042,7 @@ sub("From executive summary to action roadmap — everything your team needs to 
       ? [[tocN(),"Keyword Gap & Labs","Non-branded gaps, opportunities, and content ideas"]]
       : []),
     ...(pdfSections.keywordResearch
-      ? [[tocN(),"Keyword Research","Seed keyword suggestions and intent signals"]]
+      ? [[tocN(),pdfKeywordResearch.title,"Qualified opportunities or validated current-ranking evidence"]]
       : []),
     ...(pdfSections.serp
       ? [[tocN(),"SERP Rankings","Live Google rank positions per keyword"]]
@@ -4009,6 +4163,14 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
     [42, 72, CW - 114]
   );
 
+  if (performanceFallbackUsed) {
+    hiBox(
+      "Performance Device Fallback",
+      `The configured primary device was ${configuredPrimaryDevice}. A usable ${configuredPrimaryDevice} PageSpeed result was not returned, so the verified ${primaryPerformanceDevice} result is shown as the performance fallback.`,
+      "blue"
+    );
+  }
+
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 03 — ORGANIC TRAFFIC
   // ════════════════════════════════════════════════════════════════════
@@ -4082,7 +4244,17 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
       {col1:"Page Title",col2:pdfData?.seoQuality?.titleNeedsContext?"Needs rewrite":cl(normalized.seo.title,"Not detected"),col3:"Unique, 50–60 chars, includes primary service or topic"},
       {col1:"Meta Description",col2:pdfData?.seoQuality?.descriptionNeedsRewrite?"Needs rewrite":cl(normalized.seo.metaDescription,"Not detected"),col3:"Unique, 140–160 chars, accurately describes the business"},
       {col1:"H1 Heading",col2:pdfData?.seoQuality?.h1NeedsContext?"Needs context":cl(normalized.seo.h1,"Not detected"),col3:"One clear H1 defining the main service or offer"},
-      {col1:"Image ALT Coverage",col2:pdfData?.imageCount!==null&&pdfData?.imageCount!==undefined?`${fmt(pdfData?.imagesWithAlt)} descriptive / ${fmt(pdfData?.imagesMissingAlt)} missing attribute`:"Not checked",col3:"Empty ALT is acceptable only for decorative images"},
+      {
+        col1:"Image ALT Coverage",
+        col2:
+          Number(pdfData?.imageCount || 0) === 0
+            ? "Not assessed — no server-rendered images"
+            : `${fmt(pdfData?.imagesWithAlt)} descriptive / ${fmt(pdfData?.imagesMissingAlt)} missing attribute`,
+        col3:
+          Number(pdfData?.imageCount || 0) === 0
+            ? "No image markup was available in the fetched HTML"
+            : "Empty ALT is acceptable only for decorative images",
+      },
     ],[38,60,CW-98]);
     if(normalized.seo.title){
       secTitle("Detected Page Title");
@@ -4152,6 +4324,14 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
         "Desktop PageSpeed Unavailable",
         "Google PageSpeed did not return a usable desktop score for this run.",
         "muted"
+      );
+    }
+
+    if (performanceFallbackUsed) {
+      hiBox(
+        "Primary Performance Fallback",
+        `Configured device: ${configuredPrimaryDevice}. Reported executive performance: ${primaryPerformanceDevice}, because the configured-device result was unavailable.`,
+        "blue"
       );
     }
 
@@ -4268,11 +4448,103 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
 
     if(pdfData?.aiVisibility?.pageGeoReadiness){
       const geo=pdfData.aiVisibility.pageGeoReadiness;
+      const resolvedGeoFactors = (
+        Array.isArray(geo?.factors)
+          ? geo.factors
+          : []
+      ).map((factor:any) => {
+        const label = String(
+          factor?.label || ""
+        );
+
+        if (/meta description/i.test(label)) {
+          return {
+            ...factor,
+            assessed: true,
+            pass: Boolean(
+              normalized.seo.metaDescription
+            ),
+          };
+        }
+
+        if (/clear h1|h1 heading/i.test(label)) {
+          return {
+            ...factor,
+            assessed: true,
+            pass: Boolean(
+              normalized.seo.h1
+            ),
+          };
+        }
+
+        if (/alt text|alt coverage/i.test(label)) {
+          const imageCount = Number(
+            pdfData?.imageCount || 0
+          );
+
+          return {
+            ...factor,
+            assessed: imageCount > 0,
+            pass:
+              imageCount > 0
+                ? Number(
+                    pdfData?.imagesMissingAlt ||
+                      0
+                  ) === 0
+                : null,
+          };
+        }
+
+        return factor;
+      });
+
+      const resolvedGeoScore =
+        resolvedGeoFactors.reduce(
+          (score:number, factor:any) =>
+            score +
+            (factor?.assessed !== false &&
+            factor?.pass === true
+              ? Number(factor?.weight || 0)
+              : 0),
+          0
+        );
+
+      const resolvedGeoGrade =
+        resolvedGeoScore >= 75
+          ? "Strong"
+          : resolvedGeoScore >= 45
+            ? "Moderate"
+            : "Needs Work";
+
+      const resolvedGeoTopIssue =
+        resolvedGeoFactors
+          .filter(
+            (factor:any) =>
+              factor?.assessed !== false &&
+              factor?.pass !== true
+          )
+          .sort(
+            (a:any, b:any) =>
+              Number(b?.weight || 0) -
+              Number(a?.weight || 0)
+          )[0]?.label || null;
+
       ensure(72);
       secTitle("AI Citation Readiness — Audited Page");
-      kpiRow([{label:"Readiness Score",value:`${geo.score}/100`,sub:geo.grade,col:sCol(geo.score)}]);
-      tbl(["Factor","Status"],geo.factors.map((f:any)=>({col1:cl(f.label),col2:f.pass?"Pass":"Needs work"})));
-      if(geo.topIssue) hiBox("Top Fix for AI Visibility",cl(geo.topIssue),"amber");
+      kpiRow([{label:"Readiness Score",value:`${resolvedGeoScore}/100`,sub:resolvedGeoGrade,col:sCol(resolvedGeoScore)}]);
+      tbl(
+        ["Factor","Status"],
+        resolvedGeoFactors.map((factor:any)=>({
+          col1:cl(factor?.label),
+          col2:
+            factor?.assessed === false
+              ? "Not assessed"
+              : factor?.pass === true
+                ? "Pass"
+                : "Needs work",
+        }))
+      );
+      if(resolvedGeoTopIssue) hiBox("Top Fix for AI Visibility",cl(resolvedGeoTopIssue),"amber");
     }
     hiBox("Generative Engine Optimisation (GEO) Readiness",aiScore>=70?`${domain} shows detectable AI visibility. Strengthen with: entity signals, FAQ schema, third-party citations, and topical authority.`:`${domain} has weak AI visibility. Add: company entity signals, structured data, FAQ content, and external brand citations.`,aiScore>=70?"green":"amber");
   }
@@ -4355,17 +4627,23 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   //  SECTION 10 — KEYWORD RESEARCH
   // ════════════════════════════════════════════════════════════════════
   if(pdfSections.keywordResearch){
-    secHdr(nextSec(),"Qualified Keyword Research","Relevant keyword opportunities qualified against the audited site niche, ranking footprint, and validated competitor gaps.");
+    secHdr(
+      nextSec(),
+      pdfKeywordResearch.title,
+      pdfKeywordResearch.description
+    );
     kpiRow([
       {label:"Research Context",value:cl(pdfKeywordResearch.context),col:C.accent},
-      {label:"Qualified Keywords",value:fmt(pdfKeywordResearch.suggestions.length),col:C.blue},
+      {label:pdfKeywordResearch.itemLabel,value:fmt(pdfKeywordResearch.suggestions.length),col:C.blue},
       {label:"Source",value:cl(pdfKeywordResearch.source,"Crawler Que"),col:C.muted},
       {label:"Filtered Irrelevant",value:fmt(pdfKeywordResearch.filteredCount),col:pdfKeywordResearch.filteredCount>0?C.amber:C.muted},
     ]);
     if (pdfKeywordResearch.usedFallback) {
       hiBox(
         "Relevance Guard Applied",
-        "The original seed suggestions did not contain enough site-relevant terms. This section therefore uses validated keyword-gap and ranking evidence instead of showing unrelated brand-name suggestions.",
+        pdfKeywordResearch.displayMode === "ranking-evidence"
+          ? "The original seed suggestions did not contain enough site-relevant opportunities. This section therefore shows validated current-ranking evidence and does not present those terms as new opportunities."
+          : "The original seed suggestions did not contain enough site-relevant terms. This section therefore uses validated competitor-gap evidence instead of showing unrelated brand-name suggestions.",
         "blue"
       );
     }
@@ -4523,6 +4801,24 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
       {label:"Failed Pages",value:fmt(pdfData?.contentAnalysis?.failedPages),col:(n(pdfData?.contentAnalysis?.failedPages)??0)>0?C.amber:C.green},
       {label:"Average Score",value:pdfData?.contentAnalysis?.averageScore!==null&&pdfData?.contentAnalysis?.averageScore!==undefined?`${fmt(pdfData.contentAnalysis.averageScore)}/100`:"—",col:sCol(pdfData?.contentAnalysis?.averageScore)},
     ]);
+
+    const contentPagesAnalyzed = Number(
+      pdfData?.contentAnalysis?.analyzedPages ||
+        pdfData?.contentAnalysis?.results?.length ||
+        0
+    );
+
+    if (contentPagesAnalyzed === 0) {
+      hiBox(
+        "Content Quality Unavailable",
+        cl(
+          pdfData?.contentAnalysis?.unavailableReason ||
+            pdfData?.contentAnalysis?.note ||
+            "The selected page could not be analyzed during this run. No content-quality score or content-derived recommendation has been generated."
+        ),
+        "amber"
+      );
+    }
     if(pdfData?.dataforseo?.keywordGap?.opportunities?.length){
       secTitle("Content Opportunities");
       tbl(["Keyword","Volume","Competitor Domains"],
@@ -6567,7 +6863,7 @@ value={
 {/* CONTENT QUALITY */}
 {activeTab === "content" && (
   <Section title="First-Party Content Quality">
-    <p className="mb-5 text-sm text-slate-500">
+    <p className="mb-5 max-w-4xl text-sm leading-6 text-[#A0A0A0]">
       Only pages from the audited domain are included. External SERP pages are excluded from the Content Quality score and may be used only as separate competitive evidence.
     </p>
 
@@ -6595,15 +6891,31 @@ value={
       />
     </div>
 
-    <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 p-5">
-      <p className="text-sm font-semibold text-blue-900">
+    <div className="mb-6 rounded-2xl border border-blue-300/20 bg-blue-300/10 p-5">
+      <p className="text-sm font-semibold text-blue-100">
         Scope: {data?.contentAnalysis?.scope || "first-party"}
       </p>
-      <p className="mt-2 text-sm leading-6 text-blue-800">
+      <p className="mt-2 text-sm leading-6 text-blue-100/80">
         {data?.contentAnalysis?.note ||
           "Only URLs from the audited domain are included in this module."}
       </p>
     </div>
+
+    {Number(
+      data?.contentAnalysis?.analyzedPages ||
+        data?.contentAnalysis?.results?.length ||
+        0
+    ) === 0 && (
+      <div className="mb-6 rounded-2xl border border-amber-400/25 bg-amber-400/10 p-5">
+        <p className="font-semibold text-amber-200">
+          Content Quality Unavailable
+        </p>
+        <p className="mt-2 text-sm leading-6 text-amber-100/80">
+          {data?.contentAnalysis?.unavailableReason ||
+            "The selected page could not be analyzed during this run. No content-quality score or content-derived recommendation has been generated."}
+        </p>
+      </div>
+    )}
 
     <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <h3 className="mb-4 font-semibold text-slate-950">
@@ -6683,7 +6995,7 @@ value={
 {/* LOCAL SEO */}
 {activeTab === "localSeo" && (
   <Section title="Local SEO & Business Listings">
-<p className="mb-5 text-sm text-slate-500">
+<p className="mb-5 max-w-4xl text-sm leading-6 text-[#A0A0A0]">
   The query combines the audited brand, service/category, and selected location. Only verified brand matches are presented as the audited business&apos;s listings; wider market results remain separate.
 </p>
 
@@ -6758,7 +7070,7 @@ value={
 {/* SEO LABS */}
 {activeTab === "labs" && (
   <Section title="Crawler Que Labs Intelligence">
-    <p className="mb-5 text-sm text-slate-500">
+    <p className="mb-5 max-w-4xl text-sm leading-6 text-[#A0A0A0]">
       Shows ranked keywords, keyword gaps, organic competitors, and visibility signals from Crawler Que Labs.
     </p>
 
@@ -6840,7 +7152,7 @@ value={
 {/* DOMAIN ANALYTICS */}
 {activeTab === "domainAnalytics" && (
   <Section title="Domain Analytics — Provider Signals">
-    <p className="mb-5 text-sm text-slate-500">
+    <p className="mb-5 max-w-4xl text-sm leading-6 text-[#A0A0A0]">
       Separate provider signals for context. These figures do not replace the canonical Traffic Intelligence estimate used in the overview, history, or PDF.
     </p>
 
@@ -6980,7 +7292,7 @@ value={
 {/* SEO */}
 {activeTab === "seo" && (
   <Section title="SEO & Technical Performance">
-    <p className="mb-5 text-sm text-slate-500">
+    <p className="mb-5 max-w-4xl text-sm leading-6 text-[#A0A0A0]">
       On-page SEO checks, PageSpeed metrics, technical issues, and crawl signals.
     </p>
 
@@ -7301,7 +7613,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 ) : null}
 {/* ════════════════════ END V2 BLOCK ════════════════════ */}
 
-    <p className="mb-5 text-sm text-slate-500">
+    <p className="mb-5 max-w-4xl text-sm leading-6 text-[#A0A0A0]">
       Deeper per-model breakdown and competitor share, expanding on the live results above.
     </p>
 
@@ -7438,7 +7750,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 {activeTab === "keywords" && (
   data?.dataforseo?.keywordGap ? (
   <Section title="Keyword Opportunities & Gap Analysis">
-    <p className="mb-5 text-sm text-slate-500">
+    <p className="mb-5 max-w-4xl text-sm leading-6 text-[#A0A0A0]">
       Powered by Crawler Que Labs competitor keyword overlap. Shows keywords competitors rank for where this domain has weak or no visibility.
     </p>
 
@@ -7592,7 +7904,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 
 {/* RECOMMENDATIONS */}{activeTab === "recommendations" && (
   <Section title="Evidence-Backed Recommendations">
-    <p className="mb-5 text-sm text-slate-500">
+    <p className="mb-5 max-w-4xl text-sm leading-6 text-[#A0A0A0]">
       Every action is tied to a source module, evidence, affected URLs, validation status, owner, effort, and timeline. Competitor-branded keyword gaps are excluded from the standard roadmap.
     </p>
 
@@ -7634,19 +7946,19 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
             : rawRec || {};
 
           const impact = String(rec?.impact || "Medium");
-          const impactClass = impact.toLowerCase().includes("high")
-            ? "bg-red-50 text-red-600"
-            : impact.toLowerCase().includes("low")
-              ? "bg-green-50 text-green-600"
-              : "bg-amber-50 text-amber-600";
+const impactClass = impact.toLowerCase().includes("high")
+  ? "border border-red-400/25 bg-red-400/10 text-red-300"
+  : impact.toLowerCase().includes("low")
+    ? "border border-emerald-400/25 bg-emerald-400/10 text-emerald-300"
+    : "border border-amber-400/25 bg-amber-400/10 text-amber-300";
 
           return (
-            <div
-              key={rec?.id || i}
-              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-            >
+<div
+  key={rec?.id || i}
+  className="rounded-2xl border border-[#252525] bg-[#111111] p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-[#C5FF3D]/30 hover:bg-[#141414]"
+>
               <div className="mb-4 flex items-center justify-between gap-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#C5FF3D]">
                   Priority {i + 1} · {rec?.sourceModule || "Recommendations"}
                 </p>
 
@@ -7655,54 +7967,80 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
                 </span>
               </div>
 
-              <h3 className="text-lg font-bold text-slate-950">
+              <h3 className="text-lg font-bold text-white">
                 {rec?.title || `Recommendation ${i + 1}`}
               </h3>
 
-              <p className="mt-3 text-sm leading-6 text-slate-600">
+              <p className="mt-3 text-sm leading-6 text-[#A0A0A0]">
                 {rec?.detail || "Review this recommendation against the attached evidence."}
               </p>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-xl bg-slate-50 p-3">
-                  <p className="text-[11px] font-semibold uppercase text-slate-500">Timeline</p>
-                  <p className="mt-1 text-sm font-bold text-slate-950">
-                    {rec?.timeline || "31–60 days"}
-                  </p>
-                </div>
+<div className="rounded-xl border border-[#252525] bg-[#171717] p-3">
+  <p className="text-[11px] font-semibold uppercase text-[#777777]">
+    Timeline
+  </p>
 
-                <div className="rounded-xl bg-slate-50 p-3">
-                  <p className="text-[11px] font-semibold uppercase text-slate-500">Owner</p>
-                  <p className="mt-1 text-sm font-bold text-slate-950">
+  <p className="mt-1 text-sm font-bold text-white">
+    {rec?.timeline || "31–60 days"}
+  </p>
+</div>
+
+                <div className="rounded-xl border border-[#252525] bg-[#171717] p-3">
+                  <p className="text-[11px] font-semibold uppercase text-[#777777]">
+                    Owner
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-white">
                     {rec?.owner || "Growth Team"}
                   </p>
                 </div>
 
-                <div className="rounded-xl bg-slate-50 p-3">
-                  <p className="text-[11px] font-semibold uppercase text-slate-500">Effort / Validation</p>
-                  <p className="mt-1 text-sm font-bold text-slate-950">
+                <div className="rounded-xl border border-[#252525] bg-[#171717] p-3">
+                  <p className="text-[11px] font-semibold uppercase text-[#777777]">
+                    Effort / Validation
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-white">
                     {rec?.effort || "Medium"} · {rec?.validationStatus || "directional"}
                   </p>
                 </div>
               </div>
 
               {Array.isArray(rec?.affectedUrls) && rec.affectedUrls.length > 0 && (
-                <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-3">
-                  <p className="text-[11px] font-semibold uppercase text-blue-700">Affected URLs</p>
-                  <div className="mt-2 space-y-1">
-                    {rec.affectedUrls.slice(0, 3).map((affectedUrl: string, urlIndex: number) => (
-                      <p key={urlIndex} className="break-all text-xs text-blue-700">
-                        {affectedUrl}
-                      </p>
-                    ))}
-                  </div>
-                </div>
+<div className="mt-4 rounded-xl border border-[#C5FF3D]/20 bg-[#C5FF3D]/5 p-4">
+  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#C5FF3D]">
+    Affected URLs
+  </p>
+
+  <div className="mt-2 space-y-2">
+    {rec.affectedUrls
+      .slice(0, 3)
+      .map(
+        (
+          affectedUrl: string,
+          urlIndex: number
+        ) => (
+          <a
+            key={urlIndex}
+            href={affectedUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="block break-all text-xs leading-5 text-[#D9FF7A] underline decoration-[#C5FF3D]/30 underline-offset-2 hover:text-white"
+          >
+            {affectedUrl}
+          </a>
+        )
+      )}
+  </div>
+</div>
               )}
 
               {Array.isArray(rec?.evidence) && rec.evidence.length > 0 && (
-                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-[11px] font-semibold uppercase text-slate-500">Evidence</p>
-                  <ul className="mt-2 space-y-1 text-xs text-slate-600">
+<div className="mt-4 rounded-xl border border-[#2A2A2A] bg-[#0D0D0D] p-4">
+  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#8A8A8A]">
+    Evidence
+  </p>
+
+  <ul className="mt-2 space-y-1.5 text-xs leading-5 text-[#B8B8B8]">
                     {rec.evidence.slice(0, 4).map((evidence: string, evidenceIndex: number) => (
                       <li key={evidenceIndex}>• {evidence}</li>
                     ))}
@@ -7713,11 +8051,11 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
           );
         })
       ) : (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6">
-          <p className="text-sm text-slate-500">
-            No evidence-backed recommendations were generated for the available data.
-          </p>
-        </div>
+<div className="rounded-2xl border border-[#252525] bg-[#111111] p-6">
+  <p className="text-sm text-[#8A8A8A]">
+    No evidence-backed recommendations were generated for the available data.
+  </p>
+</div>
       )}
     </div>
 
@@ -7727,24 +8065,24 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
         ["Next 30 Days", dashboardRoadmap?.next30Days, "31–60 days"],
         ["Final 30 Days", dashboardRoadmap?.final30Days, "61–90 days"],
       ].map(([label, items, timeline]: any) => (
-        <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">{timeline}</p>
-          <h3 className="mt-2 font-bold text-slate-950">{label}</h3>
+        <div key={label} className="rounded-2xl border border-[#252525] bg-[#111111] p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#C5FF3D]">{timeline}</p>
+          <h3 className="mt-2 font-bold text-white">{label}</h3>
           {Array.isArray(items) && items.length > 0 ? (
             <div className="mt-4 space-y-3">
               {items.slice(0, 4).map((item: any, index: number) => (
-                <div key={item?.id || index} className="rounded-xl bg-slate-50 p-3">
-                  <p className="text-sm font-semibold text-slate-950">
+                <div key={item?.id || index} className="rounded-xl border border-[#252525] bg-[#171717] p-3">
+                  <p className="text-sm font-semibold text-white">
                     {item?.title || `Action ${index + 1}`}
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-[#8A8A8A]">
                     {item?.owner || "Growth Team"}
                   </p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="mt-4 text-sm text-slate-500">No validated actions assigned to this phase.</p>
+            <p className="mt-4 text-sm text-[#8A8A8A]">No validated actions assigned to this phase.</p>
           )}
         </div>
       ))}
@@ -7753,9 +8091,10 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 )}
 {/* KEYWORD RESEARCH */}
 {activeTab === "keywordResearch" && (
-  <Section title="Keyword Research">
-    <p className="mb-5 text-sm text-slate-500">
-      Shows site-relevant keyword opportunities qualified against the audited niche, ranking footprint, and validated competitor gaps.
+  <Section title={dashboardKeywordResearch.title || "Keyword Research"}>
+    <p className="mb-5 max-w-4xl text-sm leading-6 text-[#A0A0A0]">
+      {dashboardKeywordResearch.description ||
+        "Shows site-relevant keyword opportunities qualified against the audited niche, ranking footprint, and validated competitor gaps."}
     </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-3">
@@ -7764,7 +8103,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
         value={dashboardKeywordResearch.context || "Data not available"}
       />
       <MetricCard
-        label="Suggestions Found"
+        label={dashboardKeywordResearch.itemLabel || "Suggestions Found"}
         value={dashboardKeywordResearch.suggestions.length}
       />
       <MetricCard
@@ -7781,7 +8120,9 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <h3 className="mb-4 font-semibold text-slate-950">
-        Qualified Keyword Opportunities
+        {dashboardKeywordResearch.displayMode === "ranking-evidence"
+          ? "Current Ranking Evidence"
+          : "Qualified Keyword Opportunities"}
       </h3>
 
       {dashboardKeywordResearch.suggestions.length > 0 ? (
@@ -7852,7 +8193,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 {activeTab === "backlinks" && (
   data?.backlinks ? (
   <Section title="Backlink Authority">
-    <p className="mb-5 text-sm text-slate-500">
+    <p className="mb-5 max-w-4xl text-sm leading-6 text-[#A0A0A0]">
       Powered by Crawler Que Backlinks API. Shows authority signals, referring domains, and top backlink sources.
     </p>
 
@@ -7920,7 +8261,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 {/* SERP RANKINGS */}
 {activeTab === "serp" && (
   <Section title="Live SERP Rankings">
-    <p className="mb-5 text-sm text-slate-500">
+    <p className="mb-5 max-w-4xl text-sm leading-6 text-[#A0A0A0]">
       Powered by Crawler Que SERP API. Shows if the audited domain appears in Google’s top results for tracked keywords.
     </p>
 
@@ -8015,7 +8356,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 {/* TECHNICAL AUDIT */}
 {activeTab === "technical" && (
   <Section title="Technical SEO Audit">
-    <p className="mb-5 text-sm text-slate-500">
+    <p className="mb-5 max-w-4xl text-sm leading-6 text-[#A0A0A0]">
       Powered by Crawler Que OnPage API. The crawl cap, discovered pages, completed pages, failures, remaining pages, coverage, and confidence are shown separately so partial crawls are never presented as complete.
     </p>
 
@@ -8156,7 +8497,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 {activeTab === "traffic" && (
   data?.traffic ? (
   <Section title={data?.traffic?.label || "Estimated Monthly Organic Visits"}>
-  <p className="mb-5 text-sm text-slate-500">
+  <p className="mb-5 max-w-4xl text-sm leading-6 text-[#A0A0A0]">
     {data?.traffic?.note ||
       "Modeled estimate based on third-party organic visibility data. Actual analytics traffic may vary."}
   </p>
@@ -8286,7 +8627,7 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 {activeTab === "competitors" && (
   data?.competitors?.length > 0 ? (
   <Section title="Competitor Intelligence">
-    <p className="mb-5 text-sm text-slate-500">
+    <p className="mb-5 max-w-4xl text-sm leading-6 text-[#A0A0A0]">
       Organic competitors are identified using Crawler Que keyword overlap and ranking visibility.
     </p>
 
