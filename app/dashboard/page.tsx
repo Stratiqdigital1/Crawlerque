@@ -5819,17 +5819,58 @@ value={
         SEO Recommendations
       </h3>
 
-      {data?.recommendations?.length > 0 ? (
-        <ul className="list-disc space-y-2 pl-5 text-sm text-slate-600">
-          {data.recommendations.slice(0, 8).map((rec: string, i: number) => (
-            <li key={i}>{rec}</li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-sm text-slate-500">
-          No evidence-backed recommendations were returned for this audit.
-        </p>
-      )}
+{Array.isArray(data?.recommendations) &&
+data.recommendations.length > 0 ? (
+  <ul className="list-disc space-y-3 pl-5 text-sm text-slate-600">
+    {data.recommendations
+      .slice(0, 8)
+      .map((rawRec: any, i: number) => {
+        const rec =
+          typeof rawRec === "string"
+            ? {
+                title:
+                  String(rawRec).split(".")[0] ||
+                  `Recommendation ${i + 1}`,
+                detail: rawRec,
+              }
+            : rawRec || {};
+
+        const title =
+          rec?.title ||
+          rec?.label ||
+          `Recommendation ${i + 1}`;
+
+        const detail =
+          rec?.detail ||
+          rec?.description ||
+          rec?.recommendation ||
+          rec?.action ||
+          "";
+
+        return (
+          <li
+            key={rec?.id || i}
+            className="leading-6"
+          >
+            <span className="font-semibold text-slate-950">
+              {String(title)}
+            </span>
+
+            {detail &&
+            String(detail) !== String(title) ? (
+              <span className="block text-slate-600">
+                {String(detail)}
+              </span>
+            ) : null}
+          </li>
+        );
+      })}
+  </ul>
+) : (
+  <p className="text-sm text-slate-500">
+    No evidence-backed recommendations were returned for this audit.
+  </p>
+)}
     </div>
   </Section>
 )}
@@ -7857,24 +7898,94 @@ function Section({ title, children }: any) {
 }
 
 function IssueCard({ issue }: any) {
+  const safeIssue =
+    typeof issue === "string"
+      ? {
+          title: issue,
+          impact:
+            "Review this issue and validate the affected page.",
+          fix: "",
+        }
+      : issue || {};
+
+  const getIssueText = (
+    value: any,
+    fallback: string
+  ) => {
+    if (
+      value === null ||
+      value === undefined ||
+      value === ""
+    ) {
+      return fallback;
+    }
+
+    if (
+      typeof value === "string" ||
+      typeof value === "number"
+    ) {
+      return String(value);
+    }
+
+    if (typeof value === "object") {
+      return String(
+        value?.title ||
+          value?.label ||
+          value?.detail ||
+          value?.description ||
+          value?.message ||
+          fallback
+      );
+    }
+
+    return fallback;
+  };
+
+  const issueTitle = getIssueText(
+    safeIssue?.title ||
+      safeIssue?.issue ||
+      safeIssue?.label,
+    "Audit issue"
+  );
+
+  const issueImpact = getIssueText(
+    safeIssue?.impact ||
+      safeIssue?.detail ||
+      safeIssue?.description,
+    "Review this issue and validate the affected page."
+  );
+
+  const issueFix = getIssueText(
+    safeIssue?.fix ||
+      safeIssue?.recommendation ||
+      safeIssue?.action,
+    ""
+  );
+
   return (
     <div className="cq-card mb-3 border-l-2 border-l-[var(--cq-signal)] p-5">
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-[15px] font-semibold text-[var(--cq-text)]">{issue.title}</p>
+      <div className="mb-2 flex items-center justify-between gap-4">
+        <p className="text-[15px] font-semibold text-[var(--cq-text)]">
+          {issueTitle}
+        </p>
 
-        <span className="border border-[var(--cq-signal)]/30 px-3 py-1 font-mono text-xs text-[var(--cq-signal)]">
+        <span className="shrink-0 border border-[var(--cq-signal)]/30 px-3 py-1 font-mono text-xs text-[var(--cq-signal)]">
           ISSUE
         </span>
       </div>
 
-      <p className="text-sm leading-6 text-[#A0A0A0]">{issue.impact}</p>
+      <p className="text-sm leading-6 text-[#A0A0A0]">
+        {issueImpact}
+      </p>
 
-      {issue.fix && (
+      {issueFix ? (
         <div className="mt-3 rounded-xl border border-[#222] bg-[#111] p-3 text-sm text-[#CCCCCC]">
-          <span className="font-semibold text-[#C5FF3D]">Recommendation:</span>{" "}
-          {issue.fix}
+          <span className="font-semibold text-[#C5FF3D]">
+            Recommendation:
+          </span>{" "}
+          {issueFix}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
