@@ -766,30 +766,81 @@ activeAuditJobIdRef.current =
 
       const progressInterval = pollAuditJobStatus(startedJobId);
 
-      const res = await fetch("/api/audit", {
-        method: "POST",
-        signal: controller.signal,
-        headers: {
-          "Content-Type": "application/json",
-        },
-body: JSON.stringify({
-  url: normalizedUrl,
-  reportTypes: effectiveReportTypes,
-  auditJobId: startedJobId,
-  auditConfig:
-    reservedAuditConfig,
-  customPrompts: customPrompts.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 5),
-}),
-      });
+const res = await fetch("/api/audit", {
+  method: "POST",
+  signal: controller.signal,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    url: normalizedUrl,
+    reportTypes:
+      effectiveReportTypes,
+    auditJobId:
+      startedJobId,
+    auditConfig:
+      reservedAuditConfig,
+    customPrompts:
+      customPrompts
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 5),
+  }),
+});
 
-      const json = await res.json();
+/*
+ * Do not call res.json() directly.
+ * Vercel timeout and gateway responses can
+ * return HTML or an empty body.
+ */
+const auditResponseText =
+  await res.text();
 
-if (!res.ok || json?.success === false) {
+let json: any = null;
+
+if (auditResponseText) {
+  try {
+    json = JSON.parse(
+      auditResponseText
+    );
+  } catch {
+    json = null;
+  }
+}
+
+if (
+  !res.ok ||
+  json?.success === false
+) {
+  const reference =
+    json?.traceId
+      ? ` Reference: ${json.traceId}.`
+      : "";
+
+  const errorMessage =
+    json
+      ? getPublicErrorMessage(
+          json,
+          "The audit could not be completed. Please try again."
+        )
+      : res.status === 504
+        ? "The audit server timed out before the full report could be returned."
+        : res.status === 502 ||
+            res.status === 503
+          ? "The audit service was temporarily unavailable. Please retry after the deployment is healthy."
+          : res.status === 413
+            ? "The generated audit response was too large to return."
+            : `The audit server returned an invalid response (HTTP ${res.status}).`;
+
   throw new Error(
-    getPublicErrorMessage(
-      json,
-      "The audit could not be completed. Please try again."
-    )
+    `${errorMessage}${reference}`
+  );
+}
+
+if (!json) {
+  throw new Error(
+    "The audit server returned an empty or invalid response."
   );
 }
 
@@ -943,13 +994,22 @@ if (
 
 await loadCurrentUser();
 } catch (e: any) {
-  console.error(e);
-  setError(
-    getPublicErrorMessage(
-      e,
-      "Something went wrong while running the audit. Please try again."
-    )
+  console.error(
+    "Audit request failed:",
+    e
   );
+
+  const auditErrorMessage =
+    e instanceof Error &&
+    e.message.trim()
+      ? e.message.trim()
+      : getPublicErrorMessage(
+          e,
+          "Something went wrong while running the audit. Please try again."
+        );
+
+  setError(auditErrorMessage);
+
   setAuditCurrentModule("Failed");
 
   trackAnalyticsEvent("audit_failed", {

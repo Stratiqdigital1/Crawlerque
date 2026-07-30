@@ -26,6 +26,13 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/*
+ * Full audits call several external services.
+ * Give the orchestrator enough time to return
+ * a controlled success or failure response.
+ */
+export const maxDuration = 300;
+
 async function updateAuditJob(
   jobId: string,
   data: Record<string, any>
@@ -1340,8 +1347,20 @@ await updateAuditJob(auditJob.id, {
   currentModule: "Running PageSpeed checks",
 });
 
-const mobileSpeed = await getPageSpeed(auditTargetUrl, "mobile");
-const desktopSpeed = await getPageSpeed(auditTargetUrl, "desktop");
+const [
+  mobileSpeed,
+  desktopSpeed,
+] = await Promise.all([
+  getPageSpeed(
+    auditTargetUrl,
+    "mobile"
+  ),
+
+  getPageSpeed(
+    auditTargetUrl,
+    "desktop"
+  ),
+]);
 
 const hasPageSpeedEvidence = (snapshot: any) =>
   Boolean(
