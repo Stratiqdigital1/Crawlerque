@@ -334,10 +334,15 @@ export async function POST(req: Request) {
               detectedCountry
             );
 
-    const scoredPrompts = uniqueStrings([
-      ...neutralCustomPrompts,
-      ...categoryPrompts,
-    ]).slice(0, 5);
+const scoredPrompts = uniqueStrings([
+  ...neutralCustomPrompts,
+  ...(generatedPrompts.length > 0
+    ? generatedPrompts
+    : buildNeutralPrompts(
+        category,
+        detectedCountry
+      )),
+]).slice(0, 3);
 
     const iso = countryIso(detectedCountry);
     const promptRuns = await Promise.all(

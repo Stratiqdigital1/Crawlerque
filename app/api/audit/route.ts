@@ -1769,13 +1769,32 @@ try {
               : "general"
           );
 
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 110000);
+const controller =
+  new AbortController();
 
-        const aiResponse = await fetch(`${origin}/api/ai-visibility`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+/*
+ * AI is an independent module. If it exceeds
+ * the safe time budget, return the remaining
+ * completed audit rather than losing the
+ * entire report to a gateway timeout.
+ */
+const timeout = setTimeout(
+  () => controller.abort(),
+  75000
+);
+
+let aiResponse: Response;
+
+try {
+  aiResponse = await fetch(
+    `${origin}/api/ai-visibility`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type":
+          "application/json",
+      },
+      body: JSON.stringify({
             url: auditTargetUrl,
             domain,
             brandName: brandNameForAudit,
@@ -1803,14 +1822,17 @@ try {
               (competitor: any) => competitor.domain
             ),
             customPrompts,
-          }),
-          signal: controller.signal,
-          cache: "no-store",
-        });
+           }),
+      signal: controller.signal,
+      cache: "no-store",
+    }
+  );
+} finally {
+  clearTimeout(timeout);
+}
 
-        clearTimeout(timeout);
-
-        const aiJson = await aiResponse.json();
+const aiJson =
+  await aiResponse.json();
 
         if (!aiResponse.ok || !aiJson?.success) {
           throw new Error(

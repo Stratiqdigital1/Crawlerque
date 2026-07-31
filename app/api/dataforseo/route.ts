@@ -26,33 +26,56 @@ function getAuthHeader() {
   return "Basic " + Buffer.from(`${login}:${password}`).toString("base64");
 }
 
-async function dataForSeoPost(endpoint: string, payload: any[]) {
+async function dataForSeoPost(
+  endpoint: string,
+  payload: any[]
+) {
   const auth = getAuthHeader();
 
   if (!auth) {
-    throw new Error("Missing DATAFORSEO_LOGIN or DATAFORSEO_PASSWORD");
+    throw new Error(
+      "Missing DATAFORSEO_LOGIN or DATAFORSEO_PASSWORD"
+    );
   }
 
-  const res = await fetch(`https://api.dataforseo.com/v3/${endpoint}`, {
-    method: "POST",
-    headers: {
-      Authorization: auth,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-    cache: "no-store",
-  });
+  try {
+    const res = await fetch(
+      `https://api.dataforseo.com/v3/${endpoint}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: auth,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        cache: "no-store",
+        signal: AbortSignal.timeout(25000),
+      }
+    );
 
-  const json = await res.json();
+    const json = await res.json();
 
-  if (!res.ok) {
-    console.error("DataForSEO API failed:", endpoint, json);
+    if (!res.ok) {
+      console.error(
+        "DataForSEO API failed:",
+        endpoint,
+        json
+      );
+
+      return null;
+    }
+
+    return json;
+  } catch (error) {
+    console.error(
+      "DataForSEO request failed:",
+      endpoint,
+      error
+    );
+
     return null;
   }
-
-  return json;
 }
-
 function getKeyword(item: any) {
   return item?.keyword || item?.keyword_data?.keyword || "";
 }
@@ -322,7 +345,8 @@ const effectiveLocationCode =
       );
     }
 const KEYWORD_FETCH_LIMIT = 1000;
-const MAX_KEYWORDS = 10000;
+const MAX_KEYWORDS = 3000;
+const MAX_KEYWORD_FETCH_ITERATIONS = 3;
     const baseTask = [
   {
     target: domain,
@@ -382,7 +406,8 @@ let keywordFetchStoppedReason = "completed";
 while (
   allRankedKeywordItems.length < MAX_KEYWORDS &&
   keywordOffset < totalRankedKeywordsAvailable &&
-  keywordFetchIterations < 20
+  keywordFetchIterations <
+    MAX_KEYWORD_FETCH_ITERATIONS
 ) {
   keywordFetchIterations++;
   const rankedKeywordsJson = await dataForSeoPost(
