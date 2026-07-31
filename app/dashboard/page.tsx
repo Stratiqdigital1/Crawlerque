@@ -3363,9 +3363,97 @@ const exportPDF = async () => {
       return;
     }
 
-    pdfData =
-      reviewJson.report
-        .clientReportData;
+    const approvedClientData =
+      reviewJson.report.clientReportData;
+
+    const savedReportData =
+      reviewJson?.report?.reportData &&
+      typeof reviewJson.report.reportData === "object" &&
+      !Array.isArray(reviewJson.report.reportData)
+        ? reviewJson.report.reportData
+        : {};
+
+    /*
+     * Client review controls the approved editorial layer, but the PDF must
+     * keep the latest canonical machine evidence from the saved audit.
+     * Otherwise an older approved clientReportData snapshot can permanently
+     * reintroduce stale keyword context, competitor metrics, backlink wording,
+     * or roadmap data after the dashboard renderer has been improved.
+     */
+    pdfData = {
+      ...savedReportData,
+      ...approvedClientData,
+
+      businessContext:
+        savedReportData?.businessContext ||
+        approvedClientData?.businessContext ||
+        null,
+
+      dataforseo:
+        savedReportData?.dataforseo ||
+        approvedClientData?.dataforseo ||
+        null,
+
+      keywordResearch:
+        savedReportData?.keywordResearch ||
+        approvedClientData?.keywordResearch ||
+        null,
+
+      aiSearchVisibility:
+        savedReportData?.aiSearchVisibility ||
+        approvedClientData?.aiSearchVisibility ||
+        null,
+
+      aiVisibility:
+        savedReportData?.aiVisibility ||
+        approvedClientData?.aiVisibility ||
+        null,
+
+      backlinks:
+        savedReportData?.backlinks ||
+        approvedClientData?.backlinks ||
+        null,
+
+      onPage:
+        savedReportData?.onPage ||
+        approvedClientData?.onPage ||
+        null,
+
+      pageSpeed:
+        savedReportData?.pageSpeed ||
+        approvedClientData?.pageSpeed ||
+        null,
+
+      serpData:
+        savedReportData?.serpData ||
+        approvedClientData?.serpData ||
+        null,
+
+      contentAnalysis:
+        savedReportData?.contentAnalysis ||
+        approvedClientData?.contentAnalysis ||
+        null,
+
+      businessData:
+        savedReportData?.businessData ||
+        approvedClientData?.businessData ||
+        null,
+
+      auditConfig:
+        savedReportData?.auditConfig ||
+        approvedClientData?.auditConfig ||
+        null,
+
+      searchContext:
+        savedReportData?.searchContext ||
+        approvedClientData?.searchContext ||
+        null,
+
+      reportTypes:
+        savedReportData?.reportTypes ||
+        approvedClientData?.reportTypes ||
+        [],
+    };
 
     setReportReview(
       reviewJson.report.review
