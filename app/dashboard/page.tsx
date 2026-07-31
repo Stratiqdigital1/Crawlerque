@@ -4926,10 +4926,38 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
                 : "Needs work",
         }))
       );
-      if(resolvedGeoTopIssue) hiBox("Top Fix for AI Visibility",cl(resolvedGeoTopIssue),"amber");
-    }
-    hiBox("Generative Engine Optimisation (GEO) Readiness",aiScore>=70?`${domain} shows detectable AI visibility. Strengthen with: entity signals, FAQ schema, third-party citations, and topical authority.`:`${domain} has weak AI visibility. Add: company entity signals, structured data, FAQ content, and external brand citations.`,aiScore>=70?"green":"amber");
-  }
+if (resolvedGeoTopIssue) {
+  const geoTopFixDisplay =
+    resolvedGeoTopIssue === "Has FAQ schema (FAQPage)"
+      ? "Add FAQ schema (FAQPage)"
+      : resolvedGeoTopIssue;
+
+  hiBox(
+    "Top Fix for AI Visibility",
+    cl(geoTopFixDisplay),
+    "amber"
+  );
+}
+
+/*
+ * Close:
+ * if (pdfData?.aiVisibility?.pageGeoReadiness)
+ */
+}
+
+hiBox(
+  "Generative Engine Optimisation (GEO) Readiness",
+  aiScore >= 70
+    ? `${domain} shows detectable AI visibility. Strengthen with: entity signals, FAQ schema, third-party citations, and topical authority.`
+    : `${domain} has weak AI visibility. Add: company entity signals, structured data, FAQ content, and external brand citations.`,
+  aiScore >= 70 ? "green" : "amber"
+);
+
+/*
+ * Close:
+ * if (pdfSections.ai)
+ */
+}
 
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 08 — COMPETITOR INTELLIGENCE
