@@ -188,8 +188,8 @@ function cleanCompetitorCandidate(
   const blocked =
     /^(ehr|emr|look|create|optimize|optimise|seo|software|platform|solution|solutions|service|services|company|companies|provider|providers|healthcare|medical|technology|tech|content|marketing|search|website|brand|brands|best|top|tools?|strong)$/i;
 
-const blockedGenericPhrase =
-  /^(user[-\s]?friendly interface|customi[sz]ation options?|systems?|ehrs?|emrs?|features?|functionality|integration|interoperability|workflow|security|support|pricing)$/i;
+  const blockedGenericPhrase =
+    /^(united states|ppc|focused|founded|user[-\s]?friendly interface|customi[sz]ation options?|systems?|ehrs?|emrs?|features?|functionality|integration|interoperability|workflow|security|support|pricing)$/i;
 
 if (
   blocked.test(cleaned) ||
@@ -239,6 +239,13 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+
+    const suppliedBusinessContext =
+      body?.businessContext &&
+      typeof body.businessContext === "object"
+        ? body.businessContext
+        : null;
+
     const inputUrl = String(body?.url || body?.domain || "").trim();
 
     if (!inputUrl) {
@@ -254,12 +261,22 @@ export async function POST(req: Request) {
       ? body.competitors.map((competitor: unknown) => String(competitor || "").trim()).filter(Boolean)
       : [];
 
-    const category = deriveCategory({
-      categoryKeywords: body?.categoryKeywords,
-      industry: String(body?.industry || ""),
+const category = String(
+  suppliedBusinessContext
+    ?.primaryService ||
+    deriveCategory({
+      categoryKeywords:
+        body?.categoryKeywords,
+
+      industry:
+        String(
+          body?.industry || ""
+        ),
+
       brandName,
       domain,
-    });
+    })
+).trim();
 
     let rankedPages: unknown[] = [];
     let generatedPrompts: string[] = [];
@@ -340,10 +357,11 @@ export async function POST(req: Request) {
               detectedCountry
             );
 
-const scoredPrompts = uniqueStrings([
-  ...neutralCustomPrompts,
-  ...categoryPrompts,
-]).slice(0, 3);
+const scoredPrompts =
+  uniqueStrings([
+    ...neutralCustomPrompts,
+    ...categoryPrompts,
+  ]).slice(0, 3);
 
     const iso = countryIso(detectedCountry);
     const promptRuns = await Promise.all(

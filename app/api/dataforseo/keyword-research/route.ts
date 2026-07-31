@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { LOCATION_CODE, LANGUAGE_CODE } from "@/lib/dataforseo-config";
+import {
+  dedupeKeywordItems,
+  filterRelevantKeywordItems,
+  type BusinessContext,
+} from "@/lib/business-context";
 
 function getAuthHeader() {
   const login = process.env.DATAFORSEO_LOGIN;
@@ -25,6 +30,7 @@ async function dataForSeoPost(endpoint: string, payload: any[]) {
     },
     body: JSON.stringify(payload),
     cache: "no-store",
+    signal: AbortSignal.timeout(25000),
   });
 
   const json = await res.json();
@@ -36,38 +42,24 @@ async function dataForSeoPost(endpoint: string, payload: any[]) {
   return json;
 }
 
-function detectIntent(
-  keyword: string
-) {
-  const k = String(
-    keyword || ""
-  )
-    .toLowerCase()
-    .trim();
+function detectIntent(keyword: string) {
+  const k = String(keyword || "").toLowerCase().trim();
 
   if (
-    /\b(best|top|review|reviews|vs|versus|alternative|alternatives|compare|comparison)\b/i.test(
-      k
-    )
+    /\b(best|top|review|reviews|vs|versus|alternative|alternatives|compare|comparison)\b/i.test(k)
   ) {
     return "Comparison";
   }
 
   if (
-    /^(how|what|why|when|where|who)\b/i.test(
-      k
-    ) ||
-    /\b(guide|tutorial|examples?|meaning|definition)\b/i.test(
-      k
-    )
+    /^(how|what|why|when|where|who)\b/i.test(k) ||
+    /\b(guide|tutorial|examples?|meaning|definition)\b/i.test(k)
   ) {
     return "Informational";
   }
 
   if (
-    /\b(price|pricing|cost|quote|buy|hire|agency|agencies|company|companies|provider|providers|service|services|consulting|consultant|partner|near me|discount|coupon)\b/i.test(
-      k
-    )
+    /\b(price|pricing|cost|quote|buy|hire|agency|agencies|company|companies|provider|providers|service|services|consulting|consultant|partner|near me|discount|coupon)\b/i.test(k)
   ) {
     return "Commercial";
   }
@@ -84,18 +76,36 @@ function getOpportunity(volume: number, competition: number) {
   return Math.min(100, Math.max(1, score));
 }
 
+function isBusinessContext(value: unknown): value is BusinessContext {
+  if (!value || typeof value !== "object") return false;
+  const context = value as Partial<BusinessContext>;
+  return Boolean(
+    context.primaryService &&
+      Array.isArray(context.coreTokens) &&
+      Array.isArray(context.categoryKeywords)
+  );
+}
+
 export async function GET() {
   return runKeywordResearch({
     seedKeyword: "multifamily real estate los angeles",
     locationName: "United States",
     languageName: "English",
+    locationCode: LOCATION_CODE,
+    languageCode: LANGUAGE_CODE,
+    businessContext: null,
   });
 }
 
 export async function POST(req: Request) {
   const body = await req.json();
 
+  const context = isBusinessContext(body?.businessContext)
+    ? body.businessContext
+    : null;
+
   const seedKeyword =
+    context?.primaryService ||
     body?.seedKeyword ||
     body?.keyword ||
     body?.brandName ||
@@ -106,6 +116,9 @@ export async function POST(req: Request) {
     seedKeyword,
     locationName: body?.locationName || "United States",
     languageName: body?.languageName || "English",
+    locationCode: Number(body?.locationCode || 0) || LOCATION_CODE,
+    languageCode: String(body?.languageCode || LANGUAGE_CODE),
+    businessContext: context,
   });
 }
 
@@ -113,10 +126,16 @@ async function runKeywordResearch({
   seedKeyword,
   locationName,
   languageName,
+  locationCode,
+  languageCode,
+  businessContext,
 }: {
   seedKeyword: string;
   locationName: string;
   languageName: string;
+  locationCode: number;
+  languageCode: string;
+  businessContext: BusinessContext | null;
 }) {
   try {
     const res = await dataForSeoPost(
@@ -124,8 +143,8 @@ async function runKeywordResearch({
       [
         {
           keyword: seedKeyword,
-          location_code: LOCATION_CODE,
-language_code: LANGUAGE_CODE,
+          location_code: locationCode,
+          language_code: languageCode,
           limit: 100,
         },
       ]
@@ -133,7 +152,7 @@ language_code: LANGUAGE_CODE,
 
     const items = res?.tasks?.[0]?.result?.[0]?.items || [];
 
-    const suggestions = items
+    const mapped = items
       .map((item: any) => {
         const keyword =
           item?.keyword ||
@@ -186,7 +205,18 @@ language_code: LANGUAGE_CODE,
           !keyword.includes("youtube") &&
           !keyword.includes("tiktok")
         );
-      })
+      });
+
+    const relevanceFiltered = businessContext
+      ? filterRelevantKeywordItems(mapped, businessContext, {
+          minimumScore: 4,
+          dedupe: true,
+        })
+      : dedupeKeywordItems(mapped);
+
+    const filteredIrrelevant = Math.max(0, mapped.length - relevanceFiltered.length);
+
+    const suggestions = relevanceFiltered
       .sort((a: any, b: any) => {
         if (b.opportunity !== a.opportunity) {
           return b.opportunity - a.opportunity;
@@ -201,7 +231,21 @@ language_code: LANGUAGE_CODE,
       keywordResearch: {
         seedKeyword,
         location: locationName,
+        language: languageName,
+        locationCode,
+        languageCode,
+        businessContext: businessContext
+          ? {
+              categoryKey: businessContext.categoryKey,
+              categoryLabel: businessContext.categoryLabel,
+              primaryService: businessContext.primaryService,
+              confidence: businessContext.confidence,
+            }
+          : null,
         suggestions,
+        filteredIrrelevant,
+        relevanceGuardApplied: Boolean(businessContext),
+        semanticDeduplicationApplied: true,
         commercialKeywords: suggestions.filter(
           (k: any) => k.intent === "Commercial"
         ),
