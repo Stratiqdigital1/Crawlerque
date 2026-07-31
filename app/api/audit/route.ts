@@ -75,38 +75,120 @@ async function fetchHtml(url: string) {
   let currentUrl = url;
   let redirectCount = 0;
 
+  const browserHeaders = {
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+      "AppleWebKit/537.36 (KHTML, like Gecko) " +
+      "Chrome/150.0.0.0 Safari/537.36",
+
+    Accept:
+      "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+
+    "Accept-Language":
+      "en-US,en;q=0.9",
+
+    "Cache-Control":
+      "no-cache",
+
+    Pragma:
+      "no-cache",
+
+    "Upgrade-Insecure-Requests":
+      "1",
+  };
+
   try {
-    for (let hop = 0; hop <= 10; hop++) {
-      const res = await fetch(currentUrl, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 Website Audit Bot",
-        },
-        redirect: "manual",
-        cache: "no-store",
-        signal: AbortSignal.timeout(8000),
-      });
+    for (
+      let hop = 0;
+      hop <= 10;
+      hop++
+    ) {
+      let res = await fetch(
+        currentUrl,
+        {
+          headers:
+            browserHeaders,
+
+          redirect:
+            "manual",
+
+          cache:
+            "no-store",
+
+          signal:
+            AbortSignal.timeout(
+              8000
+            ),
+        }
+      );
+
+      /*
+       * Some WAFs reject obvious first-pass
+       * automated requests. Retry once with
+       * a same-origin referrer before marking
+       * the homepage unavailable.
+       */
+      if (res.status === 403) {
+        try {
+          const parsedUrl =
+            new URL(currentUrl);
+
+          res = await fetch(
+            currentUrl,
+            {
+              headers: {
+                ...browserHeaders,
+
+                Referer:
+                  `${parsedUrl.protocol}//${parsedUrl.hostname}/`,
+              },
+
+              redirect:
+                "manual",
+
+              cache:
+                "no-store",
+
+              signal:
+                AbortSignal.timeout(
+                  8000
+                ),
+            }
+          );
+        } catch {
+          // Continue with original
+          // 403 response.
+        }
+      }
 
       if (
         res.status >= 300 &&
         res.status < 400
       ) {
         const location =
-          res.headers.get("location");
+          res.headers.get(
+            "location"
+          );
 
         if (!location) {
           return {
             html: "",
-            resolvedUrl: currentUrl,
+            resolvedUrl:
+              currentUrl,
             redirectCount,
+            fetchStatus:
+              res.status,
           };
         }
 
-        currentUrl = new URL(
-          location,
-          currentUrl
-        ).toString();
+        currentUrl =
+          new URL(
+            location,
+            currentUrl
+          ).toString();
 
         redirectCount += 1;
+
         continue;
       }
 
@@ -114,29 +196,45 @@ async function fetchHtml(url: string) {
         return {
           html: "",
           resolvedUrl:
-            res.url || currentUrl,
+            res.url ||
+            currentUrl,
+
           redirectCount,
+
+          fetchStatus:
+            res.status,
         };
       }
 
       return {
-        html: await res.text(),
+        html:
+          await res.text(),
+
         resolvedUrl:
-          res.url || currentUrl,
+          res.url ||
+          currentUrl,
+
         redirectCount,
+
+        fetchStatus:
+          res.status,
       };
     }
 
     return {
       html: "",
-      resolvedUrl: currentUrl,
+      resolvedUrl:
+        currentUrl,
       redirectCount,
+      fetchStatus: 0,
     };
   } catch {
     return {
       html: "",
-      resolvedUrl: currentUrl,
+      resolvedUrl:
+        currentUrl,
       redirectCount,
+      fetchStatus: 0,
     };
   }
 }
