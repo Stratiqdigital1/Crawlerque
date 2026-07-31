@@ -135,16 +135,41 @@ async function fetchHomepage(inputUrl: string) {
 
     await assertPublicHostname(currentUrl.hostname);
 
-    const response = await fetch(currentUrl.toString(), {
+    const browserHeaders = {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+        "AppleWebKit/537.36 (KHTML, like Gecko) " +
+        "Chrome/150.0.0.0 Safari/537.36",
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+      "Upgrade-Insecure-Requests": "1",
+    };
+
+    let response = await fetch(currentUrl.toString(), {
       method: "GET",
       redirect: "manual",
       cache: "no-store",
-      headers: {
-        "User-Agent": "Mozilla/5.0 Crawler Que Context Preview",
-        Accept: "text/html,application/xhtml+xml",
-      },
+      headers: browserHeaders,
       signal: AbortSignal.timeout(8000),
     });
+
+    // Some sites reject obvious server-side probes with a transient 403.
+    // Retry once with a lightweight referer while keeping paid-provider calls at zero.
+    if (response.status === 403) {
+      response = await fetch(currentUrl.toString(), {
+        method: "GET",
+        redirect: "manual",
+        cache: "no-store",
+        headers: {
+          ...browserHeaders,
+          Referer: `${currentUrl.protocol}//${currentUrl.hostname}/`,
+        },
+        signal: AbortSignal.timeout(8000),
+      });
+    }
 
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");
@@ -155,6 +180,11 @@ async function fetchHomepage(inputUrl: string) {
     }
 
     if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error(
+          "Website blocked the homepage preview with HTTP 403. This is an origin/WAF restriction, not a paid-provider or classifier failure."
+        );
+      }
       throw new Error(`Website returned HTTP ${response.status}.`);
     }
 
