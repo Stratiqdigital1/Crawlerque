@@ -4432,7 +4432,11 @@ sub("From executive summary to action roadmap — everything your team needs to 
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 01 — EXECUTIVE SNAPSHOT
   // ════════════════════════════════════════════════════════════════════
-  secHdr(nextSec(),"Executive Snapshot","High-level digital health, benchmark scores, and primary business risks at a glance.");
+  secHdr(
+  nextSec(),
+  "Executive Snapshot",
+  "High-level website health, benchmark scores, and primary business risks at a glance."
+);
   kpiRow([
     {label:"Overall Score",value:`${cl(String(normalized.scores.overall??"—"))}/100`,sub:sLbl(normalized.scores.overall),col:sCol(normalized.scores.overall)},
     {label:"SEO Foundation",value:`${cl(String(normalized.scores.seo??"—"))}/100`,sub:sLbl(normalized.scores.seo),col:sCol(normalized.scores.seo)},
