@@ -23,6 +23,12 @@ import {
   getAuditScopeKey,
 } from "@/lib/audit-scope";
 
+import {
+  buildBusinessContext,
+  filterRelevantKeywordItems,
+  isKeywordRelevantToBusiness,
+} from "@/lib/business-context";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -1224,13 +1230,26 @@ await updateAuditJob(auditJob.id, {
       description?.split(".")?.[0] ||
       domain.replace(/\.(com|co|net|org|io|pk|us)$/i, "");
 
-    const brandNameForAudit =
-      title?.split(/[|–—]/)[0]?.trim() ||
-      domain.split(".")[0].replace(/[-_]+/g, " ");
+const h1Count = countMatches(
+  html,
+  /<h1[\s>]/gi
+);
 
-    const h1Count = countMatches(html, /<h1[\s>]/gi);
-    const h1 = getFirstH1(html);
-    const bodyText = getBodyText(html);
+const h1 = getFirstH1(html);
+const bodyText = getBodyText(html);
+
+const businessContext =
+  buildBusinessContext({
+    html,
+    title,
+    description,
+    h1,
+    bodyText,
+    domain,
+  });
+
+const brandNameForAudit =
+  businessContext.brandName;
     const bodyWordCount = bodyText
       .split(" ")
       .map((word) => word.trim())
@@ -1267,53 +1286,14 @@ await updateAuditJob(auditJob.id, {
         (normalizedH1 === normalizedBrand || h1.trim().length < 20)
     );
 
-    const inferredServiceSeed = inferBusinessSeed({
-      bodyText,
-      title,
-      description,
-      h1,
-    });
+    const inferredServiceSeed =
+      businessContext.primaryService;
 
     const inferredBusinessIndustry =
-      inferredServiceSeed === "creator subscription platforms"
-        ? "creator subscription platform"
-        : inferredServiceSeed === "healthcare software development"
-          ? "healthcare technology services"
-          : inferredServiceSeed === "custom software development"
-            ? "software development services"
-            : inferredServiceSeed;
+      businessContext.categoryLabel;
 
     const inferredCategoryKeywords =
-      inferredServiceSeed === "creator subscription platforms"
-        ? [
-            "creator subscription platforms",
-            "exclusive creator content platform",
-            "paid content platform for creators",
-            "fan subscription platform",
-            "platforms like Patreon and OnlyFans",
-            "creator monetization platform",
-          ]
-        : inferredServiceSeed === "healthcare software development"
-          ? [
-    "healthcare software development",
-    "custom healthcare software development",
-    "healthcare software development companies",
-    "healthcare app development companies",
-    "SaMD development services",
-    "medical device software development",
-    "AI healthcare software development",
-    "XR solutions for healthcare",
-  ]
-          : inferredServiceSeed === "custom software development"
-            ? [
-                "custom software development companies",
-                "software development services",
-                "application development companies",
-                "digital product development agencies",
-              ]
-            : inferredServiceSeed
-              ? [inferredServiceSeed]
-              : [];
+      businessContext.categoryKeywords;
 
     // ── AI CITATION READINESS — computed from the same HTML fetch above ──
 
@@ -1547,37 +1527,108 @@ let moduleStatus: any = {
       : "skipped",
 };
 
-    if (runTraffic || runCompetitors || runBacklinks || runKeywordResearch) {
-try {
-  const dfsRes = await fetch(`${origin}/api/dataforseo`, {
+
+if (
+  runTraffic ||
+  runCompetitors ||
+  runBacklinks ||
+  runKeywordResearch
+) {
+  try {
+    const dfsRes = await fetch(
+      `${origin}/api/dataforseo`,
+      {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
+
         body: JSON.stringify({
-  url,
-  locationName,
-  languageName,
-  languageCode,
-  locationCode,
-  device: selectedDevice,
-  searchEngine,
-  businessSeed:
-    inferredServiceSeed,
-  siteContext: {
-    title,
-    description,
-    h1,
-  },
-}),
+          url,
+          locationName,
+          languageName,
+          languageCode,
+          locationCode,
+          device: selectedDevice,
+          searchEngine,
+
+          businessSeed:
+            businessContext.primaryService,
+
+          businessContext,
+
+          siteContext: {
+            title,
+            description,
+            h1,
+          },
+        }),
+
         cache: "no-store",
-      });
+      }
+    );
 
-      const dfsJson = await dfsRes.json();
-      dataforseo = dfsJson?.dataforseo || null;
-    } catch (error) {
-  console.error("DataForSEO inside audit failed:", error);
+    const dfsJson =
+      await dfsRes.json();
 
-  moduleStatus.dataforseo = "not_available";
-}
+    dataforseo =
+      dfsJson?.dataforseo || null;
+
+    /*
+     * Canonical relevance gate:
+     * prevent broad/unrelated keyword gaps
+     * from reaching recommendations.
+     */
+    if (
+      dataforseo?.keywordGap &&
+      Array.isArray(
+        dataforseo.keywordGap
+          .missingKeywords
+      )
+    ) {
+      const rawMissingKeywords =
+        dataforseo.keywordGap
+          .missingKeywords;
+
+      const relevantMissingKeywords =
+        filterRelevantKeywordItems(
+          rawMissingKeywords,
+          businessContext,
+          {
+            minimumScore: 4,
+            dedupe: true,
+          }
+        );
+
+      dataforseo = {
+        ...dataforseo,
+
+        keywordGap: {
+          ...dataforseo.keywordGap,
+
+          missingKeywords:
+            relevantMissingKeywords,
+
+          relevanceFilteredCount:
+            Math.max(
+              0,
+              rawMissingKeywords.length -
+                relevantMissingKeywords.length
+            ),
+
+          relevanceGuardApplied: true,
+        },
+      };
+    }
+  } catch (error) {
+    console.error(
+      "DataForSEO inside audit failed:",
+      error
+    );
+
+    moduleStatus.dataforseo =
+      "not_available";
+  }
 }
 
 const keywordResearchSeedMap: Record<string, string> = {
@@ -1672,39 +1723,48 @@ const detectedNicheSeed =
     ? keywordResearchSeedMap[detectedNicheKey]
     : "";
 
-const keywordResearchSeed = String(
-  inferredServiceSeed ||
-    detectedNicheSeed ||
-    validatedGapSeed ||
-    validatedRankingSeed ||
-    keywordResearchSeedMap.general ||
-    cleanSeedKeyword
-).trim();
+const keywordResearchSeed =
+  businessContext.primaryService;
 
     if (runSERP) {
 try {
-  const serpKeywords = Array.from(
-  new Set(
-    [
-      keywordResearchSeed,
-      isPakistanDomain ? `${keywordResearchSeed} pakistan` : null,
-      ...(dataforseo?.topKeywords || [])
-        .map((k: any) => k.keyword)
-        .filter((keyword: string) => {
-          const value = String(keyword || "").toLowerCase();
+const relevantExistingRankingKeywords =
+  (dataforseo?.topKeywords || [])
+    .filter((item: any) => {
+      const keyword = String(
+        item?.keyword || ""
+      ).trim();
 
-          return (
-            value.length > 3 &&
-            !/^\d/.test(value) &&
-            !blockedResearchSeedTerms.test(value) &&
-            !isLikelyBrandedKeyword(value)
-          );
-        })
-        .slice(0, 3),
-    ]
-      .filter(Boolean)
-      .map((k: any) => String(k).trim())
-  )
+      return (
+        keyword.length >= 4 &&
+        item?.branded !== true &&
+        !isLikelyBrandedKeyword(keyword) &&
+        !blockedResearchSeedTerms.test(
+          keyword
+        ) &&
+        isKeywordRelevantToBusiness(
+          keyword,
+          businessContext
+        )
+      );
+    })
+    .map((item: any) =>
+      String(
+        item?.keyword || ""
+      ).trim()
+    )
+    .filter(Boolean)
+    .slice(0, 2);
+
+const serpKeywords = Array.from(
+  new Set([
+    ...businessContext.serpKeywords.slice(
+      0,
+      3
+    ),
+
+    ...relevantExistingRankingKeywords,
+  ])
 ).slice(0, 5);
 
       const serpRes = await fetch(`${origin}/api/dataforseo/serp`, {
@@ -1757,18 +1817,14 @@ try {
           )
           .filter(Boolean);
 
-        const categoryKeywords =
-          inferredCategoryKeywords.length > 0
-            ? inferredCategoryKeywords.slice(0, 8)
-            : rankedCategoryKeywords.slice(0, 8);
+const categoryKeywords =
+  businessContext.categoryKeywords.slice(
+    0,
+    8
+  );
 
-        const aiIndustry =
-          inferredBusinessIndustry ||
-          (
-            detectedNicheKey !== "general"
-              ? detectedNicheKey.replace(/_/g, " ")
-              : "general"
-          );
+const aiIndustry =
+  businessContext.primaryService;
 
 const controller =
   new AbortController();
@@ -1798,14 +1854,17 @@ try {
       body: JSON.stringify({
             url: auditTargetUrl,
             domain,
-            brandName: brandNameForAudit,
-            industry: aiIndustry,
-            categoryKeywords,
-            categoryContext: aiIndustry,
+            brandName:
+              businessContext.brandName,
+            industry:
+              businessContext.primaryService,
+            categoryKeywords:
+              businessContext.categoryKeywords,
+            categoryContext:
+              businessContext.categoryLabel,
             categorySource:
-              inferredServiceSeed
-                ? "homepage-context"
-                : "ranking-context",
+              "homepage-context",
+            businessContext,
             pageTitle: title,
             metaDescription: description,
             pageH1: h1,
@@ -2023,10 +2082,14 @@ try {
           method: "POST",
           headers: { "Content-Type": "application/json" },
 body: JSON.stringify({
-  seedKeyword: keywordResearchSeed,
-  keyword: keywordResearchSeed,
-  brandName: domain.replace(/\.(com|co|net|org|io|pk|us)$/i, ""),
+  seedKeyword:
+    businessContext.primaryService,
+  keyword:
+    businessContext.primaryService,
+  brandName:
+    businessContext.brandName,
   domain,
+  businessContext,
   locationName,
   languageName,
   languageCode,
@@ -2052,7 +2115,11 @@ body: JSON.stringify({
             return (
               keyword.length >= 4 &&
               !blockedResearchSeedTerms.test(keyword) &&
-              !isLikelyBrandedKeyword(keyword)
+              !isLikelyBrandedKeyword(keyword) &&
+              isKeywordRelevantToBusiness(
+                keyword,
+                businessContext
+              )
             );
           }),
         };
@@ -2075,7 +2142,11 @@ body: JSON.stringify({
         keyword.length >= 4 &&
         k?.branded !== true &&
         !isLikelyBrandedKeyword(keyword) &&
-        !blockedResearchSeedTerms.test(keyword)
+        !blockedResearchSeedTerms.test(keyword) &&
+        isKeywordRelevantToBusiness(
+          keyword,
+          businessContext
+        )
       );
     })
     .map((k: any) => ({
@@ -2274,12 +2345,11 @@ try {
         body: JSON.stringify({
           url: auditTargetUrl,
           domain,
-          brandName: brandNameForAudit,
-serviceKeyword:
-  inferredServiceSeed ||
-  detectedNicheSeed ||
-  keywordResearchSeed ||
-  cleanSeedKeyword,
+          brandName:
+            businessContext.brandName,
+          serviceKeyword:
+            businessContext.localQueryService,
+          businessContext,
           locationName,
           languageName,
           languageCode,
@@ -2840,7 +2910,9 @@ try {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             domain,
-            seedKeyword: cleanSeedKeyword,
+            seedKeyword:
+              businessContext.primaryService,
+            businessContext,
             seoScore,
             uxScore,
             aiVisibilityScore,
@@ -2929,14 +3001,17 @@ const normalizeRecommendation = (recommendation: any, index: number) => {
     ...recommendation,
   };
 
-  const businessContext = String(
-    inferredBusinessIndustry ||
-      detectedNicheKey ||
-      "general"
-  ).toLowerCase();
+  const recommendationBusinessContext =
+    String(
+      businessContext.categoryKey ||
+        businessContext.categoryLabel ||
+        inferredBusinessIndustry ||
+        detectedNicheKey ||
+        "general"
+    ).toLowerCase();
 
   if (
-    businessContext !==
+    recommendationBusinessContext !==
       "ecommerce" &&
     /keyword/i.test(
       String(
@@ -3609,6 +3684,7 @@ const draftReport = {
   canonicalUrl,
   redirectCount,
   domain,
+  businessContext,
   moduleStatus,
       unifiedOverview,
       title,
