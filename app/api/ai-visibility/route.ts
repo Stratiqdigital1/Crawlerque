@@ -89,16 +89,110 @@ function deriveCategory(input: {
   return industry || "products and services in this market";
 }
 
-function buildNeutralPrompts(category: string, country: string) {
-  const market = country && country !== "US" ? ` in ${country}` : "";
+function buildNeutralPrompts(
+  category: string,
+  country: string
+) {
+  const market =
+    country && country !== "US"
+      ? ` in ${country}`
+      : "";
 
   return [
-    `What are the best ${category} options${market}?`,
+    `Which companies are considered the best for ${category}${market}?`,
     `Which ${category} providers are most trusted${market}?`,
-    `Recommend leading companies for ${category}${market}.`,
-    `Which brands are commonly compared when buying ${category}${market}?`,
-    `What companies are known for strong ${category} solutions${market}?`,
+    `Recommend leading companies that specialize in ${category}${market}.`,
+    `What should a business look for when choosing a ${category} partner${market}?`,
+    `Which companies are commonly compared for ${category}${market}?`,
   ];
+}
+
+function categoryTokens(value: string) {
+  const stopWords = new Set([
+    "best",
+    "company",
+    "companies",
+    "provider",
+    "providers",
+    "service",
+    "services",
+    "solution",
+    "solutions",
+    "for",
+    "and",
+    "the",
+    "with",
+  ]);
+
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .split(" ")
+    .map((token) => token.trim())
+    .filter(
+      (token) =>
+        token.length >= 4 &&
+        !stopWords.has(token)
+    );
+}
+
+function isPromptRelevantToCategory(
+  prompt: string,
+  category: string
+) {
+  const promptText = String(
+    prompt || ""
+  ).toLowerCase();
+
+  const tokens = categoryTokens(
+    category
+  );
+
+  if (tokens.length === 0) {
+    return true;
+  }
+
+  const matches = tokens.filter(
+    (token) =>
+      promptText.includes(token)
+  ).length;
+
+  return matches >= Math.min(2, tokens.length);
+}
+
+function cleanCompetitorCandidate(
+  value: string,
+  brandName: string,
+  domain: string
+) {
+  const cleaned = String(value || "")
+    .replace(/^https?:\/\//i, "")
+    .replace(/^www\./i, "")
+    .replace(/[|–—:]+.*$/, "")
+    .replace(/^[^a-z0-9]+|[^a-z0-9.\- ]+$/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (
+    !cleaned ||
+    cleaned.length < 3 ||
+    containsBrand(
+      cleaned,
+      brandName,
+      domain
+    )
+  ) {
+    return "";
+  }
+
+  const blocked =
+    /^(ehr|emr|look|create|optimize|optimise|seo|software|platform|solution|solutions|service|services|company|companies|provider|providers|healthcare|medical|technology|tech|content|marketing|search|website|brand|brands|best|top|tools?|strong)$/i;
+
+  if (blocked.test(cleaned)) {
+    return "";
+  }
+
+  return cleaned;
 }
 
 function countryIso(country: string) {
@@ -212,14 +306,37 @@ export async function POST(req: Request) {
       (prompt: string) => containsBrand(prompt, brandName, domain)
     );
 
-    const scoredPrompts = uniqueStrings([
-      ...neutralCustomPrompts,
-      ...(generatedPrompts.length > 0
-        ? generatedPrompts
-        : buildNeutralPrompts(
+    const categorySource =
+      String(
+        body?.categorySource || ""
+      ).toLowerCase();
+
+    const relevantGeneratedPrompts =
+      generatedPrompts.filter(
+        (prompt) =>
+          isPromptRelevantToCategory(
+            prompt,
+            category
+          )
+      );
+
+    const categoryPrompts =
+      categorySource ===
+        "homepage-context"
+        ? buildNeutralPrompts(
             category,
             detectedCountry
-          )),
+          )
+        : relevantGeneratedPrompts.length >= 3
+          ? relevantGeneratedPrompts
+          : buildNeutralPrompts(
+              category,
+              detectedCountry
+            );
+
+    const scoredPrompts = uniqueStrings([
+      ...neutralCustomPrompts,
+      ...categoryPrompts,
     ]).slice(0, 5);
 
     const iso = countryIso(detectedCountry);
@@ -263,7 +380,20 @@ export async function POST(req: Request) {
           position: parsed.brandPosition,
           sentiment: parsed.sentiment,
           citedPage: parsed.brandCitations[0] || null,
-          competitors: parsed.competitorsMentioned,
+          competitors: uniqueStrings(
+            (
+              parsed.competitorsMentioned ||
+              []
+            )
+              .map((value: string) =>
+                cleanCompetitorCandidate(
+                  value,
+                  brandName,
+                  domain
+                )
+              )
+              .filter(Boolean)
+          ),
           sources: parsed.sourcesCited,
           snippet: parsed.rawSnippet,
           error: modelResult.error || null,
@@ -287,7 +417,40 @@ export async function POST(req: Request) {
       promptResults.push(row);
     }
 
-    const score = calculateAIVisibilityScore(parsedResponses);
+    const score = calculateAIVisibilityScore(
+      parsedResponses
+    );
+
+    const cleanedTopCompetitors =
+      uniqueStrings(
+        [
+          ...(Array.isArray(
+            (score as any)
+              ?.topCompetitors
+          )
+            ? (score as any)
+                .topCompetitors
+            : []),
+          ...parsedResponses.flatMap(
+            (response: any) =>
+              Array.isArray(
+                response
+                  ?.competitorsMentioned
+              )
+                ? response
+                    .competitorsMentioned
+                : []
+          ),
+        ]
+          .map((value: string) =>
+            cleanCompetitorCandidate(
+              value,
+              brandName,
+              domain
+            )
+          )
+          .filter(Boolean)
+      ).slice(0, 10);
 
     // Brand knowledge is useful evidence, but it is intentionally excluded from
     // the market visibility score because this prompt names the audited brand.
@@ -362,6 +525,13 @@ export async function POST(req: Request) {
 
     const aiSearchVisibility = {
       ...score,
+      topCompetitors:
+        cleanedTopCompetitors,
+      categorySource:
+        String(
+          body?.categorySource ||
+            "derived"
+        ),
       methodologyVersion: "2.0",
       methodology: {
         scoredPromptRule: "Only unbranded category prompts are included in the score.",

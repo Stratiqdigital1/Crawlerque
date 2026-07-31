@@ -272,6 +272,40 @@ function inferBusinessSeed(input: {
       ],
     },
     {
+      seed: "healthcare software development",
+      terms: [
+        "healthcare technology",
+        "healthtech",
+        "health tech",
+        "medical device",
+        "medical devices",
+        "software as a medical device",
+        "samd",
+        "healthcare software",
+        "healthcare app development",
+        "medical software",
+        "digital health",
+        "ai healthcare",
+        "healthcare ai",
+        "xr solutions",
+        "life sciences",
+        "clinical software",
+      ],
+    },
+    {
+      seed: "custom software development",
+      terms: [
+        "custom software development",
+        "software development company",
+        "software development services",
+        "application development",
+        "app development",
+        "web application development",
+        "product development",
+        "digital product development",
+      ],
+    },
+    {
       seed: "digital marketing services",
       terms: [
         "digital marketing",
@@ -376,6 +410,18 @@ function buildIssues(input: {
       severity: "medium",
       impact: "The page has weaker content hierarchy and topical clarity.",
       fix: "Add one clear H1 that describes the main service or offer.",
+    });
+  }
+
+  if (input.h1Count > 1) {
+    issues.push({
+      title: "Multiple H1 headings on homepage",
+      severity: "medium",
+      timeline: "0–30 days",
+      impact:
+        `${input.h1Count} H1 headings were detected on the resolved homepage, which weakens primary heading hierarchy.`,
+      fix:
+        "Keep one primary H1 and convert supporting top-level headings to H2 or H3 where appropriate.",
     });
   }
 
@@ -1231,7 +1277,11 @@ await updateAuditJob(auditJob.id, {
     const inferredBusinessIndustry =
       inferredServiceSeed === "creator subscription platforms"
         ? "creator subscription platform"
-        : inferredServiceSeed;
+        : inferredServiceSeed === "healthcare software development"
+          ? "healthcare technology services"
+          : inferredServiceSeed === "custom software development"
+            ? "software development services"
+            : inferredServiceSeed;
 
     const inferredCategoryKeywords =
       inferredServiceSeed === "creator subscription platforms"
@@ -1243,9 +1293,26 @@ await updateAuditJob(auditJob.id, {
             "platforms like Patreon and OnlyFans",
             "creator monetization platform",
           ]
-        : inferredServiceSeed
-          ? [inferredServiceSeed]
-          : [];
+        : inferredServiceSeed === "healthcare software development"
+          ? [
+              "healthcare software development companies",
+              "custom healthcare software development",
+              "healthcare app development companies",
+              "SaMD development services",
+              "medical device software development",
+              "AI healthcare software development",
+              "XR solutions for healthcare",
+            ]
+          : inferredServiceSeed === "custom software development"
+            ? [
+                "custom software development companies",
+                "software development services",
+                "application development companies",
+                "digital product development agencies",
+              ]
+            : inferredServiceSeed
+              ? [inferredServiceSeed]
+              : [];
 
     // ── AI CITATION READINESS — computed from the same HTML fetch above ──
 
@@ -1256,10 +1323,20 @@ await updateAuditJob(auditJob.id, {
 
     const geoFactors = [
       {
-        label: "Has a clear H1 heading",
+        label: "Has one clear H1 heading",
         weight: 15,
         assessed: true,
-        pass: h1Count > 0,
+        pass:
+          h1Count === 1 &&
+          !h1NeedsContext,
+        note:
+          h1Count === 0
+            ? "No H1 was detected on the resolved homepage."
+            : h1Count > 1
+              ? `${h1Count} H1 headings were detected; use one primary H1.`
+              : h1NeedsContext
+                ? "The H1 is present but does not provide enough service or topical context."
+                : "One clear, descriptive H1 was detected.",
       },
       {
         label: "Has a meta description",
@@ -1482,6 +1559,13 @@ try {
   locationCode,
   device: selectedDevice,
   searchEngine,
+  businessSeed:
+    inferredServiceSeed,
+  siteContext: {
+    title,
+    description,
+    h1,
+  },
 }),
         cache: "no-store",
       });
@@ -1497,6 +1581,9 @@ try {
 
 const keywordResearchSeedMap: Record<string, string> = {
   saas: "business software",
+  software_development: "custom software development",
+  healthcare_technology: "healthcare software development",
+  creator_platform: "creator subscription platforms",
   ecommerce: "online shopping products",
   real_estate: "real estate services",
   legal: "legal services",
@@ -1585,9 +1672,9 @@ const detectedNicheSeed =
     : "";
 
 const keywordResearchSeed = String(
-  validatedGapSeed ||
+  inferredServiceSeed ||
     detectedNicheSeed ||
-    inferredServiceSeed ||
+    validatedGapSeed ||
     validatedRankingSeed ||
     keywordResearchSeedMap.general ||
     cleanSeedKeyword
@@ -1675,10 +1762,12 @@ try {
             : rankedCategoryKeywords.slice(0, 8);
 
         const aiIndustry =
-          detectedNicheKey !== "general"
-            ? detectedNicheKey.replace(/_/g, " ")
-            : inferredBusinessIndustry ||
-              "general";
+          inferredBusinessIndustry ||
+          (
+            detectedNicheKey !== "general"
+              ? detectedNicheKey.replace(/_/g, " ")
+              : "general"
+          );
 
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 110000);
@@ -1693,6 +1782,10 @@ try {
             industry: aiIndustry,
             categoryKeywords,
             categoryContext: aiIndustry,
+            categorySource:
+              inferredServiceSeed
+                ? "homepage-context"
+                : "ranking-context",
             pageTitle: title,
             metaDescription: description,
             pageH1: h1,
@@ -2155,6 +2248,129 @@ try {
 }
 }
 
+    const normalizeAuditUrl = (
+      value: any
+    ) => {
+      try {
+        const parsed = new URL(
+          String(value || "")
+        );
+
+        return `${parsed.hostname
+          .replace(/^www\./, "")
+          .toLowerCase()}${parsed.pathname
+          .replace(/\/+$/, "") || "/"}`;
+      } catch {
+        return String(value || "")
+          .replace(/^https?:\/\//i, "")
+          .replace(/^www\./i, "")
+          .replace(/[?#].*$/, "")
+          .replace(/\/+$/, "")
+          .toLowerCase();
+      }
+    };
+
+    const homepageAuditKeys = new Set(
+      [
+        auditTargetUrl,
+        canonicalUrl,
+        resolvedUrl,
+        url,
+      ]
+        .map(normalizeAuditUrl)
+        .filter(Boolean)
+    );
+
+    const homepageContentResult =
+      (
+        Array.isArray(
+          contentAnalysis?.results
+        )
+          ? contentAnalysis.results
+          : []
+      ).find((item: any) =>
+        homepageAuditKeys.has(
+          normalizeAuditUrl(
+            item?.url
+          )
+        )
+      ) || null;
+
+    const homepageContentHasMultipleH1 =
+      Array.isArray(
+        homepageContentResult?.issues
+      ) &&
+      homepageContentResult.issues.some(
+        (issue: any) =>
+          /multiple h1/i.test(
+            String(issue || "")
+          )
+      );
+
+    if (
+      homepageContentHasMultipleH1
+    ) {
+      const h1Factor =
+        pageGeoReadiness.factors.find(
+          (factor: any) =>
+            /h1 heading/i.test(
+              String(
+                factor?.label || ""
+              )
+            )
+        );
+
+      if (h1Factor) {
+        h1Factor.pass = false;
+        h1Factor.note =
+          "Multiple H1 headings were detected on the audited homepage by the first-party content analysis.";
+      }
+
+      pageGeoReadiness.score =
+        pageGeoReadiness.factors.reduce(
+          (
+            score: number,
+            factor: any
+          ) =>
+            score +
+            (
+              factor?.assessed !==
+                false &&
+              factor?.pass === true
+                ? Number(
+                    factor?.weight || 0
+                  )
+                : 0
+            ),
+          0
+        );
+
+      pageGeoReadiness.grade =
+        pageGeoReadiness.score >= 75
+          ? "Strong"
+          : pageGeoReadiness.score >= 45
+            ? "Moderate"
+            : "Needs Work";
+
+      pageGeoReadiness.topIssue =
+        pageGeoReadiness.factors
+          .filter(
+            (factor: any) =>
+              factor?.assessed !==
+                false &&
+              factor?.pass !== true
+          )
+          .sort(
+            (a: any, b: any) =>
+              Number(
+                b?.weight || 0
+              ) -
+              Number(
+                a?.weight || 0
+              )
+          )[0]?.label || null;
+    }
+
     const seoScore = Math.max(
       0,
       Math.min(
@@ -2166,6 +2382,12 @@ try {
           (titleNeedsContext ? 8 : 0) -
           (descriptionNeedsRewrite ? 12 : 0) -
           (h1NeedsContext ? 5 : 0) -
+          (
+            h1Count > 1 ||
+            homepageContentHasMultipleH1
+              ? 8
+              : 0
+          ) -
           (imagesMissingAlt > 0 ? 10 : 0)
       )
     );
@@ -2306,18 +2528,113 @@ const referringDomainCount = Number(
   dataforseo?.backlinks?.referringDomains || 0
 );
 
-const backlinkScore =
-  referringDomainCount >= 200
-    ? 90
-    : referringDomainCount >= 50
-      ? 75
-      : referringDomainCount >= 20
-        ? 60
-        : referringDomainCount >= 5
-          ? 40
-          : referringDomainCount >= 1
-            ? 20
-            : 0;
+const sampledBacklinks = Array.isArray(
+  dataforseo?.backlinks?.topBacklinks
+)
+  ? dataforseo.backlinks.topBacklinks
+  : [];
+
+const lowQualityBacklinkPattern =
+  /forum|profile|directory|classified|bookmark|guestbook|stream&type=|user\/|users\/|member\/|members\//i;
+
+const sampledLowQualityBacklinks =
+  sampledBacklinks.filter((item: any) =>
+    lowQualityBacklinkPattern.test(
+      [
+        item?.domainFrom,
+        item?.sourceUrl,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    )
+  ).length;
+
+const sampledQualityRatio =
+  sampledBacklinks.length > 0
+    ? Math.max(
+        0,
+        1 -
+          sampledLowQualityBacklinks /
+            sampledBacklinks.length
+      )
+    : null;
+
+const backlinkTypeTotal =
+  Number(
+    dataforseo?.backlinks?.dofollow || 0
+  ) +
+  Number(
+    dataforseo?.backlinks?.nofollow || 0
+  );
+
+const dofollowRatio =
+  backlinkTypeTotal > 0
+    ? Number(
+        dataforseo?.backlinks?.dofollow ||
+          0
+      ) / backlinkTypeTotal
+    : null;
+
+const referringDomainBreadthScore =
+  referringDomainCount >= 1000
+    ? 65
+    : referringDomainCount >= 500
+      ? 60
+      : referringDomainCount >= 200
+        ? 55
+        : referringDomainCount >= 100
+          ? 48
+          : referringDomainCount >= 50
+            ? 40
+            : referringDomainCount >= 20
+              ? 32
+              : referringDomainCount >= 5
+                ? 20
+                : referringDomainCount >= 1
+                  ? 10
+                  : 0;
+
+const sampleQualityScore =
+  sampledQualityRatio === null
+    ? 10
+    : Math.round(sampledQualityRatio * 20);
+
+const dofollowQualityScore =
+  dofollowRatio === null
+    ? 8
+    : Math.round(
+        Math.min(
+          1,
+          Math.max(0, dofollowRatio)
+        ) * 15
+      );
+
+const backlinkScore = Math.min(
+  100,
+  referringDomainBreadthScore +
+    sampleQualityScore +
+    dofollowQualityScore
+);
+
+const backlinkAuthoritySignals = {
+  referringDomains:
+    referringDomainCount,
+  sampledBacklinks:
+    sampledBacklinks.length,
+  sampledLowQualityBacklinks,
+  sampledQualityRatio:
+    sampledQualityRatio === null
+      ? null
+      : Number(
+          sampledQualityRatio.toFixed(2)
+        ),
+  dofollowRatio:
+    dofollowRatio === null
+      ? null
+      : Number(dofollowRatio.toFixed(2)),
+  methodology:
+    "Authority score combines referring-domain breadth with sampled source-quality and link-type signals. It is not a provider domain-rating metric.",
+};
 
 const organicTrafficForScore = Number(organicTraffic || 0);
 
@@ -2349,6 +2666,22 @@ const overallScore = Math.round(
       descriptionNeedsRewrite,
       h1NeedsContext,
     });
+
+    if (
+      homepageContentHasMultipleH1 &&
+      h1Count <= 1
+    ) {
+      issues.push({
+        title:
+          "Multiple H1 headings on homepage",
+        severity: "medium",
+        timeline: "0–30 days",
+        impact:
+          "First-party content analysis detected multiple H1 headings on the audited homepage.",
+        fix:
+          "Keep one primary H1 and convert supporting top-level headings to H2 or H3 where appropriate.",
+      });
+    }
 
     if (onPage) {
       if (onPage.missingTitle > 0) {
@@ -2427,15 +2760,19 @@ organicKeywords: dataforseo?.organicKeywords || null,
             backlinks: dataforseo?.backlinks || null,
             contentAnalysis,
             businessType:
-              detectedNicheKey !== "general"
-                ? detectedNicheKey
-                : inferredBusinessIndustry ||
-                  "general",
+              inferredBusinessIndustry ||
+              (
+                detectedNicheKey !== "general"
+                  ? detectedNicheKey
+                  : "general"
+              ),
             detectedNiche:
-              detectedNicheKey !== "general"
-                ? detectedNicheKey
-                : inferredBusinessIndustry ||
-                  "general",
+              inferredBusinessIndustry ||
+              (
+                detectedNicheKey !== "general"
+                  ? detectedNicheKey
+                  : "general"
+              ),
             canonicalSeo: {
               title,
               metaDescription: description,
@@ -2484,7 +2821,55 @@ const normalizeRecommendation = (recommendation: any, index: number) => {
     };
   }
 
-  return recommendation;
+  const normalizedRecommendation = {
+    ...recommendation,
+  };
+
+  const businessContext = String(
+    inferredBusinessIndustry ||
+      detectedNicheKey ||
+      "general"
+  ).toLowerCase();
+
+  if (
+    businessContext !==
+      "ecommerce" &&
+    /keyword/i.test(
+      String(
+        normalizedRecommendation
+          ?.sourceModule || ""
+      )
+    )
+  ) {
+    const replacePageType = (
+      value: any
+    ) =>
+      String(value || "")
+        .replace(
+          /product\s*\/\s*collection page/gi,
+          "service / solution page"
+        )
+        .replace(
+          /product page/gi,
+          "service page"
+        )
+        .replace(
+          /collection page/gi,
+          "solution page"
+        );
+
+    normalizedRecommendation.title =
+      replacePageType(
+        normalizedRecommendation.title
+      );
+
+    normalizedRecommendation.detail =
+      replacePageType(
+        normalizedRecommendation.detail
+      );
+  }
+
+  return normalizedRecommendation;
 };
 
 const foundationRecommendations: any[] = [];
@@ -2961,10 +3346,15 @@ trafficSource,
     !organicTraffic
       ? "Insufficient Data"
       : organicTraffic > 25000
-      ? "High"
-      : organicTraffic > 5000
-      ? "Medium"
-      : "Low",
+        ? "High"
+        : organicTraffic > 5000
+          ? "Medium"
+          : "Low",
+  scoreThresholds: {
+    low: "1–5,000 modelled visits/month",
+    medium: "5,001–25,000 modelled visits/month",
+    high: "25,000+ modelled visits/month",
+  },
   keywords:
   dataforseo?.trafficDebug?.length > 0
     ? dataforseo.trafficDebug.map((k: any) => ({
@@ -3131,6 +3521,8 @@ const draftReport = {
         titleNeedsContext,
         descriptionNeedsRewrite,
         h1NeedsContext,
+        homepageMultipleH1:
+          homepageContentHasMultipleH1,
       },
       searchContext: {
         country: locationName,
@@ -3152,6 +3544,7 @@ const draftReport = {
       seoScore,
       uxScore,
       backlinkAuthorityScore: backlinkScore,
+      backlinkAuthoritySignals,
 
       speedScore: primaryPageSpeed.score,
       configuredPrimaryDevice:
@@ -3196,6 +3589,14 @@ aiVisibility,
         ? {
             ...aiRecommendations,
             roadmap: actionRoadmap,
+            suppressedCompetitorBrandedKeywords:
+              Number(
+                dataforseo?.keywordGap
+                  ?.suppressedCompetitorBrandedKeywords ||
+                  aiRecommendations
+                    ?.suppressedCompetitorBrandedKeywords ||
+                  0
+              ),
           }
         : null,
 

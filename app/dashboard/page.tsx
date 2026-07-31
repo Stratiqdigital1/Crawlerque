@@ -1596,6 +1596,64 @@ const getKeywordResearchDisplay = (
     )
   );
 
+  const competitorBrandTerms =
+    Array.isArray(
+      report?.dataforseo?.keywordGap
+        ?.competitorBrandTermsExcluded
+    )
+      ? report.dataforseo.keywordGap
+          .competitorBrandTermsExcluded
+          .map((value: any) =>
+            String(value || "")
+              .trim()
+              .toLowerCase()
+          )
+          .filter(Boolean)
+      : [];
+
+  const isLikelyCompetitorBrandedKeyword = (
+    value: any
+  ) => {
+    const normalizedKeyword =
+      String(value || "")
+        .toLowerCase()
+        .replace(
+          /[^a-z0-9\s-]/g,
+          " "
+        )
+        .replace(/\s+/g, " ")
+        .trim();
+
+    return competitorBrandTerms.some(
+      (term: string) => {
+        const normalizedTerm =
+          String(term || "")
+            .toLowerCase()
+            .replace(
+              /[^a-z0-9\s-]/g,
+              " "
+            )
+            .replace(/\s+/g, " ")
+            .trim();
+
+        if (!normalizedTerm) {
+          return false;
+        }
+
+        const escaped =
+          normalizedTerm.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&"
+          );
+
+        return new RegExp(
+          `\\b${escaped}\\b`,
+          "i"
+        ).test(normalizedKeyword);
+      }
+    );
+  };
+
   const isLikelyBrandedKeyword = (
     value: any
   ) => {
@@ -1745,6 +1803,38 @@ const getKeywordResearchDisplay = (
       "doctor",
       "dental",
     ],
+    healthcare_technology: [
+      "healthcare",
+      "healthtech",
+      "medtech",
+      "medical",
+      "clinical",
+      "samd",
+      "telehealth",
+      "fhir",
+      "hipaa",
+      "device",
+      "digital",
+    ],
+    software_development: [
+      "development",
+      "developer",
+      "application",
+      "custom",
+      "digital",
+      "product",
+      "web",
+      "mobile",
+    ],
+    creator_platform: [
+      "creator",
+      "subscription",
+      "exclusive",
+      "content",
+      "fan",
+      "monetization",
+      "monetisation",
+    ],
     restaurant: [
       "restaurant",
       "food",
@@ -1776,7 +1866,10 @@ const getKeywordResearchDisplay = (
         blockedKeywordResearchTerms.test(
           keyword
         ) ||
-        isLikelyBrandedKeyword(keyword)
+        isLikelyBrandedKeyword(keyword) ||
+        isLikelyCompetitorBrandedKeyword(
+          keyword
+        )
       ) {
         return false;
       }
@@ -1834,7 +1927,10 @@ const getKeywordResearchDisplay = (
       !blockedKeywordResearchTerms.test(
         keyword
       ) &&
-      !isLikelyBrandedKeyword(keyword)
+      !isLikelyBrandedKeyword(keyword) &&
+      !isLikelyCompetitorBrandedKeyword(
+        keyword
+      )
     );
   };
 
@@ -3864,9 +3960,7 @@ bg:      [11, 25, 41] as RGB,
     backlinks: pdfShow("backlinks") && Boolean(pdfData?.backlinks),
     content: pdfShow("content"),
     local:
-      pdfShow("local") &&
-      Array.isArray(pdfData?.businessData?.listings) &&
-      pdfData.businessData.listings.length > 0,
+      pdfShow("local"),
     recommendations: pdfShow("recommendations"),
   };
 
@@ -4240,7 +4334,12 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
       {label:"Est. Monthly Visits",value:fmt(pdfData?.traffic?.rawMonthly??pdfData?.traffic?.monthly),sub:`Confidence: ${cl(normalized.traffic.confidence)}`,col:C.accent},
       {label:"Daily Visits",value:fmtDailyVisits(pdfData?.traffic?.rawMonthly??pdfData?.traffic?.monthly, normalized.traffic.daily),sub:"Monthly ÷ 30",col:C.blue},
       {label:"Keyword Footprint",value:fmt(normalized.traffic.keywordCount),sub:"Ranked keywords",col:C.amber},
-      {label:"Traffic Score",value:cl(String(pdfData?.traffic?.score??"—")),sub:"High / Medium / Low",col:sCol(pdfData?.traffic?.score==="High"?85:pdfData?.traffic?.score==="Medium"?60:30)},
+      {
+        label:"Traffic Score",
+        value:cl(String(pdfData?.traffic?.score??"—")),
+        sub:"Low ≤5K · Medium 5K–25K · High >25K",
+        col:sCol(pdfData?.traffic?.score==="High"?85:pdfData?.traffic?.score==="Medium"?60:30),
+      },
     ]);
     if(pdfData?.traffic?.confidence==="insufficient-data"){
       hiBox("Insufficient Traffic Data","Fewer than 50 ranked keywords found. Increase keyword visibility to improve confidence.","amber");
@@ -4303,7 +4402,20 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
     tbl(["Element","Status","Recommendation"],[
       {col1:"Page Title",col2:pdfData?.seoQuality?.titleNeedsContext?"Needs rewrite":cl(normalized.seo.title,"Not detected"),col3:"Unique, 50–60 chars, includes primary service or topic"},
       {col1:"Meta Description",col2:pdfData?.seoQuality?.descriptionNeedsRewrite?"Needs rewrite":cl(normalized.seo.metaDescription,"Not detected"),col3:"Unique, 140–160 chars, accurately describes the business"},
-      {col1:"H1 Heading",col2:pdfData?.seoQuality?.h1NeedsContext?"Needs context":cl(normalized.seo.h1,"Not detected"),col3:"One clear H1 defining the main service or offer"},
+      {
+        col1:"H1 Heading",
+        col2:
+          Number(pdfData?.h1Count || 0) === 0
+            ? "Not detected"
+            : Number(pdfData?.h1Count || 0) > 1 ||
+                pdfData?.seoQuality
+                  ?.homepageMultipleH1 === true
+              ? "Multiple H1s detected"
+              : pdfData?.seoQuality?.h1NeedsContext
+                ? "Needs context"
+                : cl(normalized.seo.h1,"Detected"),
+        col3:"One clear H1 defining the main service or offer",
+      },
       {
         col1:"Image ALT Coverage",
         col2:
@@ -4415,6 +4527,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   //  SECTION 07 — AI VISIBILITY
   // ════════════════════════════════════════════════════════════════════
     if(pdfSections.ai){
+    ensure(105);
     secHdr(nextSec(),"AI Search Visibility & GEO Readiness","Brand discoverability in AI-generated responses, generative search, and answer engines.");
     // 🆕 LIVE AI MODEL VISIBILITY (ChatGPT, Claude, Gemini)
     if (pdfData?.aiSearchVisibility) {
@@ -4454,7 +4567,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
         secTitle("Your Pages & The Keywords They Rank For");
         tbl(["Page", "Top Keywords", "Vol"], av.rankedPages.slice(0, 8).map((p: any) => ({ col1: cl(p.path || p.url), col2: cl((p.keywords||[]).slice(0,4).map((k:any)=>k.keyword).join(", ")), col3: fmt(p.totalVolume) })), [CW - 95, 70, 25]);
       }
-      const blockedAiCompetitorTokens = /^(strong|tools?|software|platforms?|solutions?|best|top|it's|its|their|they|create|seo|optimize|search|website|content|marketing|analysis|strategy|strategies)$/i;
+      const blockedAiCompetitorTokens = /^(ehr|emr|look|strong|tools?|software|platforms?|solutions?|services?|providers?|companies?|brands?|healthcare|medical|technology|tech|best|top|it's|its|their|they|create|seo|optimize|optimise|search|website|content|marketing|analysis|strategy|strategies)$/i;
       const cleanAiCompetitors = Array.from(
         new Set(
           (Array.isArray(av.topCompetitors) ? av.topCompetitors : [])
@@ -4495,7 +4608,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
       {col1:"Brand Mentions",col2:fmt(aiMent),col3:aiMent>0?"Brand appears in AI-generated category responses":"Brand not detected in the scored unbranded responses"},
       {col1:"Model Coverage",col2:fmt(aiMods),col3:"Number of AI models tested for category visibility"},
       {col1:"Confidence",col2:aiConf,col3:"Reliability of the unbranded category visibility measurement"},
-      {col1:"Methodology",col2:"Unbranded category prompts",col3:"Separate brand-name awareness probes are evidence only and are excluded from the competitive visibility score"},
+      {col1:"Methodology",col2:"Category prompts",col3:"Separate brand-name awareness probes are evidence only and are excluded from the competitive visibility score"},
     ],[42,40,CW-82],3);
 const opportunity=pdfData?.aiSearchVisibility
       ? aiMent===0
@@ -4528,12 +4641,31 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
         }
 
         if (/clear h1|h1 heading/i.test(label)) {
+          const h1Count = Number(
+            pdfData?.h1Count || 0
+          );
+
           return {
             ...factor,
             assessed: true,
-            pass: Boolean(
-              normalized.seo.h1
-            ),
+            pass:
+              Boolean(normalized.seo.h1) &&
+              h1Count === 1 &&
+              pdfData?.seoQuality
+                ?.h1NeedsContext !== true &&
+              pdfData?.seoQuality
+                ?.homepageMultipleH1 !== true,
+            note:
+              h1Count === 0
+                ? "No H1 was detected."
+                : h1Count > 1 ||
+                    pdfData?.seoQuality
+                      ?.homepageMultipleH1 === true
+                  ? "Multiple H1 headings were detected on the audited homepage."
+                  : pdfData?.seoQuality
+                        ?.h1NeedsContext === true
+                    ? "The H1 is present but needs stronger service or topical context."
+                    : "One clear H1 was detected.",
           };
         }
 
@@ -4764,7 +4896,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
     scoreBar(
       "Backlink Authority Score",
       backlinkAuthorityScore,
-      "Calculated primarily from unique referring domains"
+      "Composite of referring-domain breadth and sampled link-quality signals"
     );
     tbl(["Metric","Value","Benchmark"],[
       {col1:"Provider Backlink Rank",col2:backlinkRankValue !== null ? String(backlinkRankValue) : "—",col3:"Raw provider metric; do not read as a 0–100 authority score"},
@@ -4790,10 +4922,25 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
     const linkConcentration = referringDomainsValue > 0
       ? totalBacklinksValue / referringDomainsValue
       : 0;
+    const authoritySignals =
+      pdfData?.backlinkAuthoritySignals ||
+      null;
+    const sampledQualityRatio =
+      n(authoritySignals?.sampledQualityRatio);
+    const sampledLowQuality =
+      n(authoritySignals?.sampledLowQualityBacklinks);
     hiBox(
       "Authority Insight",
       referringDomainsValue > 0
-        ? `${domain} has ${referringDomainsValue} unique referring domain(s) and ${totalBacklinksValue} total backlinks. ${linkConcentration >= 20 ? "The link profile is highly concentrated in a small number of domains, so additional independent industry sources should be prioritised." : "Focus on earning additional relevant and trustworthy industry mentions."}`
+        ? `${domain} has ${referringDomainsValue} unique referring domain(s) and ${totalBacklinksValue} total backlinks. ${
+            sampledQualityRatio !== null
+              ? `In the returned backlink sample, ${Math.round(sampledQualityRatio * 100)}% passed the basic source-quality screen${
+                  sampledLowQuality !== null
+                    ? ` and ${sampledLowQuality} sample link(s) were flagged as lower-quality/profile/forum style`
+                    : ""
+                }. `
+              : ""
+          }${linkConcentration >= 20 ? "The link profile is highly concentrated in a small number of domains, so additional independent industry sources should be prioritised." : "Authority should be judged by relevance and source quality as well as link quantity."}`
         : "No verified backlink authority evidence was returned for this audit.",
       "blue"
     );
@@ -4908,17 +5055,43 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   if(pdfSections.local){
     secHdr(nextSec(),"Local SEO & Business Listings","Business listing visibility, ratings, and review signals from Crawler Que Business Data API.");
+    const localListings = Array.isArray(
+      pdfData?.businessData?.listings
+    )
+      ? pdfData.businessData.listings
+      : [];
+    const localTopRating =
+      localListings.length > 0
+        ? Math.max(
+            ...localListings.map(
+              (listing:any) =>
+                Number(listing?.rating || 0)
+            )
+          )
+        : null;
     kpiRow([
-      {label:"Listings Found",value:fmt(pdfData?.businessData?.listings?.length),col:C.accent},
-      {label:"Search Query",value:cl(pdfData?.businessData?.keyword),col:C.blue},
-      {label:"Location",value:cl(pdfData?.businessData?.location),col:C.muted},
-      {label:"Top Rating",value:cl(String(Math.max(...(pdfData.businessData.listings||[]).map((l:any)=>Number(l.rating||0)))||"—")),col:C.amber},
+      {label:"Listings Found",value:fmt(localListings.length),col:localListings.length>0?C.accent:C.muted},
+      {label:"Search Query",value:cl(pdfData?.businessData?.keyword,"Unavailable"),col:C.blue},
+      {label:"Location",value:cl(pdfData?.businessData?.location??pdfData?.auditConfig?.countryName,"Unavailable"),col:C.muted},
+      {label:"Top Rating",value:localTopRating&&localTopRating>0?cl(String(localTopRating)):"Unavailable",col:localTopRating&&localTopRating>0?C.amber:C.muted},
     ]);
-    tbl(["Business","Category","Rating","Reviews","Address"],
-      pdfData.businessData.listings.slice(0,10).map((item:any)=>({
-        col1:cl(item.title,"Unknown"),col2:cl(item.category,"—"),
-        col3:cl(String(item.rating??"—")),col4:cl(String(item.reviews??"—")),col5:cl(item.address,"—"),
-      })),[40,30,14,16,CW-100]);
+
+    if (localListings.length > 0) {
+      tbl(["Business","Category","Rating","Reviews","Address"],
+        localListings.slice(0,10).map((item:any)=>({
+          col1:cl(item.title,"Unknown"),col2:cl(item.category,"—"),
+          col3:cl(String(item.rating??"—")),col4:cl(String(item.reviews??"—")),col5:cl(item.address,"—"),
+        })),[40,30,14,16,CW-100]);
+    } else {
+      hiBox(
+        "Local SEO Data Unavailable",
+        cl(
+          pdfData?.businessData?.note,
+          "No exact audited-brand local listing was verified for the selected market. Wider market results are intentionally not presented as the audited business."
+        ),
+        "muted"
+      );
+    }
   }
 
   // ════════════════════════════════════════════════════════════════════
@@ -4933,7 +5106,16 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
       {label:"Recommendations",value:fmt(canonicalRecommendations.length),col:C.accent},
       {label:"Source",value:"Evidence Engine",col:C.muted},
       {label:"Primary Opportunity",value:cl(pdfData?.unifiedOverview?.primaryOpportunity),col:C.amber},
-      {label:"Suppressed Branded Gaps",value:fmt(pdfData?.aiRecommendations?.suppressedCompetitorBrandedKeywords),col:C.blue},
+      {
+        label:"Suppressed Branded Gaps",
+        value:fmt(
+          pdfData?.dataforseo?.keywordGap
+            ?.suppressedCompetitorBrandedKeywords ??
+          pdfData?.aiRecommendations
+            ?.suppressedCompetitorBrandedKeywords
+        ),
+        col:C.blue,
+      },
     ]);
     if(canonicalRecommendations.length){
       secTitle("Priority Recommendations");
@@ -5006,10 +5188,20 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
     roadmap?.first30Days,
     canonicalRoadmapRecommendations.filter((item: any) => /0\s*[–-]\s*30|first|immediate|14 day/i.test(String(item?.timeline || "")))
   );
+  const next30DayActions = mergeRoadmapActions(
+    roadmap?.next30Days,
+    canonicalRoadmapRecommendations.filter((item: any) => /31\s*[–-]\s*60|next|60 day/i.test(String(item?.timeline || "")))
+  );
+  const final30DayActions = mergeRoadmapActions(
+    roadmap?.final30Days,
+    canonicalRoadmapRecommendations.filter((item: any) => /61\s*[–-]\s*90|final|90 day/i.test(String(item?.timeline || "")))
+  );
 
   roadmapPhase("First 30 Days — Fix Validated Foundations","0–30 days",first30DayActions,"high");
-  roadmapPhase("Next 30 Days — Expand Qualified Visibility","31–60 days",roadmap?.next30Days,"medium");
-  roadmapPhase("Final 30 Days — Build Authority and Coverage","61–90 days",roadmap?.final30Days,"low");
+  roadmapPhase("Next 30 Days — Expand Qualified Visibility","31–60 days",next30DayActions,"medium");
+  if (final30DayActions.length > 0) {
+    roadmapPhase("Final 30 Days — Build Authority and Coverage","61–90 days",final30DayActions,"low");
+  }
 
   // ════════════════════════════════════════════════════════════════════
   //  APPENDIX — EVIDENCE
@@ -5105,6 +5297,28 @@ const dashboardFirst30DayActions =
     dashboardRecommendations.filter(
       (item: any) =>
         /0\s*[–-]\s*30|first|immediate|14 day/i.test(
+          String(item?.timeline || "")
+        )
+    )
+  );
+
+const dashboardNext30DayActions =
+  mergeRoadmapActions(
+    dashboardRoadmap?.next30Days,
+    dashboardRecommendations.filter(
+      (item: any) =>
+        /31\s*[–-]\s*60|next|60 day/i.test(
+          String(item?.timeline || "")
+        )
+    )
+  );
+
+const dashboardFinal30DayActions =
+  mergeRoadmapActions(
+    dashboardRoadmap?.final30Days,
+    dashboardRecommendations.filter(
+      (item: any) =>
+        /61\s*[–-]\s*90|final|90 day/i.test(
           String(item?.timeline || "")
         )
     )
@@ -8187,9 +8401,15 @@ const impactClass = impact.toLowerCase().includes("high")
     <div className="mt-8 grid gap-5 lg:grid-cols-3">
       {[
         ["First 30 Days", dashboardFirst30DayActions, "0–30 days"],
-        ["Next 30 Days", dashboardRoadmap?.next30Days, "31–60 days"],
-        ["Final 30 Days", dashboardRoadmap?.final30Days, "61–90 days"],
-      ].map(([label, items, timeline]: any) => (
+        ["Next 30 Days", dashboardNext30DayActions, "31–60 days"],
+        ["Final 30 Days", dashboardFinal30DayActions, "61–90 days"],
+      ]
+        .filter(
+          ([, items]: any) =>
+            Array.isArray(items) &&
+            items.length > 0
+        )
+        .map(([label, items, timeline]: any) => (
         <div key={label} className="rounded-2xl border border-[#252525] bg-[#111111] p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-[#C5FF3D]">{timeline}</p>
           <h3 className="mt-2 font-bold text-white">{label}</h3>

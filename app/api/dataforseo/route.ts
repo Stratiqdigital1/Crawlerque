@@ -109,10 +109,37 @@ function getRecommendedPageType(
         : "Service Page";
     }
 
-    if (["local_service", "legal", "healthcare"].includes(niche)) {
+    if (
+      [
+        "local_service",
+        "legal",
+        "healthcare",
+        "healthcare_technology",
+      ].includes(niche)
+    ) {
       return /near me|city|area|location/.test(value)
         ? "Service Location Page"
-        : "Service Page";
+        : /software|solution|platform|samd|medical device|healthtech|healthcare/.test(
+              value
+            )
+          ? "Service / Solution Page"
+          : "Service Page";
+    }
+
+    if (niche === "software_development") {
+      return /service|development|developer|company|agency|solution/.test(
+        value
+      )
+        ? "Service / Solution Page"
+        : "Supporting Content";
+    }
+
+    if (niche === "creator_platform") {
+      return /platform|subscription|creator|monetization|monetisation/.test(
+        value
+      )
+        ? "Solution / Landing Page"
+        : "Supporting Content";
     }
 
     if (niche === "restaurant") {
@@ -225,6 +252,13 @@ return runDataForSEO({
   searchEngine:
     String(body?.searchEngine || "google")
       .toLowerCase(),
+  businessSeed:
+    String(body?.businessSeed || ""),
+  siteContext:
+    body?.siteContext &&
+    typeof body.siteContext === "object"
+      ? body.siteContext
+      : null,
 });
   } catch (error) {
     return NextResponse.json(
@@ -245,6 +279,8 @@ async function runDataForSEO({
   languageCode,
   device,
   searchEngine,
+  businessSeed = "",
+  siteContext = null,
 }: {
   url: string;
   locationName: string;
@@ -253,6 +289,12 @@ async function runDataForSEO({
   languageCode: string;
   device: "mobile" | "desktop";
   searchEngine: string;
+  businessSeed?: string;
+  siteContext?: {
+    title?: string;
+    description?: string;
+    h1?: string;
+  } | null;
 }) {
   try {
     const domain = normalizeDomain(url);
@@ -651,65 +693,238 @@ const brandedTraffic = topKeywords
     0
   );
 
-const detectedNiche = detectNiche(domain, topKeywords);
+const detectedNiche = detectNiche(
+  domain,
+  topKeywords,
+  businessSeed,
+  siteContext
+);
 
 const allowedCompetitorHints =
   getAllowedCompetitorHints(detectedNiche);
-function detectNiche(domain: string, keywords: any[]) {
-  const text = [
+
+function detectNiche(
+  domain: string,
+  keywords: any[],
+  businessSeedValue = "",
+  context:
+    | {
+        title?: string;
+        description?: string;
+        h1?: string;
+      }
+    | null = null
+) {
+  const seedText = String(
+    businessSeedValue || ""
+  ).toLowerCase();
+
+  if (
+    /healthcare software|healthcare technology|healthtech|medical device|samd|digital health/.test(
+      seedText
+    )
+  ) {
+    return "healthcare_technology";
+  }
+
+  if (
+    /creator subscription|creator monetization|creator monetisation|fan subscription/.test(
+      seedText
+    )
+  ) {
+    return "creator_platform";
+  }
+
+  if (
+    /custom software development|software development services|application development/.test(
+      seedText
+    )
+  ) {
+    return "software_development";
+  }
+
+  const siteText = [
     domain,
-    ...keywords.slice(0, 20).map((k: any) => k.keyword),
+    context?.title,
+    context?.description,
+    context?.h1,
   ]
+    .filter(Boolean)
     .join(" ")
     .toLowerCase();
 
-  if (
-    /watch|watches|earbuds|headphone|shop|store|price|buy|product|cart|checkout|fashion|wearable/.test(
-      text
-    )
-  ) {
-    return "ecommerce";
-  }
+  const keywordText = keywords
+    .slice(0, 100)
+    .map((k: any) => k?.keyword)
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
 
-  if (
-    /realtor|real estate|multifamily|apartment|property|broker|commercial|cre|homes/.test(
-      text
-    )
-  ) {
-    return "real_estate";
-  }
+  const categories: Array<{
+    niche: string;
+    terms: string[];
+  }> = [
+    {
+      niche: "healthcare_technology",
+      terms: [
+        "healthcare technology",
+        "healthtech",
+        "health tech",
+        "medical device",
+        "samd",
+        "digital health",
+        "healthcare software",
+        "medical software",
+        "healthcare app",
+        "clinical software",
+        "life sciences",
+        "telehealth",
+        "ehr",
+        "emr",
+      ],
+    },
+    {
+      niche: "creator_platform",
+      terms: [
+        "creator subscription",
+        "creator monetization",
+        "creator monetisation",
+        "fan subscription",
+        "exclusive content",
+        "paid creator content",
+        "fan club",
+      ],
+    },
+    {
+      niche: "real_estate",
+      terms: [
+        "real estate",
+        "multifamily",
+        "apartment",
+        "property management",
+        "realtor",
+        "brokerage",
+        "commercial real estate",
+      ],
+    },
+    {
+      niche: "legal",
+      terms: [
+        "law firm",
+        "attorney",
+        "lawyer",
+        "legal services",
+        "personal injury",
+      ],
+    },
+    {
+      niche: "restaurant",
+      terms: [
+        "restaurant",
+        "menu",
+        "cafe",
+        "food delivery",
+        "pizza",
+        "burger",
+      ],
+    },
+    {
+      niche: "ecommerce",
+      terms: [
+        "online store",
+        "ecommerce",
+        "e-commerce",
+        "shopping cart",
+        "checkout",
+        "shop online",
+        "product collection",
+      ],
+    },
+    {
+      niche: "software_development",
+      terms: [
+        "software development company",
+        "software development services",
+        "custom software",
+        "application development",
+        "app development company",
+        "digital product development",
+      ],
+    },
+    {
+      niche: "saas",
+      terms: [
+        "saas",
+        "crm software",
+        "business software",
+        "software platform",
+        "cloud software",
+        "automation software",
+      ],
+    },
+    {
+      niche: "healthcare",
+      terms: [
+        "medical clinic",
+        "doctor",
+        "dental",
+        "dentist",
+        "therapy clinic",
+        "hospital",
+        "patient care",
+      ],
+    },
+    {
+      niche: "local_service",
+      terms: [
+        "digital marketing agency",
+        "seo agency",
+        "consulting services",
+        "repair service",
+        "plumber",
+        "roofing",
+        "hvac",
+      ],
+    },
+  ];
 
-  if (
-    /software|saas|crm|platform|app|automation|cloud|tool/.test(text)
-  ) {
-    return "saas";
-  }
+  const scored = categories
+    .map((category) => {
+      const siteMatches =
+        category.terms.reduce(
+          (total, term) =>
+            total +
+            (siteText.includes(term)
+              ? 4
+              : 0),
+          0
+        );
 
-  if (/law|attorney|lawyer|legal|injury|firm/.test(text)) {
-    return "legal";
-  }
+      const keywordMatches =
+        category.terms.reduce(
+          (total, term) =>
+            total +
+            (keywordText.includes(term)
+              ? 1
+              : 0),
+          0
+        );
 
-  if (
-    /doctor|clinic|medical|health|dental|dentist|therapy|hospital/.test(
-      text
-    )
-  ) {
-    return "healthcare";
-  }
+      return {
+        niche: category.niche,
+        score:
+          siteMatches +
+          keywordMatches,
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.score - a.score
+    );
 
-  if (/restaurant|food|menu|cafe|pizza|burger|delivery/.test(text)) {
-    return "restaurant";
-  }
-
-  if (
-    /agency|marketing|seo|ads|consulting|service|repair|plumber|roofing|hvac/.test(
-      text
-    )
-  ) {
-    return "local_service";
-  }
-
-  return "general";
+  return scored[0]?.score > 0
+    ? scored[0].niche
+    : "general";
 }
 
 function getAllowedCompetitorHints(niche: string) {
@@ -779,6 +994,44 @@ function getAllowedCompetitorHints(niche: string) {
       "care",
     ],
 
+    healthcare_technology: [
+      "health",
+      "healthcare",
+      "healthtech",
+      "medtech",
+      "medical",
+      "clinical",
+      "digital",
+      "software",
+      "technology",
+      "device",
+      "ai",
+      "life",
+      "science",
+    ],
+
+    software_development: [
+      "software",
+      "development",
+      "digital",
+      "technology",
+      "tech",
+      "app",
+      "application",
+      "solutions",
+      "agency",
+    ],
+
+    creator_platform: [
+      "creator",
+      "subscription",
+      "content",
+      "fan",
+      "monetization",
+      "monetisation",
+      "platform",
+    ],
+
     restaurant: [
       "restaurant",
       "cafe",
@@ -806,6 +1059,157 @@ function getAllowedCompetitorHints(niche: string) {
 
   return [...common, ...(map[niche] || [])];
 }
+
+function getNicheKeywordHints(
+  niche: string
+) {
+  const map: Record<string, string[]> = {
+    ecommerce: [
+      "shop",
+      "store",
+      "product",
+      "shopping",
+      "retail",
+      "ecommerce",
+    ],
+    real_estate: [
+      "real estate",
+      "property",
+      "realtor",
+      "broker",
+      "multifamily",
+      "apartment",
+      "commercial",
+      "realty",
+    ],
+    saas: [
+      "software",
+      "saas",
+      "crm",
+      "platform",
+      "cloud",
+      "automation",
+      "analytics",
+      "helpdesk",
+      "payroll",
+      "accounting",
+    ],
+    software_development: [
+      "software development",
+      "application development",
+      "app development",
+      "web development",
+      "custom software",
+      "digital product",
+      "developer",
+      "development company",
+    ],
+    healthcare: [
+      "healthcare",
+      "medical",
+      "clinic",
+      "doctor",
+      "dental",
+      "hospital",
+      "patient",
+      "care",
+    ],
+    healthcare_technology: [
+      "healthcare",
+      "medical",
+      "healthtech",
+      "health tech",
+      "medtech",
+      "digital health",
+      "clinical",
+      "samd",
+      "medical device",
+      "healthcare software",
+      "ehr",
+      "emr",
+      "telehealth",
+      "life science",
+      "patient",
+      "fhir",
+      "hipaa",
+    ],
+    legal: [
+      "legal",
+      "law",
+      "lawyer",
+      "attorney",
+    ],
+    restaurant: [
+      "restaurant",
+      "food",
+      "menu",
+      "cafe",
+      "delivery",
+    ],
+    creator_platform: [
+      "creator",
+      "subscription",
+      "exclusive content",
+      "fan",
+      "monetization",
+      "monetisation",
+      "paid content",
+    ],
+    local_service: [
+      "marketing",
+      "seo",
+      "repair",
+      "plumber",
+      "roofing",
+      "hvac",
+      "consulting",
+    ],
+    general: [],
+  };
+
+  return map[niche] || [];
+}
+
+function getKnownCompetitorBrandTokens(
+  niche: string
+) {
+  const map: Record<string, string[]> = {
+    healthcare_technology: [
+      "epic",
+      "cerner",
+      "allscripts",
+      "ecw",
+      "eclinicalworks",
+      "athenahealth",
+      "meditech",
+      "nextgen",
+      "veradigm",
+      "oracle health",
+      "oraclehealth",
+    ],
+    healthcare: [
+      "epic",
+      "cerner",
+      "allscripts",
+      "ecw",
+      "eclinicalworks",
+      "athenahealth",
+      "meditech",
+      "nextgen",
+      "veradigm",
+    ],
+    creator_platform: [
+      "patreon",
+      "onlyfans",
+      "substack",
+      "ko fi",
+      "kofi",
+    ],
+  };
+
+  return map[niche] || [];
+}
+
 function enrichCompetitorThreat(item: any) {
   const traffic = Number(item.traffic || item.etv || 0);
   const sharedKeywords = Number(item.sharedKeywords || item.intersections || 0);
@@ -1047,34 +1451,76 @@ topCompetitors = Array.from(
       .slice(0, 3);
 
     const competitorBrandTokens: string[] = Array.from(
-      new Set<string>(
-        competitorDomains.flatMap((competitorDomain: string) => {
-          const root = String(competitorDomain || "")
-            .toLowerCase()
-            .replace(/^www\./, "")
-            .split(".")[0]
-            .replace(/[^a-z0-9-]/g, "");
+      new Set<string>([
+        ...competitorDomains.flatMap(
+          (competitorDomain: string) => {
+            const root = String(
+              competitorDomain || ""
+            )
+              .toLowerCase()
+              .replace(/^www\./, "")
+              .split(".")[0]
+              .replace(
+                /[^a-z0-9-]/g,
+                ""
+              );
 
-          return [
-            root,
-            root.replace(/-/g, " "),
-            root.replace(/-/g, ""),
-          ].filter((token) => token.length >= 4);
-        })
-      )
+            return [
+              root,
+              root.replace(/-/g, " "),
+              root.replace(/-/g, ""),
+            ].filter(
+              (token) =>
+                token.length >= 4
+            );
+          }
+        ),
+        ...getKnownCompetitorBrandTokens(
+          detectedNiche
+        ),
+      ])
     );
 
     const isCompetitorBrandedKeyword = (keyword: string) => {
-      const normalizedKeyword = String(keyword || "")
+      const normalizedKeyword = String(
+        keyword || ""
+      )
         .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, " ")
+        .replace(
+          /[^a-z0-9\s-]/g,
+          " "
+        )
         .replace(/\s+/g, " ")
         .trim();
 
-      return competitorBrandTokens.some((token) => {
-        const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        return new RegExp(`\\b${escaped}\\b`, "i").test(normalizedKeyword);
-      });
+      return competitorBrandTokens.some(
+        (token) => {
+          const normalizedToken =
+            String(token || "")
+              .toLowerCase()
+              .replace(
+                /[^a-z0-9\s-]/g,
+                " "
+              )
+              .replace(/\s+/g, " ")
+              .trim();
+
+          if (!normalizedToken) {
+            return false;
+          }
+
+          const escaped =
+            normalizedToken.replace(
+              /[.*+?^${}()|[\]\\]/g,
+              "\\$&"
+            );
+
+          return new RegExp(
+            `\\b${escaped}\\b`,
+            "i"
+          ).test(normalizedKeyword);
+        }
+      );
     };
 
     const competitorKeywordTasks = competitorDomains.map((competitorDomain: string) => ({
@@ -1197,7 +1643,19 @@ language_code: languageCode || "en",
   /jujutsu/i,
 ];
 
-const nicheKeywordHints = getAllowedCompetitorHints(detectedNiche);
+const nicheKeywordHints =
+  getNicheKeywordHints(
+    detectedNiche
+  );
+
+const suppressedCompetitorBrandedKeywords =
+  Array.from(
+    competitorKeywordMap.values()
+  ).filter((item: any) =>
+    isCompetitorBrandedKeyword(
+      String(item?.keyword || "")
+    )
+  ).length;
 
 const missingKeywords = Array.from(competitorKeywordMap.values())
   .map((k: any) => {
@@ -1238,9 +1696,13 @@ const missingKeywords = Array.from(competitorKeywordMap.values())
 
     if (isBadKeyword) return false;
 
-    const isRelevantToNiche = nicheKeywordHints.some((hint) =>
-      keyword.includes(hint)
-    );
+    const isRelevantToNiche =
+      nicheKeywordHints.length === 0
+        ? true
+        : nicheKeywordHints.some(
+            (hint) =>
+              keyword.includes(hint)
+          );
 
     const isRelevantToBrandCategory =
       topKeywords.some((own: any) => {
@@ -1347,7 +1809,9 @@ const keywordGap = {
   contentIdeas,
   quality: keywordGapQuality,
   mode: "standard-non-branded",
-  competitorBrandTermsExcluded: competitorBrandTokens,
+  competitorBrandTermsExcluded:
+    competitorBrandTokens,
+  suppressedCompetitorBrandedKeywords,
   conquestModeAvailable: false,
 };
 
