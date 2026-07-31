@@ -3866,22 +3866,11 @@ bg:      [11, 25, 41] as RGB,
 
     // measure detail
     doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-    const allDetailLines = doc.splitTextToSize(
-      cl(detail, ""),
-      CW - 18
-    );
-    const detailLines = allDetailLines.slice(0, 4);
-
-    if (
-      allDetailLines.length > detailLines.length &&
-      detailLines.length > 0
-    ) {
-      const lastIndex = detailLines.length - 1;
-      detailLines[lastIndex] = ell(
-        `${detailLines[lastIndex]}…`,
-        CW - 18
-      );
-    }
+const detailLines =
+  doc.splitTextToSize(
+    cl(detail, ""),
+    CW - 18
+  );
 
     const h = 14 + detailLines.length * 4.3;
     ensure(h + 5);
@@ -4216,7 +4205,13 @@ sub("From executive summary to action roadmap — everything your team needs to 
     ...(pdfSections.recommendations
       ? [[tocN(),"Recommendations","Prioritised actions from reconciled evidence"]]
       : []),
-    [tocN(),"Action Roadmap","Issue-driven 30/60/90 day execution plan"],
+    ...(pdfSections.recommendations
+  ? [[
+      tocN(),
+      "Action Roadmap",
+      "Execution plan generated from validated recommendations",
+    ]]
+  : []),
     [tocN(),"Benchmark Reference","What each score means and what to aim for"],
   ];
   toc.forEach(([num,t,d],i)=>{

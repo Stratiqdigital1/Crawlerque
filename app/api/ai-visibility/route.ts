@@ -188,9 +188,15 @@ function cleanCompetitorCandidate(
   const blocked =
     /^(ehr|emr|look|create|optimize|optimise|seo|software|platform|solution|solutions|service|services|company|companies|provider|providers|healthcare|medical|technology|tech|content|marketing|search|website|brand|brands|best|top|tools?|strong)$/i;
 
-  if (blocked.test(cleaned)) {
-    return "";
-  }
+const blockedGenericPhrase =
+  /^(user[-\s]?friendly interface|customi[sz]ation options?|systems?|ehrs?|emrs?|features?|functionality|integration|interoperability|workflow|security|support|pricing)$/i;
+
+if (
+  blocked.test(cleaned) ||
+  blockedGenericPhrase.test(cleaned)
+) {
+  return "";
+}
 
   return cleaned;
 }
@@ -336,12 +342,7 @@ export async function POST(req: Request) {
 
 const scoredPrompts = uniqueStrings([
   ...neutralCustomPrompts,
-  ...(generatedPrompts.length > 0
-    ? generatedPrompts
-    : buildNeutralPrompts(
-        category,
-        detectedCountry
-      )),
+  ...categoryPrompts,
 ]).slice(0, 3);
 
     const iso = countryIso(detectedCountry);

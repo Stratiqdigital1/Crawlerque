@@ -36,37 +36,40 @@ async function dataForSeoPost(endpoint: string, payload: any[]) {
   return json;
 }
 
-function detectIntent(keyword: string) {
-  const k = keyword.toLowerCase();
+function detectIntent(
+  keyword: string
+) {
+  const k = String(
+    keyword || ""
+  )
+    .toLowerCase()
+    .trim();
 
   if (
-    k.includes("price") ||
-    k.includes("cost") ||
-    k.includes("buy") ||
-    k.includes("near me") ||
-    k.includes("discount") ||
-    k.includes("coupon")
-  ) {
-    return "Commercial";
-  }
-
-  if (
-    k.includes("best") ||
-    k.includes("top") ||
-    k.includes("review") ||
-    k.includes("vs") ||
-    k.includes("alternative")
+    /\b(best|top|review|reviews|vs|versus|alternative|alternatives|compare|comparison)\b/i.test(
+      k
+    )
   ) {
     return "Comparison";
   }
 
   if (
-    k.includes("how") ||
-    k.includes("what") ||
-    k.includes("why") ||
-    k.includes("guide")
+    /^(how|what|why|when|where|who)\b/i.test(
+      k
+    ) ||
+    /\b(guide|tutorial|examples?|meaning|definition)\b/i.test(
+      k
+    )
   ) {
     return "Informational";
+  }
+
+  if (
+    /\b(price|pricing|cost|quote|buy|hire|agency|agencies|company|companies|provider|providers|service|services|consulting|consultant|partner|near me|discount|coupon)\b/i.test(
+      k
+    )
+  ) {
+    return "Commercial";
   }
 
   return "General";

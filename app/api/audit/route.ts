@@ -1295,14 +1295,15 @@ await updateAuditJob(auditJob.id, {
           ]
         : inferredServiceSeed === "healthcare software development"
           ? [
-              "healthcare software development companies",
-              "custom healthcare software development",
-              "healthcare app development companies",
-              "SaMD development services",
-              "medical device software development",
-              "AI healthcare software development",
-              "XR solutions for healthcare",
-            ]
+    "healthcare software development",
+    "custom healthcare software development",
+    "healthcare software development companies",
+    "healthcare app development companies",
+    "SaMD development services",
+    "medical device software development",
+    "AI healthcare software development",
+    "XR solutions for healthcare",
+  ]
           : inferredServiceSeed === "custom software development"
             ? [
                 "custom software development companies",
@@ -2159,10 +2160,34 @@ try {
             );
           }
 
-          const adjustedScore =
-            hadAltIssue && imagesMissingAlt === 0 && Number.isFinite(Number(item?.score))
-              ? Math.min(100, Number(item.score) + 15)
-              : item?.score;
+const baseAdjustedScore =
+  hadAltIssue &&
+  imagesMissingAlt === 0 &&
+  Number.isFinite(Number(item?.score))
+    ? Math.min(
+        100,
+        Number(item.score) + 15
+      )
+    : item?.score;
+
+const hasMultipleH1Issue =
+  filteredIssues.some(
+    (issue: any) =>
+      /multiple h1/i.test(
+        String(issue || "")
+      )
+  );
+
+const adjustedScore =
+  hasMultipleH1Issue &&
+  Number.isFinite(
+    Number(baseAdjustedScore)
+  )
+    ? Math.min(
+        85,
+        Number(baseAdjustedScore)
+      )
+    : baseAdjustedScore;
 
           return {
             ...item,
@@ -2250,10 +2275,11 @@ try {
           url: auditTargetUrl,
           domain,
           brandName: brandNameForAudit,
-          serviceKeyword:
-            (dataforseo?.topKeywords || [])
-              .find((item: any) => item?.branded !== true)
-              ?.keyword || cleanSeedKeyword,
+serviceKeyword:
+  inferredServiceSeed ||
+  detectedNicheSeed ||
+  keywordResearchSeed ||
+  cleanSeedKeyword,
           locationName,
           languageName,
           languageCode,
@@ -2669,13 +2695,69 @@ const trafficHealthScore =
     ? 45
     : 20;
 
-const overallScore = Math.round(
-  seoScore * 0.3 +
-    uxScore * 0.15 +
-    (primaryPageSpeed.score || 0) * 0.25 +
-    backlinkScore * 0.15 +
-    (aiVisibilityScore || 0) * 0.15
+const overallScoreParts = [
+  {
+    value: seoScore,
+    weight: 0.3,
+    available: runSEO,
+  },
+  {
+    value: uxScore,
+    weight: 0.15,
+    available:
+      runSEO || runTechnical,
+  },
+  {
+    value: Number(
+      primaryPageSpeed?.score || 0
+    ),
+    weight: 0.25,
+    available:
+      runTechnical &&
+      hasPageSpeedEvidence(
+        primaryPageSpeed
+      ),
+  },
+  {
+    value: backlinkScore,
+    weight: 0.15,
+    available:
+      runBacklinks &&
+      Boolean(
+        dataforseo?.backlinks
+      ),
+  },
+  {
+    value: aiVisibilityScore,
+    weight: 0.15,
+    available:
+      runAI &&
+      Boolean(aiSearchVisibility),
+  },
+].filter(
+  (part) => part.available
 );
+
+const overallScoreWeight =
+  overallScoreParts.reduce(
+    (sum, part) =>
+      sum + part.weight,
+    0
+  );
+
+const overallScore =
+  overallScoreWeight > 0
+    ? Math.round(
+        overallScoreParts.reduce(
+          (sum, part) =>
+            sum +
+            Number(part.value || 0) *
+              part.weight,
+          0
+        ) /
+          overallScoreWeight
+      )
+    : 0;
 
     const issues = buildIssues({
       title,
