@@ -186,7 +186,7 @@ function cleanCompetitorCandidate(
   }
 
   const blocked =
-    /^(ehr|emr|look|create|optimize|optimise|seo|software|platform|solution|solutions|service|services|company|companies|provider|providers|healthcare|medical|technology|tech|content|marketing|search|website|brand|brands|best|top|tools?|strong)$/i;
+    /^(ehr|emr|look|create|optimize|optimise|seo|saas|similar|software|platform|solution|solutions|service|services|company|companies|provider|providers|healthcare|medical|technology|tech|content|marketing|search|website|brand|brands|best|top|tools?|strong)$/i;
 
   const blockedGenericPhrase =
     /^(united states|ppc|focused|founded|user[-\s]?friendly interface|customi[sz]ation options?|systems?|ehrs?|emrs?|features?|functionality|integration|interoperability|workflow|security|support|pricing)$/i;
@@ -225,6 +225,34 @@ function countryIso(country: string) {
 
 function uniqueStrings(values: string[]) {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+function competitorComparable(value: string) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/^www\./, "")
+    .replace(/\.(com|net|org|io|co|ai|us|uk|ca|ae|au|in)$/i, "")
+    .replace(/[^a-z0-9]/g, "")
+    .trim();
+}
+
+function uniqueCompetitorStrings(values: string[]) {
+  const seen = new Set<string>();
+  const output: string[] = [];
+
+  values.forEach((value) => {
+    const cleaned = String(value || "").trim();
+    const key = competitorComparable(cleaned);
+
+    if (!cleaned || !key || seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    output.push(cleaned);
+  });
+
+  return output;
 }
 
 export async function GET() {
@@ -404,7 +432,7 @@ const scoredPrompts =
           position: parsed.brandPosition,
           sentiment: parsed.sentiment,
           citedPage: parsed.brandCitations[0] || null,
-          competitors: uniqueStrings(
+          competitors: uniqueCompetitorStrings(
             (
               parsed.competitorsMentioned ||
               []
@@ -446,7 +474,7 @@ const scoredPrompts =
     );
 
     const cleanedTopCompetitors =
-      uniqueStrings(
+      uniqueCompetitorStrings(
         [
           ...(Array.isArray(
             (score as any)

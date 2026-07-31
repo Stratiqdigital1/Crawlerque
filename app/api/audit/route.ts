@@ -1698,6 +1698,80 @@ if (
           }
         );
 
+      const relevantKeywordSet = new Set(
+        relevantMissingKeywords
+          .map((item: any) =>
+            String(item?.keyword || "")
+              .trim()
+              .toLowerCase()
+          )
+          .filter(Boolean)
+      );
+
+      const relevantContentIdeas = Array.isArray(
+        dataforseo.keywordGap?.contentIdeas
+      )
+        ? dataforseo.keywordGap.contentIdeas
+            .map((idea: any) => {
+              const keywords = Array.isArray(
+                idea?.keywords
+              )
+                ? idea.keywords.filter(
+                    (item: any) =>
+                      relevantKeywordSet.has(
+                        String(
+                          item?.keyword || ""
+                        )
+                          .trim()
+                          .toLowerCase()
+                      )
+                  )
+                : [];
+
+              if (keywords.length === 0) {
+                return null;
+              }
+
+              return {
+                ...idea,
+                headline: keywords?.[0]?.keyword
+                  ? `Create content targeting "${keywords[0].keyword}"`
+                  : idea?.headline,
+                keywords,
+              };
+            })
+            .filter(Boolean)
+        : [];
+
+      const relevantKeywordClusters =
+        dataforseo.keywordGap?.keywordClusters &&
+        typeof dataforseo.keywordGap.keywordClusters === "object"
+          ? Object.fromEntries(
+              Object.entries(
+                dataforseo.keywordGap.keywordClusters
+              )
+                .map(([cluster, items]: any) => [
+                  cluster,
+                  Array.isArray(items)
+                    ? items.filter((item: any) =>
+                        relevantKeywordSet.has(
+                          String(
+                            item?.keyword || ""
+                          )
+                            .trim()
+                            .toLowerCase()
+                        )
+                      )
+                    : [],
+                ])
+                .filter(
+                  ([, items]: any) =>
+                    Array.isArray(items) &&
+                    items.length > 0
+                )
+            )
+          : {};
+
       dataforseo = {
         ...dataforseo,
 
@@ -1706,6 +1780,15 @@ if (
 
           missingKeywords:
             relevantMissingKeywords,
+
+          opportunities:
+            relevantMissingKeywords.slice(0, 10),
+
+          keywordClusters:
+            relevantKeywordClusters,
+
+          contentIdeas:
+            relevantContentIdeas,
 
           relevanceFilteredCount:
             Math.max(
@@ -2751,7 +2834,7 @@ const sampledBacklinks = Array.isArray(
   : [];
 
 const lowQualityBacklinkPattern =
-  /forum|profile|directory|classified|bookmark|guestbook|stream&type=|user\/|users\/|member\/|members\//i;
+  /forum|profile|directory|classified|bookmark|guestbook|stream&type=|\/(?:users?|members?|profiles?|tags?|likes?|posts?|evaluate|listings?)(?:\/|$)|(?:^|[\s./_-])(?:social|feedback|directory|listing)(?:[.\s/_-]|$)/i;
 
 const sampledLowQualityBacklinks =
   sampledBacklinks.filter((item: any) =>
@@ -2849,7 +2932,7 @@ const backlinkAuthoritySignals = {
       ? null
       : Number(dofollowRatio.toFixed(2)),
   methodology:
-    "Authority score combines referring-domain breadth with sampled source-quality and link-type signals. It is not a provider domain-rating metric.",
+    "Authority score combines referring-domain breadth with sampled source-pattern heuristics and link-type signals. The sample screen is directional and does not certify backlink quality or editorial relevance.",
 };
 
 const organicTrafficForScore = Number(organicTraffic || 0);

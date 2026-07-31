@@ -1130,9 +1130,10 @@ const cancelAudit = async () => {
     name: c.domain,
     sharedKeywords: c.sharedKeywords || c.intersections || 0,
     threatScore: c.threatScore || 0,
-    traffic: Math.round(
-  Number(c.traffic || data?.traffic?.rawMonthly || data?.traffic?.monthly || 0)
-),
+    traffic:
+      Number(c?.traffic || 0) > 0
+        ? Math.round(Number(c.traffic))
+        : null,
   })) || [];
   const competitorChartData = [
     {
@@ -1565,6 +1566,48 @@ const compactKeywordValue = (value: any) =>
     .replace(/[^a-z0-9]+/g, "")
     .trim();
 
+const cleanAiCompetitorList = (
+  values: any
+) => {
+  const blocked =
+    /^(ehr|emr|look|strong|tools?|saas|similar|software|platforms?|solutions?|services?|providers?|companies?|brands?|healthcare|medical|technology|tech|best|top|it's|its|their|they|create|seo|optimize|optimise|search|website|content|marketing|analysis|strategy|strategies)$/i;
+
+  const seen = new Set<string>();
+  const cleaned: string[] = [];
+
+  (Array.isArray(values) ? values : []).forEach(
+    (raw: any) => {
+      const value = String(raw || "")
+        .trim()
+        .replace(/^www\./i, "");
+
+      if (
+        value.length < 3 ||
+        blocked.test(value)
+      ) {
+        return;
+      }
+
+      const key = value
+        .toLowerCase()
+        .replace(
+          /\.(com|net|org|io|co|ai|us|uk|ca|ae|au|in)$/i,
+          ""
+        )
+        .replace(/[^a-z0-9]/g, "");
+
+      if (!key || seen.has(key)) {
+        return;
+      }
+
+      seen.add(key);
+      cleaned.push(value);
+    }
+  );
+
+  return cleaned.slice(0, 8);
+};
+
 const getKeywordResearchDisplay = (
   report: any
 ) => {
@@ -1682,6 +1725,56 @@ const getKeywordResearchDisplay = (
         report?.normalizedDomain
     ),
   ]);
+
+  const canonicalContextLabel = String(
+    report?.businessContext?.categoryLabel ||
+      report?.businessContext?.primaryService ||
+      ""
+  ).trim();
+
+  const canonicalContextTokens = new Set(
+    [
+      report?.businessContext?.primaryService,
+      ...(Array.isArray(
+        report?.businessContext?.coreTokens
+      )
+        ? report.businessContext.coreTokens
+        : []),
+      ...(Array.isArray(
+        report?.businessContext?.categoryKeywords
+      )
+        ? report.businessContext.categoryKeywords
+        : []),
+    ]
+      .flatMap((value: any) =>
+        keywordTokens(value)
+      )
+      .filter(Boolean)
+  );
+
+  const isCanonicalKeywordRelevant = (
+    value: any
+  ) => {
+    if (canonicalContextTokens.size === 0) {
+      return true;
+    }
+
+    const tokens = keywordTokens(value);
+
+    if (tokens.length === 0) {
+      return false;
+    }
+
+    const matches = tokens.filter(
+      (token) =>
+        canonicalContextTokens.has(token)
+    ).length;
+
+    const requiredMatches =
+      tokens.length === 1 ? 1 : 2;
+
+    return matches >= requiredMatches;
+  };
 
   const contextValues = [
     report?.dataforseo?.detectedNiche,
@@ -1930,7 +2023,8 @@ const getKeywordResearchDisplay = (
       !isLikelyBrandedKeyword(keyword) &&
       !isLikelyCompetitorBrandedKeyword(
         keyword
-      )
+      ) &&
+      isCanonicalKeywordRelevant(keyword)
     );
   };
 
@@ -1982,11 +2076,17 @@ const getKeywordResearchDisplay = (
       ""
   );
 
+  const explicitRankingEvidence =
+    explicitDisplayMode ===
+      "ranking-evidence";
+
   const useGapFallback =
+    !explicitRankingEvidence &&
     qualifiedSuggestions.length < 5 &&
     gapFallbackSuggestions.length > 0;
 
   const useRankingFallback =
+    !explicitRankingEvidence &&
     qualifiedSuggestions.length < 5 &&
     !useGapFallback &&
     rankingFallbackSuggestions.length > 0;
@@ -1995,16 +2095,17 @@ const getKeywordResearchDisplay = (
     useGapFallback || useRankingFallback;
 
   const suggestions = dedupeSuggestions(
-    useGapFallback
-      ? gapFallbackSuggestions
-      : useRankingFallback
-        ? rankingFallbackSuggestions
-        : qualifiedSuggestions
+    explicitRankingEvidence
+      ? qualifiedSuggestions
+      : useGapFallback
+        ? gapFallbackSuggestions
+        : useRankingFallback
+          ? rankingFallbackSuggestions
+          : qualifiedSuggestions
   ).slice(0, 20);
 
   const displayMode =
-    explicitDisplayMode ===
-      "ranking-evidence" ||
+    explicitRankingEvidence ||
     useRankingFallback
       ? "ranking-evidence"
       : "opportunities";
@@ -2017,11 +2118,12 @@ const getKeywordResearchDisplay = (
 
   return {
     context:
-      niche !== "general"
+      canonicalContextLabel ||
+      (niche !== "general"
         ? nicheLabel
         : report?.keywordResearch
             ?.seedKeyword ||
-          "Audited website",
+          "Audited website"),
     source:
       displayMode ===
         "ranking-evidence"
@@ -2049,8 +2151,13 @@ const getKeywordResearchDisplay = (
     suggestions,
     filteredCount: Math.max(
       0,
-      rawSuggestions.length -
-        qualifiedSuggestions.length
+      (displayMode === "ranking-evidence" &&
+      Array.isArray(
+        report?.dataforseo?.topKeywords
+      )
+        ? report.dataforseo.topKeywords.length
+        : rawSuggestions.length) -
+        suggestions.length
     ),
     usedFallback: useFallback,
   };
@@ -4562,14 +4669,10 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
         secTitle("Your Pages & The Keywords They Rank For");
         tbl(["Page", "Top Keywords", "Vol"], av.rankedPages.slice(0, 8).map((p: any) => ({ col1: cl(p.path || p.url), col2: cl((p.keywords||[]).slice(0,4).map((k:any)=>k.keyword).join(", ")), col3: fmt(p.totalVolume) })), [CW - 95, 70, 25]);
       }
-      const blockedAiCompetitorTokens = /^(ehr|emr|look|strong|tools?|software|platforms?|solutions?|services?|providers?|companies?|brands?|healthcare|medical|technology|tech|best|top|it's|its|their|they|create|seo|optimize|optimise|search|website|content|marketing|analysis|strategy|strategies)$/i;
-      const cleanAiCompetitors = Array.from(
-        new Set(
-          (Array.isArray(av.topCompetitors) ? av.topCompetitors : [])
-            .map((value: any) => cl(value, "").trim())
-            .filter((value: string) => value.length >= 3 && !blockedAiCompetitorTokens.test(value))
-        )
-      ).slice(0, 8);
+      const cleanAiCompetitors =
+        cleanAiCompetitorList(
+          av.topCompetitors
+        );
 
       if (cleanAiCompetitors.length) {
         hiBox("Top Competitors in AI Answers", cleanAiCompetitors.join(", "), "blue");
@@ -4750,12 +4853,16 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
     secTitle("Competitor Overview Table");
     tbl(["Domain","Traffic","Shared KWs","Threat","Winning Factor"],
       pdfData.competitors.slice(0,12).map((c:any)=>({
-        col1:cl(c.domain),col2:fmt(c.traffic),col3:fmt(c.sharedKeywords??c.intersections),
+        col1:cl(c.domain),col2:Number(c?.traffic || 0) > 0 ? fmt(c.traffic) : "Unavailable",col3:fmt(c.sharedKeywords??c.intersections),
         col4:cl(String(c.threatScore??"—")),col5:cl(c.likelyWinningFactor??c.winningFactor,"—"),
       })),[48,28,25,20,CW-121]);
     secTitle("Competitor Intelligence Details");
     pdfData.competitors.slice(0,6).forEach((c:any)=>{
-      hiBox(cl(c.domain),`Shared KWs: ${fmt(c.sharedKeywords??c.intersections)}  ·  Traffic: ${fmt(c.traffic)}  ·  Threat: ${cl(String(c.threatScore??"—"))}  ·  Strength: ${cl(c.competitiveStrength,"—")}  ·  AI Risk: ${cl(c.aiRisk,"—")}  ·  Winning: ${cl(c.likelyWinningFactor??c.winningFactor,"—")}`,"amber");
+      const competitorTrafficLabel =
+        Number(c?.traffic || 0) > 0
+          ? fmt(c.traffic)
+          : "Unavailable";
+      hiBox(cl(c.domain),`Shared KWs: ${fmt(c.sharedKeywords??c.intersections)}  ·  Traffic: ${competitorTrafficLabel}  ·  Threat: ${cl(String(c.threatScore??"—"))}  ·  Strength: ${cl(c.competitiveStrength,"—")}  ·  AI Risk: ${cl(c.aiRisk,"—")}  ·  Winning: ${cl(c.likelyWinningFactor??c.winningFactor,"—")}`,"amber");
     });
   }
 
@@ -4785,7 +4892,10 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
         actCard(cl(k.keyword),cl(k.priority,"Medium"),cl(k.action,"Add to content roadmap"),`Volume: ${fmt(k.volume)}  |  Intent: ${cl(k.intent)}  |  Competitors: ${Array.isArray(k.competitors)?k.competitors.join(", "):cl(k.competitors)}`,cl(k.priority,"medium").toLowerCase().includes("high")?"high":"medium");
       });
     }
-    if(pdfData?.dataforseo?.keywordGap?.contentIdeas?.length){
+    if(
+      pdfData?.dataforseo?.keywordGap?.missingKeywords?.length > 0 &&
+      pdfData?.dataforseo?.keywordGap?.contentIdeas?.length > 0
+    ){
       secTitle("AI Content Cluster Ideas");
       tbl(["Cluster","Headline","Keywords"],
         pdfData.dataforseo.keywordGap.contentIdeas.slice(0,8).map((idea:any)=>({
@@ -4891,7 +5001,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
     scoreBar(
       "Backlink Authority Score",
       backlinkAuthorityScore,
-      "Composite of referring-domain breadth and sampled link-quality signals"
+      "Composite of referring-domain breadth and sampled link-pattern signals"
     );
     tbl(["Metric","Value","Benchmark"],[
       {col1:"Provider Backlink Rank",col2:backlinkRankValue !== null ? String(backlinkRankValue) : "—",col3:"Raw provider metric; do not read as a 0–100 authority score"},
@@ -4917,25 +5027,46 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
     const linkConcentration = referringDomainsValue > 0
       ? totalBacklinksValue / referringDomainsValue
       : 0;
-    const authoritySignals =
-      pdfData?.backlinkAuthoritySignals ||
-      null;
-    const sampledQualityRatio =
-      n(authoritySignals?.sampledQualityRatio);
+    const sampledBacklinksForPdf = Array.isArray(
+      pdfData?.backlinks?.topBacklinks
+    )
+      ? pdfData.backlinks.topBacklinks
+      : [];
+
+    const pdfLowQualityBacklinkPattern =
+      /forum|profile|directory|classified|bookmark|guestbook|stream&type=|\/(?:users?|members?|profiles?|tags?|likes?|posts?|evaluate|listings?)(?:\/|$)|(?:^|[\s./_-])(?:social|feedback|directory|listing)(?:[.\s/_-]|$)/i;
+
     const sampledLowQuality =
-      n(authoritySignals?.sampledLowQualityBacklinks);
+      sampledBacklinksForPdf.filter(
+        (item:any) =>
+          pdfLowQualityBacklinkPattern.test(
+            [
+              item?.domainFrom,
+              item?.sourceUrl,
+            ]
+              .filter(Boolean)
+              .join(" ")
+          )
+      ).length;
+
+    const sampledQualityRatio =
+      sampledBacklinksForPdf.length > 0
+        ? Math.max(
+            0,
+            1 -
+              sampledLowQuality /
+                sampledBacklinksForPdf.length
+          )
+        : null;
+
     hiBox(
       "Authority Insight",
       referringDomainsValue > 0
         ? `${domain} has ${referringDomainsValue} unique referring domain(s) and ${totalBacklinksValue} total backlinks. ${
             sampledQualityRatio !== null
-              ? `In the returned backlink sample, ${Math.round(sampledQualityRatio * 100)}% passed the basic source-quality screen${
-                  sampledLowQuality !== null
-                    ? ` and ${sampledLowQuality} sample link(s) were flagged as lower-quality/profile/forum style`
-                    : ""
-                }. `
+              ? `In the returned backlink sample, ${Math.round(sampledQualityRatio * 100)}% were not flagged by the basic directory/profile/social/tag-style heuristic and ${sampledLowQuality} sample link(s) were flagged. This heuristic is directional and does not certify editorial quality or topical relevance. `
               : ""
-          }${linkConcentration >= 20 ? "The link profile is highly concentrated in a small number of domains, so additional independent industry sources should be prioritised." : "Authority should be judged by relevance and source quality as well as link quantity."}`
+          }${linkConcentration >= 20 ? "The link profile is highly concentrated in a small number of domains, so additional independent industry sources should be prioritised." : "Authority should be judged by topical relevance, editorial quality, and source trust as well as link quantity."}`
         : "No verified backlink authority evidence was returned for this audit.",
       "blue"
     );
@@ -5148,7 +5279,6 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 17 — ACTION ROADMAP
   // ════════════════════════════════════════════════════════════════════
-  secHdr(nextSec(),"30 / 60 / 90 Day Action Roadmap","An execution sequence generated from the validated recommendations in this report.");
   const roadmap = pdfData?.actionRoadmap || pdfData?.aiRecommendations?.roadmap || normalized?.actionRoadmap || {};
   const roadmapPhase = (
     title:string,
@@ -5190,6 +5320,19 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
   const final30DayActions = mergeRoadmapActions(
     roadmap?.final30Days,
     canonicalRoadmapRecommendations.filter((item: any) => /61\s*[–-]\s*90|final|90 day/i.test(String(item?.timeline || "")))
+  );
+
+  const roadmapHeading =
+    final30DayActions.length > 0
+      ? "30 / 60 / 90 Day Action Roadmap"
+      : next30DayActions.length > 0
+        ? "30 / 60 Day Action Roadmap"
+        : "30 Day Action Roadmap";
+
+  secHdr(
+    nextSec(),
+    roadmapHeading,
+    "An execution sequence generated from the validated recommendations in this report."
   );
 
   roadmapPhase("First 30 Days — Fix Validated Foundations","0–30 days",first30DayActions,"high");
@@ -7911,9 +8054,13 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
     <div className="mb-8 grid gap-4 lg:grid-cols-2">
       <div className="rounded-2xl border border-[#1e3a5f] bg-[#0E2440] p-5">
         <h3 className="mb-3 font-semibold text-white">Top Competitors in AI Answers</h3>
-        {data.aiSearchVisibility.topCompetitors?.length > 0 ? (
+        {cleanAiCompetitorList(
+          data.aiSearchVisibility.topCompetitors
+        ).length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            {data.aiSearchVisibility.topCompetitors.map((c: string, i: number) => (
+            {cleanAiCompetitorList(
+              data.aiSearchVisibility.topCompetitors
+            ).map((c: string, i: number) => (
               <span key={i} className="rounded-full border border-[#1e3a5f] bg-[#122B4E] px-3 py-1 text-xs text-[#E2E8F0]">{c}</span>
             ))}
           </div>
@@ -8187,7 +8334,8 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
         </p>
       )}
 
-      {data?.dataforseo?.keywordGap?.contentIdeas?.length > 0 && (
+      {data?.dataforseo?.keywordGap?.missingKeywords?.length > 0 &&
+        data?.dataforseo?.keywordGap?.contentIdeas?.length > 0 && (
         <div className="mt-6">
           <h3 className="mb-4 text-lg font-bold text-slate-950">
             AI Content Opportunities
@@ -9051,7 +9199,7 @@ const impactClass = impact.toLowerCase().includes("high")
 
                 <div className="text-right">
                   <p className="font-bold text-slate-950">
-                    {c.traffic
+                    {Number(c?.traffic || 0) > 0
                       ? Math.round(Number(c.traffic)).toLocaleString()
                       : "Data not available"}
                   </p>

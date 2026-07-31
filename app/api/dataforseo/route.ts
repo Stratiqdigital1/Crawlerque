@@ -1235,8 +1235,42 @@ function getKnownCompetitorBrandTokens(
   return map[niche] || [];
 }
 
+function getCompetitorTrafficValue(item: any): number | null {
+  const rawTraffic =
+    item?.metrics?.organic?.clickstream_etv ??
+    item?.metrics?.organic?.etv ??
+    item?.metrics?.organic?.traffic ??
+    item?.clickstream_etv ??
+    item?.etv ??
+    item?.traffic ??
+    null;
+
+  if (
+    rawTraffic === null ||
+    rawTraffic === undefined ||
+    rawTraffic === ""
+  ) {
+    return null;
+  }
+
+  const value = Number(rawTraffic);
+
+  return Number.isFinite(value)
+    ? Math.round(value)
+    : null;
+}
+
 function enrichCompetitorThreat(item: any) {
-  const traffic = Number(item.traffic || item.etv || 0);
+  const rawTraffic = item?.traffic ?? item?.etv ?? null;
+  const trafficAvailable =
+    rawTraffic !== null &&
+    rawTraffic !== undefined &&
+    rawTraffic !== "" &&
+    Number.isFinite(Number(rawTraffic));
+  const traffic = trafficAvailable
+    ? Number(rawTraffic)
+    : null;
+  const trafficForScoring = traffic ?? 0;
   const sharedKeywords = Number(item.sharedKeywords || item.intersections || 0);
   const rank = Number(item.rank || 0);
   const relevance = Number(item.relevance || 0);
@@ -1250,13 +1284,13 @@ const knownAuthorityBoost =
 
 const authorityScore = Math.min(
   100,
-  (traffic >= 50000
+  (trafficForScoring >= 50000
     ? 90
-    : traffic >= 10000
+    : trafficForScoring >= 10000
     ? 78
-    : traffic >= 3000
+    : trafficForScoring >= 3000
     ? 65
-    : traffic >= 500
+    : trafficForScoring >= 500
     ? 52
     : 38) + knownAuthorityBoost
 );
@@ -1289,6 +1323,8 @@ const authorityScore = Math.min(
 
   return {
     ...item,
+    traffic,
+    trafficAvailable,
     authorityScore,
     threatScore,
     competitiveStrength:
@@ -1300,7 +1336,7 @@ const authorityScore = Math.min(
         ? "Moderate"
         : "Weak",
     likelyWinningFactor:
-      traffic >= 10000
+      trafficForScoring >= 10000
         ? "High topical authority"
         : sharedKeywords >= 50
         ? "Strong keyword overlap"
@@ -1373,15 +1409,7 @@ const authorityScore = Math.min(
   domain: competitorDomain,
   sharedKeywords: Number(sharedKeywords || 0),
   intersections: Number(sharedKeywords || 0),
-  traffic: Math.round(
-    Number(
-      item?.metrics?.organic?.clickstream_etv ??
-        item?.metrics?.organic?.etv ??
-        item?.clickstream_etv ??
-        item?.etv ??
-        0
-    )
-  ),
+  traffic: getCompetitorTrafficValue(item),
   rank: item?.rank || item?.competitor_rank || null,
   relevance: Math.min(100, Math.max(5, Number(sharedKeywords || 0) * 10)),
 });
@@ -1390,7 +1418,8 @@ const authorityScore = Math.min(
         const d = String(item.domain || "").toLowerCase();
 
         const shared = Number(item.sharedKeywords || item.intersections || 0);
-const traffic = Number(item.traffic || 0);
+        const traffic = Number(item.traffic || 0);
+        const trafficAvailable = item?.trafficAvailable === true;
 
 return (
   d &&
@@ -1398,6 +1427,7 @@ return (
   !blockedCompetitors.some((blocked) => d.includes(blocked)) &&
   allowedCompetitorHints.some((hint) => d.includes(hint)) &&
   shared >= 3 &&
+  trafficAvailable &&
   traffic > 0
 );
       })
@@ -1424,15 +1454,7 @@ return (
   domain: competitorDomain,
   sharedKeywords: Number(sharedKeywords || 0),
   intersections: Number(sharedKeywords || 0),
-  traffic: Math.round(
-    Number(
-      item?.metrics?.organic?.clickstream_etv ??
-        item?.metrics?.organic?.etv ??
-        item?.clickstream_etv ??
-        item?.etv ??
-        0
-    )
-  ),
+  traffic: getCompetitorTrafficValue(item),
   rank: item?.rank || item?.competitor_rank || null,
   relevance: Math.min(100, Math.max(5, Number(sharedKeywords || 0) * 10)),
 });
