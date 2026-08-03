@@ -1153,6 +1153,12 @@ const cancelAudit = async () => {
 const roadmapActionKey = (
   item: any
 ) => {
+  const titleText = String(
+    typeof item === "string"
+      ? item
+      : item?.title || ""
+  ).toLowerCase();
+
   const text = String(
     typeof item === "string"
       ? item
@@ -1164,6 +1170,22 @@ const roadmapActionKey = (
           .filter(Boolean)
           .join(" ")
   ).toLowerCase();
+
+  const keywordTargetMatch =
+    titleText.match(
+      /[“"]([^”"]{3,120})[”"]/
+    );
+
+  if (
+    keywordTargetMatch?.[1] &&
+    /page|content|keyword/.test(
+      titleText
+    )
+  ) {
+    return `keyword-target:${keywordTargetMatch[1]
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()}`;
+  }
 
   if (/faq/.test(text) && /schema/.test(text)) {
     return "faq-schema";
@@ -1539,6 +1561,32 @@ const adaptPageTypeForMarketRole = (
   return text;
 };
 
+const adaptRoadmapItemsForMarketRole = (
+  items: any,
+  report: any
+) =>
+  (Array.isArray(items) ? items : []).map(
+    (item: any) =>
+      typeof item === "string"
+        ? adaptPageTypeForMarketRole(
+            item,
+            report
+          )
+        : {
+            ...item,
+            title:
+              adaptPageTypeForMarketRole(
+                item?.title,
+                report
+              ),
+            detail:
+              adaptPageTypeForMarketRole(
+                item?.detail,
+                report
+              ),
+          }
+  );
+
 const getUsableTechnicalCoverage = (
   report: any
 ) => {
@@ -1679,7 +1727,7 @@ const cleanAiCompetitorList = (
   values: any
 ) => {
 const blocked =
-  /^(ehr|emr|look|strong|tools?|saas|similar|software|platforms?|solutions?|services?|providers?|companies?|brands?|healthcare|medical|technology|tech|best|top|it's|its|their|they|there|great|uses?|could|some|other|others|many|most|also|create|seo|optimize|optimise|search|website|content|marketing|analysis|strategy|strategies|crm|project management|business tools|software reviews?|reviews?|comparisons?)$/i;
+  /^(ehr|emr|look|strong|tools?|saas|similar|software|platforms?|solutions?|services?|providers?|companies?|brands?|healthcare|medical|technology|tech|best|top|it's|its|their|they|there|great|uses?|could|some|other|others|many|most|also|create|seo|optimize|optimise|search|website|content|marketing|analysis|strategy|strategies|crm|customer relationship management|project management|business tools|software reviews?|reviews?|comparisons?)$/i;
 
   const seen = new Set<string>();
   const cleaned: string[] = [];
@@ -4108,7 +4156,7 @@ bg:      [11, 25, 41] as RGB,
     const cmap: Record<BoxType, RGB> = { green: C.accent, amber: C.amber, red: C.red, blue: C.blue, muted: C.muted };
     const col = cmap[type];
     doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-    const lines = doc.splitTextToSize(cl(body, ""), CW - 14).slice(0, 4); // up to 4 lines
+    const lines = doc.splitTextToSize(cl(body, ""), CW - 14).slice(0, 6); // up to 6 lines
     const h = 12 + lines.length * 4.3;
     ensure(h + 5);
     doc.setFillColor(...C.card2); doc.setDrawColor(...C.border); doc.roundedRect(ML, y, CW, h, 2, 2, "FD");
@@ -5637,7 +5685,7 @@ const hasTechnicalEvidence =
         ?.brokenLinks
     ),
   col3:
-    "Broken link references detected inside crawled pages; failed page responses are reported separately",
+    "Broken link references; failed responses are listed separately.",
 },
       {col1:"Pages Remaining",col2:technicalResult(pdfData?.onPage?.remainingPages),col3:"Unprocessed in-scope pages at finalization"},
       {col1:"Crawl Page Limit",col2:fmt(pdfData?.onPage?.pageLimit),col3:"Maximum pages requested for this audit"},
@@ -5986,15 +6034,26 @@ if(pdfSections.local){
   };
   const canonicalRoadmapRecommendations = getCanonicalRecommendationSet(pdfData);
   const first30DayActions = mergeRoadmapActions(
-    roadmap?.first30Days,
+    adaptRoadmapItemsForMarketRole(
+      roadmap?.first30Days,
+      pdfData
+    ),
     canonicalRoadmapRecommendations.filter((item: any) => /0\s*[–-]\s*30|first|immediate|14 day/i.test(String(item?.timeline || "")))
   );
+
   const next30DayActions = mergeRoadmapActions(
-    roadmap?.next30Days,
+    adaptRoadmapItemsForMarketRole(
+      roadmap?.next30Days,
+      pdfData
+    ),
     canonicalRoadmapRecommendations.filter((item: any) => /31\s*[–-]\s*60|next|60 day/i.test(String(item?.timeline || "")))
   );
+
   const final30DayActions = mergeRoadmapActions(
-    roadmap?.final30Days,
+    adaptRoadmapItemsForMarketRole(
+      roadmap?.final30Days,
+      pdfData
+    ),
     canonicalRoadmapRecommendations.filter((item: any) => /61\s*[–-]\s*90|final|90 day/i.test(String(item?.timeline || "")))
   );
 
@@ -6107,7 +6166,10 @@ const dashboardRecommendations =
 
 const dashboardFirst30DayActions =
   mergeRoadmapActions(
-    dashboardRoadmap?.first30Days,
+    adaptRoadmapItemsForMarketRole(
+      dashboardRoadmap?.first30Days,
+      data
+    ),
     dashboardRecommendations.filter(
       (item: any) =>
         /0\s*[–-]\s*30|first|immediate|14 day/i.test(
@@ -6118,7 +6180,10 @@ const dashboardFirst30DayActions =
 
 const dashboardNext30DayActions =
   mergeRoadmapActions(
-    dashboardRoadmap?.next30Days,
+    adaptRoadmapItemsForMarketRole(
+      dashboardRoadmap?.next30Days,
+      data
+    ),
     dashboardRecommendations.filter(
       (item: any) =>
         /31\s*[–-]\s*60|next|60 day/i.test(
@@ -6129,7 +6194,10 @@ const dashboardNext30DayActions =
 
 const dashboardFinal30DayActions =
   mergeRoadmapActions(
-    dashboardRoadmap?.final30Days,
+    adaptRoadmapItemsForMarketRole(
+      dashboardRoadmap?.final30Days,
+      data
+    ),
     dashboardRecommendations.filter(
       (item: any) =>
         /61\s*[–-]\s*90|final|90 day/i.test(
