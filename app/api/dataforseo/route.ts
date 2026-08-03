@@ -101,33 +101,168 @@ function getKeywordIntent(keyword: string) {
 function getRecommendedPageType(
   keyword: string,
   intent: string,
-  niche = "general"
+  niche = "general",
+  marketRole = ""
 ) {
-  const value = String(keyword || "").toLowerCase();
+  const value =
+    String(keyword || "")
+      .toLowerCase();
 
-  if (/vs|versus|comparison|alternative|alternatives/.test(value)) {
+  const role =
+    String(marketRole || "")
+      .trim()
+      .toLowerCase();
+
+  /*
+   * Publications should receive
+   * editorial recommendations,
+   * never vendor feature pages.
+   */
+  if (role === "publication") {
+    if (
+      intent === "comparison" ||
+      /best|top|review|reviews|comparison|compare|alternative|alternatives/.test(
+        value
+      )
+    ) {
+      return "Comparison / Review Page";
+    }
+
+    if (
+      intent === "informational"
+    ) {
+      return "Editorial Guide";
+    }
+
+    return "Editorial Roundup / Buying Guide";
+  }
+
+  if (role === "ecommerce") {
+    if (
+      intent === "informational"
+    ) {
+      return "Buying Guide";
+    }
+
+    if (
+      intent === "comparison"
+    ) {
+      return "Comparison / Collection Page";
+    }
+
+    return /buy|price|shop|product|deal/.test(
+      value
+    )
+      ? "Product / Collection Page"
+      : "Category Page";
+  }
+
+  if (
+    role === "software_product" ||
+    role === "platform"
+  ) {
+    if (
+      intent === "informational"
+    ) {
+      return "Guide / Resource Page";
+    }
+
+    if (
+      intent === "comparison"
+    ) {
+      return "Comparison / Alternatives Page";
+    }
+
+    return "Feature / Solution Page";
+  }
+
+  if (role === "marketplace") {
+    if (
+      intent === "informational"
+    ) {
+      return "Marketplace Guide";
+    }
+
+    return "Category / Listing Page";
+  }
+
+  if (
+    role === "service_provider"
+  ) {
+    if (
+      intent === "informational"
+    ) {
+      return "Service Guide";
+    }
+
+    if (
+      intent === "comparison"
+    ) {
+      return "Comparison / Case Study Page";
+    }
+
+    return "Service / Solution Page";
+  }
+
+  if (
+    role === "local_business" ||
+    role ===
+      "healthcare_provider"
+  ) {
+    return /near me|city|area|location/.test(
+      value
+    )
+      ? "Service Location Page"
+      : "Service Page";
+  }
+
+  if (role === "restaurant") {
+    return /menu|delivery|order|near me/.test(
+      value
+    )
+      ? "Menu / Location Page"
+      : "Category Page";
+  }
+
+  /*
+   * Existing niche fallback remains
+   * for older requests without marketRole.
+   */
+  if (
+    /vs|versus|comparison|alternative|alternatives/.test(
+      value
+    )
+  ) {
     return "Comparison Page";
   }
 
-  if (intent === "informational") {
+  if (
+    intent === "informational"
+  ) {
     return "Blog / Guide";
   }
 
   if (intent === "commercial") {
     if (niche === "ecommerce") {
-      return /buy|price|shop|product/.test(value)
+      return /buy|price|shop|product/.test(
+        value
+      )
         ? "Product / Collection Page"
         : "Category Page";
     }
 
     if (niche === "saas") {
-      return /software|platform|app|tool|solution/.test(value)
+      return /software|platform|app|tool|solution/.test(
+        value
+      )
         ? "Feature / Solution Page"
         : "Commercial Landing Page";
     }
 
     if (niche === "real_estate") {
-      return /near me|city|area|location|property/.test(value)
+      return /near me|city|area|location|property/.test(
+        value
+      )
         ? "Location / Property Page"
         : "Service Page";
     }
@@ -140,33 +275,33 @@ function getRecommendedPageType(
         "healthcare_technology",
       ].includes(niche)
     ) {
-      return /near me|city|area|location/.test(value)
+      return /near me|city|area|location/.test(
+        value
+      )
         ? "Service Location Page"
-        : /software|solution|platform|samd|medical device|healthtech|healthcare/.test(
-              value
-            )
-          ? "Service / Solution Page"
-          : "Service Page";
+        : "Service / Solution Page";
     }
 
-    if (niche === "software_development") {
-      return /service|development|developer|company|agency|solution/.test(
+    if (
+      niche ===
+      "software_development"
+    ) {
+      return "Service / Solution Page";
+    }
+
+    if (
+      niche ===
+      "creator_platform"
+    ) {
+      return "Solution / Landing Page";
+    }
+
+    if (
+      niche === "restaurant"
+    ) {
+      return /menu|delivery|order|near me/.test(
         value
       )
-        ? "Service / Solution Page"
-        : "Supporting Content";
-    }
-
-    if (niche === "creator_platform") {
-      return /platform|subscription|creator|monetization|monetisation/.test(
-        value
-      )
-        ? "Solution / Landing Page"
-        : "Supporting Content";
-    }
-
-    if (niche === "restaurant") {
-      return /menu|delivery|order|near me/.test(value)
         ? "Menu / Location Page"
         : "Category Page";
     }
@@ -174,11 +309,15 @@ function getRecommendedPageType(
     return "Commercial Landing Page";
   }
 
-  if (intent === "comparison") {
+  if (
+    intent === "comparison"
+  ) {
     return "Comparison Page";
   }
 
-  return niche === "ecommerce" ? "Category Content" : "Supporting Content";
+  return niche === "ecommerce"
+    ? "Category Content"
+    : "Supporting Content";
 }
 
 function getOpportunityAction(score: number, pageType: string) {
@@ -275,13 +414,24 @@ return runDataForSEO({
   searchEngine:
     String(body?.searchEngine || "google")
       .toLowerCase(),
-  businessSeed:
-    String(body?.businessSeed || ""),
-  siteContext:
-    body?.siteContext &&
-    typeof body.siteContext === "object"
-      ? body.siteContext
-      : null,
+businessSeed:
+  String(
+    body?.businessSeed || ""
+  ),
+
+businessContext:
+  body?.businessContext &&
+  typeof body.businessContext ===
+    "object"
+    ? body.businessContext
+    : null,
+
+siteContext:
+  body?.siteContext &&
+  typeof body.siteContext ===
+    "object"
+    ? body.siteContext
+    : null,
 });
   } catch (error) {
     return NextResponse.json(
@@ -303,6 +453,7 @@ async function runDataForSEO({
   device,
   searchEngine,
   businessSeed = "",
+  businessContext = null,
   siteContext = null,
 }: {
   url: string;
@@ -313,6 +464,11 @@ async function runDataForSEO({
   device: "mobile" | "desktop";
   searchEngine: string;
   businessSeed?: string;
+
+  businessContext?:
+    | Record<string, any>
+    | null;
+
   siteContext?: {
     title?: string;
     description?: string;
@@ -725,8 +881,18 @@ const detectedNiche = detectNiche(
   siteContext
 );
 
+const marketRole =
+  String(
+    businessContext
+      ?.marketRole || ""
+  )
+    .trim()
+    .toLowerCase();
+
 const allowedCompetitorHints =
-  getAllowedCompetitorHints(detectedNiche);
+  getAllowedCompetitorHints(
+    detectedNiche
+  );
 
 function detectNiche(
   domain: string,
@@ -1708,11 +1874,13 @@ const missingKeywords = Array.from(competitorKeywordMap.values())
   .map((k: any) => {
     const intent = getKeywordIntent(k.keyword);
     const opportunityScore = calculateKeywordOpportunityScore(k);
-    const recommendedPageType = getRecommendedPageType(
-      k.keyword,
-      intent,
-      detectedNiche
-    );
+const recommendedPageType =
+  getRecommendedPageType(
+    k.keyword,
+    intent,
+    detectedNiche,
+    marketRole
+  );
 
     return {
       ...k,

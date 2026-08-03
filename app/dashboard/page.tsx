@@ -1501,13 +1501,122 @@ const buildFoundationRoadmapActions = (
   return actions.slice(0, 8);
 };
 
+const adaptPageTypeForMarketRole = (
+  value: any,
+  report: any
+) => {
+  const text =
+    String(value || "");
+
+  const role =
+    String(
+      report?.businessContext
+        ?.marketRole || ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (role === "publication") {
+    return text
+      .replace(
+        /feature\s*\/\s*solution page/gi,
+        "Comparison / Review Page"
+      )
+      .replace(
+        /service\s*\/\s*solution page/gi,
+        "Comparison / Review Page"
+      )
+      .replace(
+        /commercial landing page/gi,
+        "Editorial Roundup / Buying Guide"
+      )
+      .replace(
+        /solution page/gi,
+        "Review Page"
+      );
+  }
+
+  return text;
+};
+
+const getUsableTechnicalCoverage = (
+  report: any
+) => {
+  const discovered =
+    Number(
+      report?.onPage
+        ?.discoveredPages || 0
+    );
+
+  const crawled =
+    Number(
+      report?.onPage
+        ?.crawledPages || 0
+    );
+
+  const failed =
+    Number(
+      report?.onPage
+        ?.failedPages || 0
+    );
+
+  const completedValue =
+    report?.onPage
+      ?.completedPages;
+
+  const completed =
+    completedValue !== null &&
+    completedValue !== undefined
+      ? Number(completedValue)
+      : Math.max(
+          0,
+          crawled - failed
+        );
+
+  if (
+    !Number.isFinite(discovered) ||
+    discovered <= 0 ||
+    !Number.isFinite(completed)
+  ) {
+    return null;
+  }
+
+  return Math.max(
+    0,
+    Math.min(
+      100,
+      Math.round(
+        (completed /
+          discovered) *
+          100
+      )
+    )
+  );
+};
+
 const getCanonicalRecommendationSet = (
   report: any
 ) =>
   mergeRoadmapActions(
     report?.recommendations,
-    buildFoundationRoadmapActions(report)
-  );
+    buildFoundationRoadmapActions(
+      report
+    )
+  ).map((item: any) => ({
+    ...item,
+
+    title:
+      adaptPageTypeForMarketRole(
+        item?.title,
+        report
+      ),
+
+    detail:
+      adaptPageTypeForMarketRole(
+        item?.detail,
+        report
+      ),
+  }));
 
 const keywordStopWords = new Set([
   "a",
@@ -1569,8 +1678,8 @@ const compactKeywordValue = (value: any) =>
 const cleanAiCompetitorList = (
   values: any
 ) => {
-  const blocked =
-    /^(ehr|emr|look|strong|tools?|saas|similar|software|platforms?|solutions?|services?|providers?|companies?|brands?|healthcare|medical|technology|tech|best|top|it's|its|their|they|create|seo|optimize|optimise|search|website|content|marketing|analysis|strategy|strategies)$/i;
+const blocked =
+  /^(ehr|emr|look|strong|tools?|saas|similar|software|platforms?|solutions?|services?|providers?|companies?|brands?|healthcare|medical|technology|tech|best|top|it's|its|their|they|there|great|uses?|could|some|other|others|many|most|also|create|seo|optimize|optimise|search|website|content|marketing|analysis|strategy|strategies|crm|project management|business tools|software reviews?|reviews?|comparisons?)$/i;
 
   const seen = new Set<string>();
   const cleaned: string[] = [];
@@ -3471,11 +3580,84 @@ const tagline   = canWL ? (pdfUser?.pdfFooterText || "Website Growth Intelligenc
     const accentHex = canWL && pdfUser?.brandColor ? pdfUser.brandColor : "#00D4AA";
 
   // ── DATA ──────────────────────────────────────────────────────────────
-  const normalized         = normalizeAuditData(pdfData);
-  const domain             = normalized.domain || pdfData?.domain || "—";
-  const generatedDate      = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
-  const selectedModules    = pdfData?.reportTypes?.length > 0 ? pdfData.reportTypes : selectedReportTypes;
-  const pdfKeywordResearch = getKeywordResearchDisplay(pdfData);
+const normalized =
+  normalizeAuditData(
+    pdfData
+  );
+
+const domain =
+  normalized.domain ||
+  pdfData?.domain ||
+  "—";
+
+const paymentOrWidgetTitle =
+  /^(american express|visa|mastercard|paypal|shop pay|apple pay|google pay)$/i;
+
+const technicalHomepageTitle =
+  Array.isArray(
+    pdfData?.onPage?.pages
+  )
+    ? String(
+        pdfData.onPage.pages.find(
+          (page: any) => {
+            try {
+              const pageUrl =
+                new URL(
+                  String(
+                    page?.url || ""
+                  )
+                );
+
+              return (
+                pageUrl.pathname.replace(
+                  /\/+$/,
+                  ""
+                ) === ""
+              );
+            } catch {
+              return false;
+            }
+          }
+        )?.title || ""
+      ).trim()
+    : "";
+
+const currentSeoTitle =
+  String(
+    normalized?.seo?.title || ""
+  ).trim();
+
+const resolvedSeoTitle =
+  (
+    !currentSeoTitle ||
+    paymentOrWidgetTitle.test(
+      currentSeoTitle
+    )
+  ) &&
+  technicalHomepageTitle
+    ? technicalHomepageTitle
+    : currentSeoTitle;
+
+const generatedDate =
+  new Date().toLocaleDateString(
+    "en-GB",
+    {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    }
+  );
+
+const selectedModules =
+  pdfData?.reportTypes
+    ?.length > 0
+    ? pdfData.reportTypes
+    : selectedReportTypes;
+
+const pdfKeywordResearch =
+  getKeywordResearchDisplay(
+    pdfData
+  );
 
   // parse hex accent → RGB
   const hexToRgb = (h: string): [number,number,number] => {
@@ -4200,22 +4382,27 @@ const detailLines =
           ? item.impact
           : null;
 
-      const detailParts = [
-        item?.detail,
-        item?.description,
-        descriptiveImpact,
-        item?.fix,
-        item?.recommendation,
-        item?.action,
-        item?.summary,
-      ]
-        .filter(Boolean)
-        .map((value: any) => cl(value, ""))
-        .filter(Boolean);
+const detailParts = [
+  item?.fix,
+  item?.recommendation,
+  item?.action,
+  item?.detail,
+  item?.description,
+  descriptiveImpact,
+  item?.summary,
+]
+  .filter(Boolean)
+  .map(
+    (value: any) =>
+      cl(value, "")
+  )
+  .filter(Boolean);
 
-      const detail = detailParts.length
-        ? Array.from(new Set(detailParts)).join(" Recommended action: ")
-        : "Review this item and validate the affected page.";
+const detail =
+  Array.from(
+    new Set(detailParts)
+  )[0] ||
+  "Review this item and validate the affected page.";
 
       actCard(
         title,
@@ -4589,12 +4776,40 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
     kpiRow([
       {label:"SEO Score",value:`${cl(String(pdfData?.seoScore??"—"))}/100`,sub:sLbl(pdfData?.seoScore),col:sCol(pdfData?.seoScore)},
       {label:"On-Page UX Signal",value:`${cl(String(pdfData?.uxScore??"—"))}/100`,sub:sLbl(pdfData?.uxScore),col:sCol(pdfData?.uxScore)},
-      {label:"Page Title",value:normalized.seo.title?"Found":"Missing",sub:normalized.seo.title?"Detected":"Not detected",col:normalized.seo.title?C.accent:C.red},
+      {
+  label:
+    "Page Title",
+  value:
+    resolvedSeoTitle
+      ? "Found"
+      : "Missing",
+  sub:
+    resolvedSeoTitle
+      ? "Detected"
+      : "Not detected",
+  col:
+    resolvedSeoTitle
+      ? C.accent
+      : C.red,
+},
       {label:"Meta Description",value:normalized.seo.metaDescription?"Found":"Missing",sub:normalized.seo.metaDescription?"Detected":"Not detected",col:normalized.seo.metaDescription?C.accent:C.red},
     ]);
     secTitle("On-Page SEO Check");
     tbl(["Element","Status","Recommendation"],[
-      {col1:"Page Title",col2:pdfData?.seoQuality?.titleNeedsContext?"Needs rewrite":cl(normalized.seo.title,"Not detected"),col3:"Unique, 50–60 chars, includes primary service or topic"},
+      {
+  col1:
+    "Page Title",
+  col2:
+    pdfData?.seoQuality
+      ?.titleNeedsContext
+      ? "Needs rewrite"
+      : cl(
+          resolvedSeoTitle,
+          "Not detected"
+        ),
+  col3:
+    "Unique, 50–60 chars, includes primary service or topic",
+},
       {col1:"Meta Description",col2:pdfData?.seoQuality?.descriptionNeedsRewrite?"Needs rewrite":cl(normalized.seo.metaDescription,"Not detected"),col3:"Unique, 140–160 chars, accurately describes the business"},
       {
         col1:"H1 Heading",
@@ -4622,10 +4837,17 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
             : "Empty ALT is acceptable only for decorative images",
       },
     ],[38,60,CW-98]);
-    if(normalized.seo.title){
-      secTitle("Detected Page Title");
-      hiBox("Page Title",cl(normalized.seo.title),"blue");
-    }
+if (resolvedSeoTitle) {
+  secTitle(
+    "Detected Page Title"
+  );
+
+  hiBox(
+    "Page Title",
+    cl(resolvedSeoTitle),
+    "blue"
+  );
+}
     if(normalized.seo.metaDescription){
       secTitle("Detected Meta Description");
       hiBox("Meta Description",cl(normalized.seo.metaDescription),"blue");
@@ -4767,7 +4989,11 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
         );
 
       if (cleanAiCompetitors.length) {
-        hiBox("Top Competitors in AI Answers", cleanAiCompetitors.join(", "), "blue");
+        hiBox(
+  "Other Brands and Products Mentioned in AI Answers",
+  cleanAiCompetitors.join(", "),
+  "blue"
+);
       }
       if (av.missedPrompts?.length) hiBox("Missed Opportunities (Content Ideas)", (av.missedPrompts||[]).slice(0,3).join("  -  "), "amber");
     }
@@ -4927,10 +5153,32 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
         }))
       );
 if (resolvedGeoTopIssue) {
+  const geoTopFixActionMap:
+    Record<string, string> = {
+      "Has FAQ schema (FAQPage)":
+        "Add FAQ schema (FAQPage)",
+
+      "Has one clear H1 heading":
+        "Use one clear, descriptive H1 heading",
+
+      "Has a meta description":
+        "Add a clear meta description",
+
+      "Has structured data (schema)":
+        "Add structured data (schema)",
+
+      "Image ALT coverage":
+        "Improve image ALT coverage",
+    };
+
   const geoTopFixDisplay =
-    resolvedGeoTopIssue === "Has FAQ schema (FAQPage)"
-      ? "Add FAQ schema (FAQPage)"
-      : resolvedGeoTopIssue;
+    geoTopFixActionMap[
+      resolvedGeoTopIssue
+    ] ||
+    resolvedGeoTopIssue.replace(
+      /^Has\s+/i,
+      "Add "
+    );
 
   hiBox(
     "Top Fix for AI Visibility",
@@ -5004,12 +5252,57 @@ hiBox(
       tbl(["Keyword","Volume","Intent","Page Type","Score","Priority"],
         pdfData.dataforseo.keywordGap.missingKeywords.slice(0,15).map((k:any)=>({
           col1:cl(k.keyword),col2:fmt(k.volume??k.search_volume),
-          col3:cl(k.intent,"general"),col4:cl(k.recommendedPageType,"Supporting Content"),
+          col3:
+  cl(
+    k.intent,
+    "general"
+  ),
+
+col4:
+  cl(
+    adaptPageTypeForMarketRole(
+      k.recommendedPageType,
+      pdfData
+    ),
+    "Supporting Content"
+  ),
           col5:cl(String(k.opportunityScore??"—")),col6:cl(k.priority,"Low"),
         })),[55,22,20,38,20,CW-155]);
       secTitle("Keyword Gap — Action Guidance");
       pdfData.dataforseo.keywordGap.missingKeywords.slice(0,8).forEach((k:any)=>{
-        actCard(cl(k.keyword),cl(k.priority,"Medium"),cl(k.action,"Add to content roadmap"),`Volume: ${fmt(k.volume)}  |  Intent: ${cl(k.intent)}  |  Competitors: ${Array.isArray(k.competitors)?k.competitors.join(", "):cl(k.competitors)}`,cl(k.priority,"medium").toLowerCase().includes("high")?"high":"medium");
+        actCard(
+  cl(k.keyword),
+
+  cl(
+    k.priority,
+    "Medium"
+  ),
+
+  cl(
+    adaptPageTypeForMarketRole(
+      k.action,
+      pdfData
+    ),
+    "Add to content roadmap"
+  ),
+
+  `Volume: ${fmt(k.volume)}  |  Intent: ${cl(k.intent)}  |  Competitors: ${
+    Array.isArray(
+      k.competitors
+    )
+      ? k.competitors.join(", ")
+      : cl(k.competitors)
+  }`,
+
+  cl(
+    k.priority,
+    "medium"
+  )
+    .toLowerCase()
+    .includes("high")
+    ? "high"
+    : "medium"
+);
       });
     }
     if(
@@ -5153,43 +5446,58 @@ hiBox(
       ? pdfData.backlinks.topBacklinks
       : [];
 
-    const pdfLowQualityBacklinkPattern =
-      /forum|profile|directory|classified|bookmark|guestbook|stream&type=|\/(?:users?|members?|profiles?|tags?|likes?|posts?|evaluate|listings?)(?:\/|$)|(?:^|[\s./_-])(?:social|feedback|directory|listing)(?:[.\s/_-]|$)/i;
+const pdfManualReviewBacklinkPattern =
+  /forum|profile|directory|classified|bookmark|guestbook|stream&type=|pages\.dev|\.cloud(?:\/|$)|\.wiki(?:\/|$)|\.fyi(?:\/|$)|url[s-]?shortener|screenshots?|global-ranks|\/(?:users?|members?|profiles?|tags?|likes?|posts?|evaluate|listings?|reports?|share|stats|gallery|galerias|video)(?:\/|$)|(?:^|[\s./_-])(?:social|feedback|directory|listing)(?:[.\s/_-]|$)/i;
 
-    const sampledLowQuality =
-      sampledBacklinksForPdf.filter(
-        (item:any) =>
-          pdfLowQualityBacklinkPattern.test(
-            [
-              item?.domainFrom,
-              item?.sourceUrl,
-            ]
-              .filter(Boolean)
-              .join(" ")
-          )
-      ).length;
+const sampledNeedsManualReview =
+  sampledBacklinksForPdf.filter(
+    (item: any) => {
+      const rank =
+        Number(
+          item?.rank || 0
+        );
 
-    const sampledQualityRatio =
-      sampledBacklinksForPdf.length > 0
-        ? Math.max(
-            0,
-            1 -
-              sampledLowQuality /
-                sampledBacklinksForPdf.length
-          )
-        : null;
+      const source =
+        [
+          item?.domainFrom,
+          item?.sourceUrl,
+        ]
+          .filter(Boolean)
+          .join(" ");
 
-    hiBox(
-      "Authority Insight",
-      referringDomainsValue > 0
-        ? `${domain} has ${referringDomainsValue} unique referring domain(s) and ${totalBacklinksValue} total backlinks. ${
-            sampledQualityRatio !== null
-              ? `In the returned backlink sample, ${Math.round(sampledQualityRatio * 100)}% were not flagged by the basic directory/profile/social/tag-style heuristic and ${sampledLowQuality} sample link(s) were flagged. This heuristic is directional and does not certify editorial quality or topical relevance. `
-              : ""
-          }${linkConcentration >= 20 ? "The link profile is highly concentrated in a small number of domains, so additional independent industry sources should be prioritised." : "Authority should be judged by topical relevance, editorial quality, and source trust as well as link quantity."}`
-        : "No verified backlink authority evidence was returned for this audit.",
-      "blue"
-    );
+      return (
+        rank <= 0 ||
+        pdfManualReviewBacklinkPattern.test(
+          source
+        )
+      );
+    }
+  ).length;
+
+const sampledWithPositiveSignals =
+  Math.max(
+    0,
+    sampledBacklinksForPdf.length -
+      sampledNeedsManualReview
+  );
+
+hiBox(
+  "Authority Insight",
+
+  referringDomainsValue > 0
+    ? `${domain} has ${referringDomainsValue} unique referring domain(s) and ${totalBacklinksValue} total backlinks. ${
+        sampledBacklinksForPdf.length > 0
+          ? `${sampledNeedsManualReview} of ${sampledBacklinksForPdf.length} returned sample link(s) require priority manual review because they had a zero or unavailable provider rank, or matched automated low-trust URL patterns. ${sampledWithPositiveSignals} sample link(s) had a positive provider rank and did not match those patterns. `
+          : ""
+      }Automated screening does not certify editorial quality, topical relevance, traffic, or source trust. ${
+        linkConcentration >= 20
+          ? "The profile is also concentrated in a relatively small number of domains, so additional independent industry sources should be prioritised."
+          : "Review topical relevance, editorial placement, source trust, and link purpose before treating the backlink profile as strong."
+      }`
+    : "No verified backlink authority evidence was returned for this audit.",
+
+  "blue"
+);
   }
 
   // ════════════════════════════════════════════════════════════════════
@@ -5197,17 +5505,89 @@ hiBox(
   // ════════════════════════════════════════════════════════════════════
   if(pdfSections.technicalCrawl){
     secHdr(nextSec(),"Technical SEO Audit","OnPage crawl status, page-level issues, broken links, and crawl signals from Crawler Que OnPage API.");
-    const crawledPageCount = n(pdfData?.onPage?.crawledPages ?? pdfData?.onPage?.completedPages ?? pdfData?.onPage?.pages?.length) ?? 0;
-    const discoveredPageCount = n(pdfData?.onPage?.discoveredPages) ?? 0;
-    const hasTechnicalEvidence = crawledPageCount > 0 || (Array.isArray(pdfData?.onPage?.pages) && pdfData.onPage.pages.length > 0);
+const crawledPageCount =
+  n(
+    pdfData?.onPage
+      ?.crawledPages ??
+    pdfData?.onPage
+      ?.completedPages ??
+    pdfData?.onPage
+      ?.pages?.length
+  ) ?? 0;
+
+const discoveredPageCount =
+  n(
+    pdfData?.onPage
+      ?.discoveredPages
+  ) ?? 0;
+
+const completedPageCount =
+  n(
+    pdfData?.onPage
+      ?.completedPages
+  ) ??
+  Math.max(
+    0,
+    crawledPageCount -
+      (
+        n(
+          pdfData?.onPage
+            ?.failedPages
+        ) ?? 0
+      )
+  );
+
+const usableCoveragePercent =
+  getUsableTechnicalCoverage(
+    pdfData
+  );
+
+const hasTechnicalEvidence =
+  crawledPageCount > 0 ||
+  (
+    Array.isArray(
+      pdfData?.onPage?.pages
+    ) &&
+    pdfData.onPage.pages
+      .length > 0
+  );
     kpiRow([
       {label:"Pages Discovered",value:hasTechnicalEvidence?fmt(discoveredPageCount):"Unavailable",col:hasTechnicalEvidence?C.blue:C.muted},
       {label:"Pages Crawled",value:hasTechnicalEvidence?fmt(crawledPageCount):"Unavailable",col:hasTechnicalEvidence?C.accent:C.muted},
-      {label:"Coverage",value:hasTechnicalEvidence&&pdfData?.onPage?.coveragePercent!==null&&pdfData?.onPage?.coveragePercent!==undefined?`${fmt(pdfData.onPage.coveragePercent)}%`:"Unavailable",col:hasTechnicalEvidence&&(n(pdfData?.onPage?.coveragePercent)??0)>=90?C.green:C.muted},
+      {
+  label:
+    "Usable Coverage",
+  value:
+    hasTechnicalEvidence &&
+    usableCoveragePercent !== null
+      ? `${usableCoveragePercent}%`
+      : "Unavailable",
+  col:
+    hasTechnicalEvidence &&
+    (
+      usableCoveragePercent ??
+      0
+    ) >= 90
+      ? C.green
+      : C.amber,
+},
       {label:"Crawl Page Limit",value:fmt(pdfData?.onPage?.pageLimit),col:C.muted},
     ]);
     kpiRow([
-      {label:"Completed Pages",value:hasTechnicalEvidence?fmt(pdfData?.onPage?.completedPages):"Unavailable",col:hasTechnicalEvidence?C.green:C.muted},
+      {
+  label:
+    "Completed Pages",
+  value:
+    hasTechnicalEvidence
+      ? fmt(
+          completedPageCount
+        )
+      : "Unavailable",
+  col:
+    hasTechnicalEvidence
+      ? C.green
+      : C.muted,
+},
       {label:"Failed Pages",value:hasTechnicalEvidence?fmt(pdfData?.onPage?.failedPages):"Not assessed",col:hasTechnicalEvidence&&(n(pdfData?.onPage?.failedPages)??0)>0?C.red:C.muted},
       {label:"Remaining Pages",value:hasTechnicalEvidence?fmt(pdfData?.onPage?.remainingPages):"Not assessed",col:hasTechnicalEvidence&&(n(pdfData?.onPage?.remainingPages)??0)>0?C.amber:C.muted},
       {label:"Crawl Confidence",value:hasTechnicalEvidence?cl(pdfData?.onPage?.confidence??pdfData?.reconciliation?.technical?.confidence,"Unknown"):"Insufficient data",col:hasTechnicalEvidence&&pdfData?.onPage?.confidence==="high"?C.green:C.amber},
@@ -5223,12 +5603,45 @@ hiBox(
       {col1:"Crawl Status",col2:hasTechnicalEvidence?cl(pdfData?.onPage?.crawlStatus,"—"):"No evidence returned",col3:"Final state is separate from whether usable page evidence was returned"},
       {col1:"Confidence",col2:hasTechnicalEvidence?cl(pdfData?.onPage?.confidence??pdfData?.reconciliation?.technical?.confidence,"—"):"insufficient-data",col3:"Limited when the crawl times out, returns zero pages, or provides partial coverage"},
       {col1:"Pages Discovered",col2:hasTechnicalEvidence?fmt(discoveredPageCount):"Unavailable",col3:"Pages identified by the crawl"},
-      {col1:"Pages Crawled",col2:hasTechnicalEvidence?fmt(crawledPageCount):"Unavailable",col3:"Pages with returned technical evidence"},
+      {
+  col1:
+    "Crawl Responses",
+  col2:
+    hasTechnicalEvidence
+      ? fmt(
+          crawledPageCount
+        )
+      : "Unavailable",
+  col3:
+    "URLs with returned crawl responses, including failed page responses",
+},
+
+{
+  col1:
+    "Usable Coverage",
+  col2:
+    hasTechnicalEvidence &&
+    usableCoveragePercent !== null
+      ? `${usableCoveragePercent}%`
+      : "Unavailable",
+  col3:
+    "Completed pages divided by in-scope discovered pages",
+},
+
+{
+  col1:
+    "Broken Links",
+  col2:
+    technicalResult(
+      pdfData?.onPage
+        ?.brokenLinks
+    ),
+  col3:
+    "Broken link references detected inside crawled pages; failed page responses are reported separately",
+},
       {col1:"Pages Remaining",col2:technicalResult(pdfData?.onPage?.remainingPages),col3:"Unprocessed in-scope pages at finalization"},
       {col1:"Crawl Page Limit",col2:fmt(pdfData?.onPage?.pageLimit),col3:"Maximum pages requested for this audit"},
       {col1:"Outside Crawl Limit",col2:technicalResult(pdfData?.onPage?.outsideLimitPages),col3:"Discovered pages excluded by the visible crawl cap"},
-      {col1:"Coverage",col2:hasTechnicalEvidence&&pdfData?.onPage?.coveragePercent!==null&&pdfData?.onPage?.coveragePercent!==undefined?`${fmt(pdfData.onPage.coveragePercent)}%`:"Unavailable",col3:"Returned pages divided by in-scope discovered pages"},
-      {col1:"Broken Links",col2:technicalResult(pdfData?.onPage?.brokenLinks),col3:"All evidenced broken links should be fixed or redirected"},
       {col1:"Missing Titles",col2:technicalResult(pdfData?.onPage?.missingTitle),col3:"Every important page needs a unique title"},
       {col1:"Missing Descriptions",col2:technicalResult(pdfData?.onPage?.missingDescription),col3:"Descriptions improve search CTR"},
       {col1:"Duplicate Titles",col2:technicalResult(pdfData?.onPage?.duplicateTitle),col3:"Duplicate titles reduce topical clarity"},
@@ -7336,7 +7749,7 @@ value={
       <MetricCard label="Backlinks" value={data?.unifiedOverview?.keyMetrics?.backlinks ?? "Data not available"} />
       <MetricCard label="SERP Keywords Checked" value={data?.unifiedOverview?.keyMetrics?.serpKeywordsChecked ?? "Data not available"} />
       <MetricCard label="SERP Found Count" value={data?.unifiedOverview?.keyMetrics?.serpFoundCount ?? "Data not available"} />
-      <MetricCard label="Pages Crawled" value={data?.unifiedOverview?.keyMetrics?.pagesCrawled ?? "Data not available"} />
+      <MetricCard label="Crawl Responses" value={data?.unifiedOverview?.keyMetrics?.pagesCrawled ?? "Data not available"} />
     </div>
 
     <div className="rounded-xl border bg-white p-5 mb-6">
@@ -7862,7 +8275,10 @@ value={
 
         <p className="mt-1 text-xs text-slate-500">
           Intent: {k.intent || "general"} | Page Type:{" "}
-          {k.recommendedPageType || "Supporting Content"}
+          {adaptPageTypeForMarketRole(
+  k.recommendedPageType,
+  data
+) || "Supporting Content"}
         </p>
 
         <p className="mt-1 text-xs text-slate-500">
@@ -7871,7 +8287,11 @@ value={
         </p>
 
         <p className="mt-2 text-xs font-medium text-blue-700">
-          Action: {k.action || "Add to content roadmap"}
+          Action:{" "}
+{adaptPageTypeForMarketRole(
+  k.action,
+  data
+) || "Add to content roadmap"}
         </p>
       </div>
 
@@ -8330,7 +8750,9 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
     {/* top competitors + missed opportunities */}
     <div className="mb-8 grid gap-4 lg:grid-cols-2">
       <div className="rounded-2xl border border-[#1e3a5f] bg-[#0E2440] p-5">
-        <h3 className="mb-3 font-semibold text-white">Top Competitors in AI Answers</h3>
+        <h3 className="mb-3 font-semibold text-white">
+  Other Brands and Products Mentioned in AI Answers
+</h3>
         {cleanAiCompetitorList(
           data.aiSearchVisibility.topCompetitors
         ).length > 0 ? (
@@ -8561,7 +8983,10 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
 
           <p className="mt-1 text-xs text-slate-500">
             Intent: {k.intent || "general"} | Page Type:{" "}
-            {k.recommendedPageType || "Supporting Content"}
+            {adaptPageTypeForMarketRole(
+  k.recommendedPageType,
+  data
+) || "Supporting Content"}
           </p>
 
           <p className="mt-1 text-xs text-slate-500">
@@ -8571,7 +8996,11 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
           </p>
 
           <p className="mt-2 text-xs font-medium text-blue-700">
-            Action: {k.action || "Add to content roadmap"}
+            Action:{" "}
+{adaptPageTypeForMarketRole(
+  k.action,
+  data
+) || "Add to content roadmap"}
           </p>
         </div>
 
@@ -9135,18 +9564,21 @@ const impactClass = impact.toLowerCase().includes("high")
         value={data?.onPage?.discoveredPages ?? "Data not available"}
       />
       <MetricCard
-        label="Pages Crawled"
+        label="Crawl Responses"
         value={data?.onPage?.crawledPages ?? "Data not available"}
       />
-      <MetricCard
-        label="Coverage"
-        value={
-          data?.onPage?.coveragePercent !== null &&
-          data?.onPage?.coveragePercent !== undefined
-            ? `${data.onPage.coveragePercent}%`
-            : "Data not available"
-        }
-      />
+<MetricCard
+  label="Usable Coverage"
+  value={
+    getUsableTechnicalCoverage(
+      data
+    ) !== null
+      ? `${getUsableTechnicalCoverage(
+          data
+        )}%`
+      : "Data not available"
+  }
+/>
       <MetricCard
         label="Crawl Page Limit"
         value={data?.onPage?.pageLimit ?? 100}

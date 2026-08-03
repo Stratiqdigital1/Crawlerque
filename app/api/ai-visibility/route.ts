@@ -163,15 +163,20 @@ function isPromptRelevantToCategory(
 function cleanCompetitorCandidate(
   value: string,
   brandName: string,
-  domain: string
+  domain: string,
+  category: string
 ) {
-  const cleaned = String(value || "")
-    .replace(/^https?:\/\//i, "")
-    .replace(/^www\./i, "")
-    .replace(/[|–—:]+.*$/, "")
-    .replace(/^[^a-z0-9]+|[^a-z0-9.\- ]+$/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  const cleaned =
+    String(value || "")
+      .replace(/^https?:\/\//i, "")
+      .replace(/^www\./i, "")
+      .replace(/[|–—:]+.*$/, "")
+      .replace(
+        /^[^a-z0-9]+|[^a-z0-9.\- ]+$/gi,
+        ""
+      )
+      .replace(/\s+/g, " ")
+      .trim();
 
   if (
     !cleaned ||
@@ -188,15 +193,39 @@ function cleanCompetitorCandidate(
   const blocked =
     /^(ehr|emr|look|create|optimize|optimise|seo|saas|similar|software|platform|solution|solutions|service|services|company|companies|provider|providers|healthcare|medical|technology|tech|content|marketing|search|website|brand|brands|best|top|tools?|strong)$/i;
 
-const blockedGenericPhrase =
-  /^(united states|ppc|focused|founded|could|some|other|others|many|most|maybe|may|also|including|include|various|several|popular|leading|major|well known|user[-\s]?friendly interface|customi[sz]ation options?|systems?|ehrs?|emrs?|features?|functionality|integration|interoperability|workflow|security|support|pricing)$/i;
+  const blockedGenericPhrase =
+    /^(united states|ppc|focused|founded|could|some|other|others|many|most|maybe|may|also|including|include|various|several|popular|leading|major|well known|there|great|uses?|crm|project management|business tools|software reviews?|reviews?|comparisons?|user[-\s]?friendly interface|customi[sz]ation options?|systems?|ehrs?|emrs?|features?|functionality|integration|interoperability|workflow|security|support|pricing)$/i;
 
-if (
-  blocked.test(cleaned) ||
-  blockedGenericPhrase.test(cleaned)
-) {
-  return "";
-}
+  const categoryTokenSet =
+    new Set(
+      categoryTokens(category)
+    );
+
+  const candidateTokens =
+    categoryTokens(cleaned);
+
+  /*
+   * Reject phrases that only repeat
+   * the audited category rather than
+   * identifying a real brand/product.
+   */
+  const categoryOnlyPhrase =
+    candidateTokens.length > 0 &&
+    candidateTokens.length <= 3 &&
+    candidateTokens.every(
+      (token) =>
+        categoryTokenSet.has(token)
+    );
+
+  if (
+    blocked.test(cleaned) ||
+    blockedGenericPhrase.test(
+      cleaned
+    ) ||
+    categoryOnlyPhrase
+  ) {
+    return "";
+  }
 
   return cleaned;
 }
@@ -478,10 +507,11 @@ const iso =
             )
               .map((value: string) =>
                 cleanCompetitorCandidate(
-                  value,
-                  brandName,
-                  domain
-                )
+  value,
+  brandName,
+  domain,
+  category
+)
               )
               .filter(Boolean)
           ),
@@ -535,10 +565,11 @@ const iso =
         ]
           .map((value: string) =>
             cleanCompetitorCandidate(
-              value,
-              brandName,
-              domain
-            )
+  value,
+  brandName,
+  domain,
+  category
+)
           )
           .filter(Boolean)
       ).slice(0, 10);

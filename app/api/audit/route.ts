@@ -272,9 +272,92 @@ function decodeHtmlEntities(value: string) {
     .trim();
 }
 
-function getTitle(html: string) {
+function getMetaTitle(
+  source: string,
+  attribute: "property" | "name",
+  key: string
+) {
+  const escapedKey =
+    key.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      "\\$&"
+    );
+
+  const firstMatch =
+    source.match(
+      new RegExp(
+        `<meta[^>]+${attribute}=["']${escapedKey}["'][^>]+content=["']([^"']+)["']`,
+        "i"
+      )
+    )?.[1];
+
+  const reversedMatch =
+    source.match(
+      new RegExp(
+        `<meta[^>]+content=["']([^"']+)["'][^>]+${attribute}=["']${escapedKey}["']`,
+        "i"
+      )
+    )?.[1];
+
   return decodeHtmlEntities(
-    html.match(/<title[^>]*>(.*?)<\/title>/i)?.[1] || ""
+    firstMatch ||
+      reversedMatch ||
+      ""
+  );
+}
+
+function getTitle(html: string) {
+  /*
+   * Only inspect the document <head>.
+   * SVGs, payment widgets and embedded components
+   * can contain their own <title> tags inside <body>.
+   */
+  const head =
+    String(html || "").match(
+      /<head\b[^>]*>([\s\S]*?)<\/head>/i
+    )?.[1] || "";
+
+  const source =
+    head || String(html || "");
+
+  const candidates = [
+    decodeHtmlEntities(
+      source.match(
+        /<title[^>]*>([\s\S]*?)<\/title>/i
+      )?.[1] || ""
+    ),
+
+    getMetaTitle(
+      source,
+      "property",
+      "og:title"
+    ),
+
+    getMetaTitle(
+      source,
+      "name",
+      "twitter:title"
+    ),
+  ]
+    .map((value) =>
+      String(value || "")
+        .replace(/\s+/g, " ")
+        .trim()
+    )
+    .filter(Boolean);
+
+  const paymentOrWidgetTitle =
+    /^(american express|visa|mastercard|paypal|shop pay|apple pay|google pay)$/i;
+
+  return (
+    candidates.find(
+      (candidate) =>
+        !paymentOrWidgetTitle.test(
+          candidate
+        )
+    ) ||
+    candidates[0] ||
+    ""
   );
 }
 
@@ -3298,6 +3381,52 @@ const normalizeRecommendation = (recommendation: any, index: number) => {
 
     normalizedRecommendation.detail =
       replacePageType(
+        normalizedRecommendation.detail
+      );
+  }
+
+  /*
+   * Publications and editorial review
+   * sites must not receive SaaS-vendor
+   * page-type recommendations.
+   */
+  if (
+    businessContext.marketRole ===
+      "publication" &&
+    /keyword/i.test(
+      String(
+        normalizedRecommendation
+          ?.sourceModule || ""
+      )
+    )
+  ) {
+    const adaptPublicationPageType =
+      (value: any) =>
+        String(value || "")
+          .replace(
+            /feature\s*\/\s*solution page/gi,
+            "comparison / review page"
+          )
+          .replace(
+            /service\s*\/\s*solution page/gi,
+            "comparison / review page"
+          )
+          .replace(
+            /commercial landing page/gi,
+            "editorial roundup / buying guide"
+          )
+          .replace(
+            /solution page/gi,
+            "review page"
+          );
+
+    normalizedRecommendation.title =
+      adaptPublicationPageType(
+        normalizedRecommendation.title
+      );
+
+    normalizedRecommendation.detail =
+      adaptPublicationPageType(
         normalizedRecommendation.detail
       );
   }
