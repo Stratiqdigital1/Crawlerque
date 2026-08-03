@@ -875,13 +875,21 @@ function resolverMarketRole(
     return "publication";
   }
 
-  if (
-    /ecommerce|e-commerce|online store|online shop|retail store/.test(
+if (
+  /ecommerce|e-commerce|online store|online shop|retail store|product catalog/.test(
+    text
+  ) ||
+  (
+    /products?|product line|collections?/.test(
+      text
+    ) &&
+    !/software|saas|platform|application|app|services?|agency|consulting|development/.test(
       text
     )
-  ) {
-    return "ecommerce";
-  }
+  )
+) {
+  return "ecommerce";
+}
 
   if (
     /marketplace|directory platform/.test(
@@ -1600,6 +1608,26 @@ const selectedMarket =
       ""
   ).trim();
 
+const selectedMarketAliases =
+  resolverUnique([
+    selectedMarket,
+
+    selectedMarket ===
+    "United Kingdom"
+      ? "UK"
+      : "",
+
+    selectedMarket ===
+    "United States"
+      ? "US"
+      : "",
+
+    selectedMarket ===
+    "United Arab Emirates"
+      ? "UAE"
+      : "",
+  ]);
+
 const localizedReturnedPrompts =
   returnedPrompts.map(
     (prompt) => {
@@ -1611,14 +1639,27 @@ const localizedReturnedPrompts =
           )
           .trim();
 
+      const alreadyLocalized =
+        selectedMarketAliases.some(
+          (marketAlias) => {
+            const escapedAlias =
+              marketAlias.replace(
+                /[.*+?^${}()|[\]\\]/g,
+                "\\$&"
+              );
+
+            return new RegExp(
+              `\\b${escapedAlias}\\b`,
+              "i"
+            ).test(
+              cleanPrompt
+            );
+          }
+        );
+
       if (
         !selectedMarket ||
-        cleanPrompt
-          .toLowerCase()
-          .includes(
-            selectedMarket
-              .toLowerCase()
-          )
+        alreadyLocalized
       ) {
         return `${cleanPrompt}?`;
       }
