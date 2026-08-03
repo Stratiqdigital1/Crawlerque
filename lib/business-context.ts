@@ -1302,7 +1302,10 @@ async function resolverSemanticFallback(
                     "Return JSON only.",
                     "Infer the actual website business/category from homepage evidence.",
                     "Never use the audited brand name as the category, primaryService, keyword seed, or AI prompt topic.",
+                    "Return the canonical brandName exactly as presented in the strongest page evidence.",
+                    "When the page title or meta description disagrees with the H1 or domain spelling, prefer the clear editorial brand spelling from the page title and meta description.",
                     "The selected country is market context only and must not change the website's fundamental business type.",
+                    "When countryName is provided, every returned AI prompt must include that selected country.",
                     "Support any industry worldwide including services, SaaS, ecommerce, publications, marketplaces, healthcare, legal, finance, education, restaurants, travel, nonprofits and unknown niches.",
                     "For editorial, review, comparison or news websites use marketRole publication.",
                     "For software products use software_product.",
@@ -1317,15 +1320,18 @@ async function resolverSemanticFallback(
 
                 content:
                   JSON.stringify({
-                    requiredJsonShape: {
-                      categoryKey:
-                        "snake_case string",
+requiredJsonShape: {
+  brandName:
+    "canonical brand name from the strongest homepage evidence",
 
-                      categoryLabel:
-                        "human readable category",
+  categoryKey:
+    "snake_case string",
 
-                      primaryService:
-                        "non-branded category/service phrase",
+  categoryLabel:
+    "human readable category",
+
+  primaryService:
+    "non-branded category/service phrase",
 
                       marketRole:
                         "service_provider | software_product | ecommerce | publication | marketplace | platform | local_business | healthcare_provider | restaurant | other",
@@ -1481,23 +1487,32 @@ async function resolverSemanticFallback(
     return null;
   }
 
-  const primaryService =
-    String(
-      parsed?.primaryService ||
-        ""
-    )
-      .replace(/\s+/g, " ")
-      .trim();
-
-  if (
-    !primaryService ||
-    resolverIsBrandLike(
-      primaryService,
+const resolvedBrandName =
+  String(
+    parsed?.brandName ||
       base.brandName
-    )
-  ) {
-    return null;
-  }
+  )
+    .replace(/\s+/g, " ")
+    .trim();
+
+const primaryService =
+  String(
+    parsed?.primaryService ||
+      ""
+  )
+    .replace(/\s+/g, " ")
+    .trim();
+
+if (
+  !primaryService ||
+  resolverIsBrandLike(
+    primaryService,
+    resolvedBrandName ||
+      base.brandName
+  )
+) {
+  return null;
+}
 
   const allowedRoles =
     new Set<BusinessMarketRole>(
@@ -1567,22 +1582,56 @@ async function resolverSemanticFallback(
         : [],
       3
     )
-      .filter(
-        (prompt) =>
-          !resolverComparable(
-            prompt
-          ).includes(
-            resolverComparable(
-              base.brandName
-            )
-          )
-      );
+.filter(
+  (prompt) =>
+    !resolverComparable(
+      prompt
+    ).includes(
+      resolverComparable(
+        resolvedBrandName ||
+          base.brandName
+      )
+    )
+);
 
-  const confidenceText =
-    String(
-      parsed?.confidence ||
-        "medium"
-    ).toLowerCase();
+const selectedMarket =
+  String(
+    input.countryName ||
+      ""
+  ).trim();
+
+const localizedReturnedPrompts =
+  returnedPrompts.map(
+    (prompt) => {
+      const cleanPrompt =
+        String(prompt)
+          .replace(
+            /[?.!]+$/,
+            ""
+          )
+          .trim();
+
+      if (
+        !selectedMarket ||
+        cleanPrompt
+          .toLowerCase()
+          .includes(
+            selectedMarket
+              .toLowerCase()
+          )
+      ) {
+        return `${cleanPrompt}?`;
+      }
+
+      return `${cleanPrompt} in ${selectedMarket}?`;
+    }
+  );
+
+const confidenceText =
+  String(
+    parsed?.confidence ||
+      "medium"
+  ).toLowerCase();
 
   const confidence:
     BusinessContextConfidence =
@@ -1613,10 +1662,14 @@ async function resolverSemanticFallback(
       "semantic_category";
   }
 
-  return {
-    ...base,
+return {
+  ...base,
 
-    categoryKey,
+  brandName:
+    resolvedBrandName ||
+    base.brandName,
+
+  categoryKey,
 
     categoryLabel:
       String(
@@ -1690,18 +1743,18 @@ async function resolverSemanticFallback(
             marketRole
           ),
 
-    aiPrompts:
-      returnedPrompts.length ===
-      3
-        ? returnedPrompts
-        : resolverBuildPrompts(
-            primaryService,
-            marketRole,
-            String(
-              input.countryName ||
-                ""
-            )
-          ),
+aiPrompts:
+  localizedReturnedPrompts
+    .length === 3
+    ? localizedReturnedPrompts
+    : resolverBuildPrompts(
+        primaryService,
+        marketRole,
+        String(
+          input.countryName ||
+            ""
+        )
+      ),
 
     resolutionMethod:
       "semantic-fallback",
