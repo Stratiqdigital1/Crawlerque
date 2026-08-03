@@ -6,8 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { verifySessionToken } from "@/lib/auth";
 import { withSecurityHeaders } from "@/lib/security-headers";
 import {
-  buildAiPreviewPrompts,
-  buildBusinessContext,
+  resolveBusinessContext,
 } from "@/lib/business-context";
 
 export const runtime = "nodejs";
@@ -247,22 +246,46 @@ async function handlePreview(urlValue: string, country: string) {
     const h1 = getFirstH1(page.html);
     const bodyText = getBodyText(page.html);
 
-    const context = buildBusinessContext({
-      html: page.html,
-      title,
-      description,
-      h1,
-      bodyText,
-      domain: resolved.hostname,
-    });
+const context =
+  await resolveBusinessContext({
+    html:
+      page.html,
 
-    const aiPrompts = buildAiPreviewPrompts(context, country || "United States");
+    title,
+
+    description,
+
+    h1,
+
+    bodyText,
+
+    domain:
+      resolved.hostname,
+
+    countryName:
+      country ||
+      "United States",
+  });
+
+const aiPrompts =
+  Array.isArray(
+    context.aiPrompts
+  )
+    ? context.aiPrompts
+    : [];
 
     return withSecurityHeaders(
       NextResponse.json({
         success: true,
-        costMode: "homepage-only",
-        paidProviderCalls: 0,
+costMode:
+  context.semanticFallbackUsed
+    ? "homepage-plus-semantic-fallback"
+    : "homepage-only",
+
+paidProviderCalls:
+  context.semanticFallbackUsed
+    ? 1
+    : 0,
         url: normalizedInput,
         resolvedUrl: page.resolvedUrl,
         redirects: page.redirects,
@@ -272,12 +295,36 @@ async function handlePreview(urlValue: string, country: string) {
           h1,
         },
         businessContext: context,
-        preview: {
-          keywordSeed: context.primaryService,
-          aiPrompts,
-          serpKeywords: context.serpKeywords,
-          localSeoQuery: `${context.brandName} ${context.localQueryService}`.trim(),
-        },
+preview: {
+  keywordSeed:
+    context.searchSeed ||
+    context.primaryService,
+
+  aiPrompts,
+
+  serpKeywords:
+    context.serpKeywords,
+
+  localSeoQuery:
+    context.localSeoApplicable ===
+    false
+      ? null
+      : `${context.brandName} ${context.localQueryService}`.trim(),
+},
+
+classification: {
+  method:
+    context.resolutionMethod,
+
+  semanticFallbackUsed:
+    context.semanticFallbackUsed,
+
+  marketRole:
+    context.marketRole,
+
+  localSeoApplicable:
+    context.localSeoApplicable,
+},
       })
     );
   } catch (error) {

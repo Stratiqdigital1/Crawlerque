@@ -24,10 +24,11 @@ import {
 } from "@/lib/audit-scope";
 
 import {
-  buildBusinessContext,
   filterRelevantKeywordItems,
   isKeywordRelevantToBusiness,
+  resolveBusinessContext,
 } from "@/lib/business-context";
+
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -1337,13 +1338,22 @@ const h1 = getFirstH1(html);
 const bodyText = getBodyText(html);
 
 const businessContext =
-  buildBusinessContext({
+  await resolveBusinessContext({
     html,
     title,
     description,
     h1,
     bodyText,
     domain,
+
+    countryName:
+      locationName,
+
+    countryCode:
+      auditConfig.countryCode,
+
+    languageName,
+    languageCode,
   });
 
 const brandNameForAudit =
@@ -1650,8 +1660,9 @@ if (
           device: selectedDevice,
           searchEngine,
 
-          businessSeed:
-            businessContext.primaryService,
+businessSeed:
+  businessContext.searchSeed ||
+  businessContext.primaryService,
 
           businessContext,
 
@@ -2043,8 +2054,8 @@ try {
               businessContext.categoryKeywords,
             categoryContext:
               businessContext.categoryLabel,
-            categorySource:
-              "homepage-context",
+categorySource:
+  "canonical-business-context",
             businessContext,
             pageTitle: title,
             metaDescription: description,
@@ -2263,10 +2274,13 @@ try {
           method: "POST",
           headers: { "Content-Type": "application/json" },
 body: JSON.stringify({
-  seedKeyword:
-    businessContext.primaryService,
-  keyword:
-    businessContext.primaryService,
+seedKeyword:
+  businessContext.searchSeed ||
+  businessContext.primaryService,
+
+keyword:
+  businessContext.searchSeed ||
+  businessContext.primaryService,
   brandName:
     businessContext.brandName,
   domain,
@@ -2518,33 +2532,92 @@ const adjustedScore =
 }
 }
 
-    if (runLocal) {
-try {
-  const businessRes = await fetch(`${origin}/api/dataforseo/business-data`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url: auditTargetUrl,
-          domain,
-          brandName:
-            businessContext.brandName,
-          serviceKeyword:
-            businessContext.localQueryService,
-          businessContext,
-          locationName,
-          languageName,
-          languageCode,
-          locationCode,
-          auditConfig,
-        }),
-        cache: "no-store",
-      });
+if (runLocal) {
+  if (
+    businessContext
+      .localSeoApplicable ===
+    false
+  ) {
+    businessData = {
+      applicable: false,
 
-      const businessJson = await businessRes.json();
-      businessData = businessJson?.businessData || null;
+      status:
+        "not_applicable",
+
+      reason:
+        "Local SEO is not a primary fit for this website type.",
+
+      note:
+        "This website primarily operates as an online publication, software product, platform, marketplace, ecommerce property, or other non-location-dependent website.",
+
+      keyword: null,
+
+      location:
+        locationName,
+
+      listings: [],
+    };
+
+    moduleStatus.businessData =
+      "not_applicable";
+  } else {
+    try {
+      const businessRes =
+        await fetch(
+          `${origin}/api/dataforseo/business-data`,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                url:
+                  auditTargetUrl,
+
+                domain,
+
+                brandName:
+                  businessContext.brandName,
+
+                serviceKeyword:
+                  businessContext.localQueryService,
+
+                businessContext,
+
+                locationName,
+
+                languageName,
+
+                languageCode,
+
+                locationCode,
+
+                auditConfig,
+              }),
+
+            cache:
+              "no-store",
+          }
+        );
+
+      const businessJson =
+        await businessRes.json();
+
+      businessData =
+        businessJson
+          ?.businessData ||
+        null;
     } catch (error) {
-  console.error("Business Data inside audit failed:", error);
-}
+      console.error(
+        "Business Data inside audit failed:",
+        error
+      );
+    }
+  }
 }
 
     const normalizeAuditUrl = (

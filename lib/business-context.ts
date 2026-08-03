@@ -24,6 +24,44 @@ type BuildBusinessContextInput = {
   domain: string;
 };
 
+export type BusinessMarketRole =
+  | "service_provider"
+  | "software_product"
+  | "ecommerce"
+  | "publication"
+  | "marketplace"
+  | "platform"
+  | "local_business"
+  | "healthcare_provider"
+  | "restaurant"
+  | "other";
+
+export type ResolvedBusinessContext =
+  BusinessContext & {
+    marketRole: BusinessMarketRole;
+
+    localSeoApplicable: boolean;
+
+    aiPrompts: string[];
+
+    resolutionMethod:
+      | "deterministic"
+      | "semantic-fallback"
+      | "descriptor-fallback";
+
+    semanticFallbackUsed: boolean;
+
+    searchSeed: string;
+  };
+
+type ResolveBusinessContextInput =
+  BuildBusinessContextInput & {
+    countryName?: string;
+    countryCode?: string;
+    languageName?: string;
+    languageCode?: string;
+  };
+
 type CategoryDefinition = {
   key: string;
   label: string;
@@ -744,6 +782,1099 @@ export function buildBusinessContext(input: BuildBusinessContextInput): Business
     source: "homepage-context",
   };
 }
+
+function resolverComparable(
+  value: unknown
+) {
+  return String(value || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(
+      /[^\p{L}\p{N}]+/gu,
+      ""
+    )
+    .trim();
+}
+
+function resolverIsBrandLike(
+  value: string,
+  brandName: string
+) {
+  const candidate =
+    resolverComparable(value);
+
+  const brand =
+    resolverComparable(
+      brandName
+    );
+
+  if (!candidate || !brand) {
+    return false;
+  }
+
+  return (
+    candidate === brand ||
+    (
+      brand.length >= 5 &&
+      candidate === brand
+    )
+  );
+}
+
+function resolverUnique(
+  values: unknown[],
+  limit = 10
+) {
+  const seen =
+    new Set<string>();
+
+  const output:
+    string[] = [];
+
+  for (const value of values) {
+    const cleaned =
+      String(value || "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const key =
+      cleaned.toLowerCase();
+
+    if (
+      !cleaned ||
+      seen.has(key)
+    ) {
+      continue;
+    }
+
+    seen.add(key);
+    output.push(cleaned);
+
+    if (
+      output.length >= limit
+    ) {
+      break;
+    }
+  }
+
+  return output;
+}
+
+function resolverMarketRole(
+  value: string
+): BusinessMarketRole {
+  const text =
+    String(value || "")
+      .toLowerCase();
+
+  if (
+    /review|reviews|comparison|comparisons|publication|magazine|editorial|software news/.test(
+      text
+    )
+  ) {
+    return "publication";
+  }
+
+  if (
+    /ecommerce|e-commerce|online store|online shop|retail store/.test(
+      text
+    )
+  ) {
+    return "ecommerce";
+  }
+
+  if (
+    /marketplace|directory platform/.test(
+      text
+    )
+  ) {
+    return "marketplace";
+  }
+
+  if (
+    /creator_subscription_platform|creator subscription platform|fan subscription platform/.test(
+      text
+    )
+  ) {
+    return "platform";
+  }
+
+  if (
+    /saas_product|saas software|business software|software platform|cloud software/.test(
+      text
+    ) &&
+    !/software development/.test(
+      text
+    )
+  ) {
+    return "software_product";
+  }
+
+  if (
+    /restaurant|cafe|café|bakery/.test(
+      text
+    )
+  ) {
+    return "restaurant";
+  }
+
+  if (
+    /real_estate|real estate|legal services|law firm|lawyer|attorney|local service|plumber|electrician/.test(
+      text
+    )
+  ) {
+    return "local_business";
+  }
+
+  if (
+    /medical clinic|healthcare services|dental|dentist|doctor|medical practice/.test(
+      text
+    ) &&
+    !/software|development/.test(
+      text
+    )
+  ) {
+    return "healthcare_provider";
+  }
+
+  if (
+    /agency|services|consulting|consultant|development|link building|marketing/.test(
+      text
+    )
+  ) {
+    return "service_provider";
+  }
+
+  return "other";
+}
+
+function resolverLocalSeoApplicable(
+  role: BusinessMarketRole
+) {
+  return [
+    "service_provider",
+    "local_business",
+    "healthcare_provider",
+    "restaurant",
+  ].includes(role);
+}
+
+function resolverBuildPrompts(
+  primaryService: string,
+  role: BusinessMarketRole,
+  countryName: string
+) {
+  const market =
+    countryName
+      ? ` in ${countryName}`
+      : "";
+
+  if (
+    role === "publication"
+  ) {
+    return [
+      `Which websites are most trusted for ${primaryService}${market}?`,
+      `What are the best websites for ${primaryService}${market}?`,
+      `Which publications are commonly used for ${primaryService}${market}?`,
+    ];
+  }
+
+  if (
+    role === "ecommerce"
+  ) {
+    return [
+      `Which online stores are most trusted for ${primaryService}${market}?`,
+      `Where do shoppers usually buy ${primaryService}${market}?`,
+      `Which brands are considered the best for ${primaryService}${market}?`,
+    ];
+  }
+
+  if (
+    role ===
+      "software_product" ||
+    role === "platform" ||
+    role === "marketplace"
+  ) {
+    return [
+      `Which ${primaryService} options are considered the best${market}?`,
+      `Which ${primaryService} platforms are most trusted${market}?`,
+      `What are the leading ${primaryService} options${market}?`,
+    ];
+  }
+
+  return [
+    `Which companies are considered the best for ${primaryService}${market}?`,
+    `Which ${primaryService} providers are most trusted${market}?`,
+    `Recommend leading companies that specialize in ${primaryService}${market}.`,
+  ];
+}
+
+function resolverSafeDeterministicContext(
+  context: BusinessContext
+) {
+  if (
+    context.categoryKey ===
+      "general_service"
+  ) {
+    return false;
+  }
+
+  if (
+    context.confidence === "low"
+  ) {
+    return false;
+  }
+
+  if (
+    resolverIsBrandLike(
+      context.primaryService,
+      context.brandName
+    )
+  ) {
+    return false;
+  }
+
+  return Boolean(
+    String(
+      context.primaryService ||
+        ""
+    ).trim()
+  );
+}
+
+function resolverDescriptor(
+  input:
+    ResolveBusinessContextInput,
+  brandName: string
+) {
+  const titleParts =
+    String(
+      input.title || ""
+    )
+      .split(/[|–—:]+/)
+      .map((item) =>
+        item.trim()
+      )
+      .filter(Boolean);
+
+  const descriptionLead =
+    String(
+      input.description || ""
+    )
+      .split(/[.!?]/)[0]
+      .trim();
+
+  const candidates = [
+    ...titleParts.slice(1),
+    input.h1,
+    descriptionLead,
+  ]
+    .map((item) =>
+      String(item || "")
+        .replace(/\s+/g, " ")
+        .trim()
+    )
+    .filter(Boolean)
+    .filter(
+      (item) =>
+        !resolverIsBrandLike(
+          item,
+          brandName
+        )
+    )
+    .filter(
+      (item) =>
+        item.length >= 8 &&
+        item.length <= 140
+    );
+
+  return candidates[0] || "";
+}
+
+function resolverBuildDescriptorContext(
+  base: BusinessContext,
+  descriptor: string,
+  countryName: string
+): ResolvedBusinessContext | null {
+  if (!descriptor) {
+    return null;
+  }
+
+  let primaryService =
+    descriptor;
+
+  const role =
+    resolverMarketRole(
+      descriptor
+    );
+
+  if (
+    role === "publication" &&
+    /\bsaas\b/i.test(
+      descriptor
+    ) &&
+    /review|comparison/i.test(
+      descriptor
+    )
+  ) {
+    primaryService =
+      "SaaS software reviews and comparisons";
+  } else if (
+    role === "publication" &&
+    /software/i.test(
+      descriptor
+    ) &&
+    /review|comparison/i.test(
+      descriptor
+    )
+  ) {
+    primaryService =
+      "software reviews and comparisons";
+  }
+
+  if (
+    resolverIsBrandLike(
+      primaryService,
+      base.brandName
+    )
+  ) {
+    return null;
+  }
+
+  const categoryKeywords =
+    resolverUnique([
+      primaryService,
+
+      role === "publication"
+        ? `${primaryService} websites`
+        : `${primaryService} services`,
+
+      role === "publication"
+        ? `best ${primaryService} websites`
+        : `best ${primaryService}`,
+    ]);
+
+  const categoryKey =
+    String(primaryService)
+      .toLowerCase()
+      .replace(
+        /[^a-z0-9]+/g,
+        "_"
+      )
+      .replace(
+        /^_+|_+$/g,
+        ""
+      )
+      .slice(0, 70) ||
+    "other_category";
+
+  return {
+    ...base,
+
+    categoryKey,
+
+    categoryLabel:
+      primaryService,
+
+    primaryService,
+
+    coreTokens:
+      resolverUnique(
+        primaryService
+          .toLowerCase()
+          .split(/\s+/)
+          .filter(
+            (token) =>
+              token.length >= 3
+          ),
+        8
+      ),
+
+    categoryKeywords,
+
+    serpKeywords:
+      categoryKeywords.slice(
+        0,
+        4
+      ),
+
+    localQueryService:
+      primaryService,
+
+    confidence:
+      "medium",
+
+    confidenceScore:
+      Math.max(
+        Number(
+          base.confidenceScore ||
+            0
+        ),
+        55
+      ),
+
+    matchedSignals:
+      resolverUnique([
+        ...(
+          Array.isArray(
+            base.matchedSignals
+          )
+            ? base.matchedSignals
+            : []
+        ),
+
+        `descriptor:${descriptor}`,
+      ]),
+
+    marketRole:
+      role,
+
+    localSeoApplicable:
+      resolverLocalSeoApplicable(
+        role
+      ),
+
+    aiPrompts:
+      resolverBuildPrompts(
+        primaryService,
+        role,
+        countryName
+      ),
+
+    resolutionMethod:
+      "descriptor-fallback",
+
+    semanticFallbackUsed:
+      false,
+
+    searchSeed:
+      primaryService,
+  };
+}
+
+async function resolverSemanticFallback(
+  input:
+    ResolveBusinessContextInput,
+  base:
+    BusinessContext
+): Promise<ResolvedBusinessContext | null> {
+  const apiKey =
+    process.env.OPENAI_API_KEY;
+
+  if (!apiKey) {
+    return null;
+  }
+
+  const model =
+    process.env
+      .OPENAI_CONTEXT_MODEL ||
+    process.env.OPENAI_MODEL ||
+    "gpt-4o-mini";
+
+  const response =
+    await fetch(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+
+        headers: {
+          Authorization:
+            `Bearer ${apiKey}`,
+
+          "Content-Type":
+            "application/json",
+        },
+
+        body:
+          JSON.stringify({
+            model,
+
+            temperature: 0,
+
+            messages: [
+              {
+                role:
+                  "system",
+
+                content:
+                  [
+                    "Classify websites for a website growth intelligence platform.",
+                    "Return JSON only.",
+                    "Infer the actual website business/category from homepage evidence.",
+                    "Never use the audited brand name as the category, primaryService, keyword seed, or AI prompt topic.",
+                    "The selected country is market context only and must not change the website's fundamental business type.",
+                    "Support any industry worldwide including services, SaaS, ecommerce, publications, marketplaces, healthcare, legal, finance, education, restaurants, travel, nonprofits and unknown niches.",
+                    "For editorial, review, comparison or news websites use marketRole publication.",
+                    "For software products use software_product.",
+                    "For ecommerce stores use ecommerce.",
+                    "For businesses that depend on physical/local discovery use localSeoApplicable true. For publications, pure SaaS products, marketplaces and online platforms normally use false.",
+                  ].join(" "),
+              },
+
+              {
+                role:
+                  "user",
+
+                content:
+                  JSON.stringify({
+                    requiredJsonShape: {
+                      categoryKey:
+                        "snake_case string",
+
+                      categoryLabel:
+                        "human readable category",
+
+                      primaryService:
+                        "non-branded category/service phrase",
+
+                      marketRole:
+                        "service_provider | software_product | ecommerce | publication | marketplace | platform | local_business | healthcare_provider | restaurant | other",
+
+                      coreTokens:
+                        [
+                          "3-8 topical tokens",
+                        ],
+
+                      categoryKeywords:
+                        [
+                          "5-10 non-branded category keyword phrases",
+                        ],
+
+                      serpKeywords:
+                        [
+                          "3-5 non-branded SERP queries",
+                        ],
+
+                      localQueryService:
+                        "non-branded local query topic",
+
+                      localSeoApplicable:
+                        true,
+
+                      aiPrompts:
+                        [
+                          "exactly three brand-neutral recommendation/discovery prompts",
+                        ],
+
+                      confidence:
+                        "high | medium | low",
+                    },
+
+                    evidence: {
+                      domain:
+                        input.domain,
+
+                      detectedBrand:
+                        base.brandName,
+
+                      title:
+                        String(
+                          input.title ||
+                            ""
+                        ).slice(
+                          0,
+                          250
+                        ),
+
+                      metaDescription:
+                        String(
+                          input.description ||
+                            ""
+                        ).slice(
+                          0,
+                          500
+                        ),
+
+                      h1:
+                        String(
+                          input.h1 ||
+                            ""
+                        ).slice(
+                          0,
+                          250
+                        ),
+
+                      bodyExcerpt:
+                        String(
+                          input.bodyText ||
+                            ""
+                        )
+                          .replace(
+                            /\s+/g,
+                            " "
+                          )
+                          .slice(
+                            0,
+                            6000
+                          ),
+
+                      countryName:
+                        input.countryName ||
+                        "",
+
+                      countryCode:
+                        input.countryCode ||
+                        "",
+
+                      languageName:
+                        input.languageName ||
+                        "",
+
+                      languageCode:
+                        input.languageCode ||
+                        "",
+                    },
+                  }),
+              },
+            ],
+          }),
+
+        cache:
+          "no-store",
+
+        signal:
+          AbortSignal.timeout(
+            12000
+          ),
+      }
+    );
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const json =
+    await response.json();
+
+  let raw =
+    String(
+      json?.choices?.[0]
+        ?.message?.content ||
+        ""
+    ).trim();
+
+  if (!raw) {
+    return null;
+  }
+
+  raw = raw
+    .replace(
+      /^```json\s*/i,
+      ""
+    )
+    .replace(
+      /^```\s*/,
+      ""
+    )
+    .replace(
+      /```\s*$/,
+      ""
+    )
+    .trim();
+
+  let parsed: any;
+
+  try {
+    parsed =
+      JSON.parse(raw);
+  } catch {
+    return null;
+  }
+
+  const primaryService =
+    String(
+      parsed?.primaryService ||
+        ""
+    )
+      .replace(/\s+/g, " ")
+      .trim();
+
+  if (
+    !primaryService ||
+    resolverIsBrandLike(
+      primaryService,
+      base.brandName
+    )
+  ) {
+    return null;
+  }
+
+  const allowedRoles =
+    new Set<BusinessMarketRole>(
+      [
+        "service_provider",
+        "software_product",
+        "ecommerce",
+        "publication",
+        "marketplace",
+        "platform",
+        "local_business",
+        "healthcare_provider",
+        "restaurant",
+        "other",
+      ]
+    );
+
+  const requestedRole =
+    String(
+      parsed?.marketRole ||
+        "other"
+    ) as BusinessMarketRole;
+
+  const marketRole =
+    allowedRoles.has(
+      requestedRole
+    )
+      ? requestedRole
+      : "other";
+
+  const categoryKeywords =
+    resolverUnique(
+      Array.isArray(
+        parsed?.categoryKeywords
+      )
+        ? parsed.categoryKeywords
+        : [],
+      10
+    );
+
+  const serpKeywords =
+    resolverUnique(
+      Array.isArray(
+        parsed?.serpKeywords
+      )
+        ? parsed.serpKeywords
+        : [],
+      5
+    );
+
+  const coreTokens =
+    resolverUnique(
+      Array.isArray(
+        parsed?.coreTokens
+      )
+        ? parsed.coreTokens
+        : [],
+      10
+    );
+
+  const returnedPrompts =
+    resolverUnique(
+      Array.isArray(
+        parsed?.aiPrompts
+      )
+        ? parsed.aiPrompts
+        : [],
+      3
+    )
+      .filter(
+        (prompt) =>
+          !resolverComparable(
+            prompt
+          ).includes(
+            resolverComparable(
+              base.brandName
+            )
+          )
+      );
+
+  const confidenceText =
+    String(
+      parsed?.confidence ||
+        "medium"
+    ).toLowerCase();
+
+  const confidence:
+    BusinessContextConfidence =
+      confidenceText === "high"
+        ? "high"
+        : confidenceText === "low"
+          ? "low"
+          : "medium";
+
+  let categoryKey =
+    String(
+      parsed?.categoryKey ||
+        primaryService
+    )
+      .toLowerCase()
+      .replace(
+        /[^a-z0-9]+/g,
+        "_"
+      )
+      .replace(
+        /^_+|_+$/g,
+        ""
+      )
+      .slice(0, 70);
+
+  if (!categoryKey) {
+    categoryKey =
+      "semantic_category";
+  }
+
+  return {
+    ...base,
+
+    categoryKey,
+
+    categoryLabel:
+      String(
+        parsed?.categoryLabel ||
+          primaryService
+      )
+        .replace(/\s+/g, " ")
+        .trim(),
+
+    primaryService,
+
+    coreTokens:
+      coreTokens.length
+        ? coreTokens
+        : resolverUnique(
+            primaryService.split(
+              /\s+/
+            ),
+            8
+          ),
+
+    categoryKeywords:
+      categoryKeywords.length
+        ? categoryKeywords
+        : [primaryService],
+
+    serpKeywords:
+      serpKeywords.length
+        ? serpKeywords
+        : [primaryService],
+
+    localQueryService:
+      String(
+        parsed?.localQueryService ||
+          primaryService
+      )
+        .replace(/\s+/g, " ")
+        .trim(),
+
+    confidence,
+
+    confidenceScore:
+      confidence === "high"
+        ? 90
+        : confidence ===
+            "medium"
+          ? 70
+          : 45,
+
+    matchedSignals:
+      resolverUnique([
+        ...(
+          Array.isArray(
+            base.matchedSignals
+          )
+            ? base.matchedSignals
+            : []
+        ),
+
+        "semantic-fallback",
+      ]),
+
+    marketRole,
+
+    localSeoApplicable:
+      typeof parsed
+        ?.localSeoApplicable ===
+      "boolean"
+        ? parsed.localSeoApplicable
+        : resolverLocalSeoApplicable(
+            marketRole
+          ),
+
+    aiPrompts:
+      returnedPrompts.length ===
+      3
+        ? returnedPrompts
+        : resolverBuildPrompts(
+            primaryService,
+            marketRole,
+            String(
+              input.countryName ||
+                ""
+            )
+          ),
+
+    resolutionMethod:
+      "semantic-fallback",
+
+    semanticFallbackUsed:
+      true,
+
+    searchSeed:
+      primaryService,
+  };
+}
+
+export async function resolveBusinessContext(
+  input:
+    ResolveBusinessContextInput
+): Promise<ResolvedBusinessContext> {
+  const base =
+    buildBusinessContext({
+      html:
+        input.html,
+
+      title:
+        input.title,
+
+      description:
+        input.description,
+
+      h1:
+        input.h1,
+
+      bodyText:
+        input.bodyText,
+
+      domain:
+        input.domain,
+    });
+
+  const countryName =
+    String(
+      input.countryName ||
+        ""
+    ).trim();
+
+  if (
+    resolverSafeDeterministicContext(
+      base
+    )
+  ) {
+    const marketRole =
+      resolverMarketRole(
+        [
+          base.categoryKey,
+          base.categoryLabel,
+          base.primaryService,
+          ...base.categoryKeywords,
+        ].join(" ")
+      );
+
+    return {
+      ...base,
+
+      marketRole,
+
+      localSeoApplicable:
+        resolverLocalSeoApplicable(
+          marketRole
+        ),
+
+      aiPrompts:
+        resolverBuildPrompts(
+          base.primaryService,
+          marketRole,
+          countryName
+        ),
+
+      resolutionMethod:
+        "deterministic",
+
+      semanticFallbackUsed:
+        false,
+
+      searchSeed:
+        base.primaryService,
+    };
+  }
+
+  try {
+    const semanticContext =
+      await resolverSemanticFallback(
+        input,
+        base
+      );
+
+    if (
+      semanticContext
+    ) {
+      return semanticContext;
+    }
+  } catch (error) {
+    console.error(
+      "Business context semantic fallback failed:",
+      error
+    );
+  }
+
+  const descriptor =
+    resolverDescriptor(
+      input,
+      base.brandName
+    );
+
+  const descriptorContext =
+    resolverBuildDescriptorContext(
+      base,
+      descriptor,
+      countryName
+    );
+
+  if (
+    descriptorContext
+  ) {
+    return descriptorContext;
+  }
+
+  return {
+    ...base,
+
+    categoryKey:
+      "other_products_and_services",
+
+    categoryLabel:
+      "Products and Services",
+
+    primaryService:
+      "products and services",
+
+    coreTokens: [
+      "products",
+      "services",
+    ],
+
+    categoryKeywords: [
+      "products and services",
+    ],
+
+    serpKeywords: [],
+
+    localQueryService:
+      "products and services",
+
+    confidence: "low",
+
+    confidenceScore: 20,
+
+    marketRole: "other",
+
+    localSeoApplicable:
+      false,
+
+    aiPrompts: [],
+
+    resolutionMethod:
+      "descriptor-fallback",
+
+    semanticFallbackUsed:
+      false,
+
+    searchSeed:
+      "products and services",
+  };
+}
+
+
 
 function relevanceTokens(value: string) {
   return normalizeText(value)

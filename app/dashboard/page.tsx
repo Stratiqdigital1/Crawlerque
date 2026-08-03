@@ -5299,46 +5299,189 @@ hiBox(
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 15 — LOCAL SEO
   // ════════════════════════════════════════════════════════════════════
-  if(pdfSections.local){
-    secHdr(nextSec(),"Local SEO & Business Listings","Business listing visibility, ratings, and review signals from Crawler Que Business Data API.");
-    const localListings = Array.isArray(
-      pdfData?.businessData?.listings
-    )
-      ? pdfData.businessData.listings
-      : [];
+if(pdfSections.local){
+  secHdr(
+    nextSec(),
+    "Local SEO & Business Listings",
+    "Business listing visibility, ratings, and review signals from Crawler Que Business Data API."
+  );
+
+  if (
+    pdfData?.businessData
+      ?.applicable === false
+  ) {
+    hiBox(
+      "Local SEO Not Applicable",
+      cl(
+        pdfData?.businessData
+          ?.reason,
+        "This website is primarily an online publication, software product, platform, marketplace, ecommerce property, or other non-location-dependent website."
+      ),
+      "muted"
+    );
+  } else {
+    const localListings =
+      Array.isArray(
+        pdfData?.businessData
+          ?.listings
+      )
+        ? pdfData.businessData
+            .listings
+        : [];
+
     const localTopRating =
       localListings.length > 0
         ? Math.max(
             ...localListings.map(
               (listing:any) =>
-                Number(listing?.rating || 0)
+                Number(
+                  listing?.rating ||
+                    0
+                )
             )
           )
         : null;
+
     kpiRow([
-      {label:"Listings Found",value:fmt(localListings.length),col:localListings.length>0?C.accent:C.muted},
-      {label:"Search Query",value:cl(pdfData?.businessData?.keyword,"Unavailable"),col:C.blue},
-      {label:"Location",value:cl(pdfData?.businessData?.location??pdfData?.auditConfig?.countryName,"Unavailable"),col:C.muted},
-      {label:"Top Rating",value:localTopRating&&localTopRating>0?cl(String(localTopRating)):"Unavailable",col:localTopRating&&localTopRating>0?C.amber:C.muted},
+      {
+        label:
+          "Listings Found",
+        value:
+          fmt(
+            localListings.length
+          ),
+        col:
+          localListings.length >
+          0
+            ? C.accent
+            : C.muted,
+      },
+
+      {
+        label:
+          "Search Query",
+        value:
+          cl(
+            pdfData
+              ?.businessData
+              ?.keyword,
+            "Unavailable"
+          ),
+        col:
+          C.blue,
+      },
+
+      {
+        label:
+          "Location",
+        value:
+          cl(
+            pdfData
+              ?.businessData
+              ?.location ??
+              pdfData
+                ?.auditConfig
+                ?.countryName,
+            "Unavailable"
+          ),
+        col:
+          C.muted,
+      },
+
+      {
+        label:
+          "Top Rating",
+        value:
+          localTopRating &&
+          localTopRating > 0
+            ? cl(
+                String(
+                  localTopRating
+                )
+              )
+            : "Unavailable",
+        col:
+          localTopRating &&
+          localTopRating > 0
+            ? C.amber
+            : C.muted,
+      },
     ]);
 
-    if (localListings.length > 0) {
-      tbl(["Business","Category","Rating","Reviews","Address"],
-        localListings.slice(0,10).map((item:any)=>({
-          col1:cl(item.title,"Unknown"),col2:cl(item.category,"—"),
-          col3:cl(String(item.rating??"—")),col4:cl(String(item.reviews??"—")),col5:cl(item.address,"—"),
-        })),[40,30,14,16,CW-100]);
+    if (
+      localListings.length >
+      0
+    ) {
+      tbl(
+        [
+          "Business",
+          "Category",
+          "Rating",
+          "Reviews",
+          "Address",
+        ],
+
+        localListings
+          .slice(0,10)
+          .map(
+            (item:any)=>({
+              col1:
+                cl(
+                  item.title,
+                  "Unknown"
+                ),
+
+              col2:
+                cl(
+                  item.category,
+                  "—"
+                ),
+
+              col3:
+                cl(
+                  String(
+                    item.rating ??
+                      "—"
+                  )
+                ),
+
+              col4:
+                cl(
+                  String(
+                    item.reviews ??
+                      "—"
+                  )
+                ),
+
+              col5:
+                cl(
+                  item.address,
+                  "—"
+                ),
+            })
+          ),
+
+        [
+          40,
+          30,
+          14,
+          16,
+          CW-100,
+        ]
+      );
     } else {
       hiBox(
         "Local SEO Data Unavailable",
         cl(
-          pdfData?.businessData?.note,
+          pdfData?.businessData
+            ?.note,
           "No exact audited-brand local listing was verified for the selected market. Wider market results are intentionally not presented as the audited business."
         ),
         "muted"
       );
     }
   }
+}
 
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 16 — RECOMMENDATIONS
@@ -7585,18 +7728,30 @@ value={
 {activeTab === "localSeo" && (
   <Section title="Local SEO & Business Listings">
 <p className="mb-5 max-w-4xl text-sm leading-6 text-[#A0A0A0]">
-  The query combines the audited brand, service/category, and selected location. Only verified brand matches are presented as the audited business&apos;s listings; wider market results remain separate.
+  {data?.businessData?.applicable === false
+    ? "Local SEO is not a primary fit for this website type, so business-listing results are not treated as a visibility failure."
+    : "The query combines the audited brand, service/category, and selected location. Only verified brand matches are presented as the audited business's listings; wider market results remain separate."}
 </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-3">
-      <MetricCard
-        label="Listings Found"
-        value={data?.businessData?.listings?.length ?? "Data not available"}
-      />
-      <MetricCard
-        label="Search Query"
-        value={data?.businessData?.keyword || "Data not available"}
-      />
+ <MetricCard
+  label="Listings Found"
+  value={
+    data?.businessData?.applicable === false
+      ? "Not applicable"
+      : data?.businessData?.listings?.length ??
+        "Data not available"
+  }
+/>
+     <MetricCard
+  label="Search Query"
+  value={
+    data?.businessData?.applicable === false
+      ? "Not applicable"
+      : data?.businessData?.keyword ||
+        "Data not available"
+  }
+/>
       <MetricCard
         label="Location"
         value={data?.businessData?.location || "Data not available"}
@@ -7649,9 +7804,11 @@ value={
           </div>
         ))
       ) : (
-        <p className="text-sm text-slate-500">
-          No exact brand listing was verified for this brand + service + location query. Wider market results are not being mislabelled as the audited business.
-        </p>
+<p className="text-sm text-slate-500">
+  {data?.businessData?.applicable === false
+    ? "Local business listings are not a primary visibility signal for this website type."
+    : "No exact brand listing was verified for this brand + service + location query. Wider market results are not being mislabelled as the audited business."}
+</p>
       )}
     </div>
   </Section>

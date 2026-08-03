@@ -188,8 +188,8 @@ function cleanCompetitorCandidate(
   const blocked =
     /^(ehr|emr|look|create|optimize|optimise|seo|saas|similar|software|platform|solution|solutions|service|services|company|companies|provider|providers|healthcare|medical|technology|tech|content|marketing|search|website|brand|brands|best|top|tools?|strong)$/i;
 
-  const blockedGenericPhrase =
-    /^(united states|ppc|focused|founded|user[-\s]?friendly interface|customi[sz]ation options?|systems?|ehrs?|emrs?|features?|functionality|integration|interoperability|workflow|security|support|pricing)$/i;
+const blockedGenericPhrase =
+  /^(united states|ppc|focused|founded|could|some|other|others|many|most|maybe|may|also|including|include|various|several|popular|leading|major|well known|user[-\s]?friendly interface|customi[sz]ation options?|systems?|ehrs?|emrs?|features?|functionality|integration|interoperability|workflow|security|support|pricing)$/i;
 
 if (
   blocked.test(cleaned) ||
@@ -371,19 +371,44 @@ const category = String(
           )
       );
 
-    const categoryPrompts =
-      categorySource ===
-        "homepage-context"
-        ? buildNeutralPrompts(
-            category,
-            detectedCountry
-          )
-        : relevantGeneratedPrompts.length >= 3
-          ? relevantGeneratedPrompts
-          : buildNeutralPrompts(
-              category,
-              detectedCountry
-            );
+const suppliedContextPrompts =
+  Array.isArray(
+    suppliedBusinessContext
+      ?.aiPrompts
+  )
+    ? suppliedBusinessContext
+        .aiPrompts
+        .map(
+          (prompt: any) =>
+            String(
+              prompt || ""
+            ).trim()
+        )
+        .filter(Boolean)
+        .filter(
+          (prompt: string) =>
+            !containsBrand(
+              prompt,
+              brandName,
+              domain
+            )
+        )
+        .slice(0, 3)
+    : [];
+
+const categoryPrompts =
+  suppliedContextPrompts.length >=
+  3
+    ? suppliedContextPrompts
+
+    : relevantGeneratedPrompts.length >=
+        3
+      ? relevantGeneratedPrompts
+
+      : buildNeutralPrompts(
+          category,
+          detectedCountry
+        );
 
 const scoredPrompts =
   uniqueStrings([
@@ -391,7 +416,21 @@ const scoredPrompts =
     ...categoryPrompts,
   ]).slice(0, 3);
 
-    const iso = countryIso(detectedCountry);
+const suppliedCountryCode =
+  String(
+    body?.countryCode || ""
+  )
+    .trim()
+    .toUpperCase();
+
+const iso =
+  /^[A-Z]{2}$/.test(
+    suppliedCountryCode
+  )
+    ? suppliedCountryCode
+    : countryIso(
+        detectedCountry
+      );
     const promptRuns = await Promise.all(
       scoredPrompts.map(async (prompt) => ({
         prompt,
