@@ -1125,16 +1125,273 @@ const cancelAudit = async () => {
             : model,
     mentioned: Number(visibility || 0),
   }));
-  const seoCompetitorChartData =
-  data?.competitors?.slice(0, 8).map((c: any) => ({
-    name: c.domain,
-    sharedKeywords: c.sharedKeywords || c.intersections || 0,
-    threatScore: c.threatScore || 0,
-    traffic:
-      Number(c?.traffic || 0) > 0
-        ? Math.round(Number(c.traffic))
-        : null,
-  })) || [];
+type ReportCompetitorLandscape = {
+  direct: any[];
+  searchIntermediaries: any[];
+  marketplaces: any[];
+  publishersAndReviewSites: any[];
+  manufacturersAndBrands: any[];
+  socialAndCommunity: any[];
+  unclassifiedOverlap: any[];
+};
+
+const getLegacyCompetitorRelationship = (
+  domainValue: any
+) => {
+  const value =
+    String(
+      domainValue || ""
+    )
+      .toLowerCase()
+      .replace(/^www\./, "");
+
+  if (
+    /(^|\.)(yelp|yellowpages|mapquest|bbb|manta|chamberofcommerce|foursquare|superpages|hotfrog)\./.test(
+      value
+    )
+  ) {
+    return "search_intermediary";
+  }
+
+  if (
+    /(^|\.)(amazon|ebay|alibaba|aliexpress|walmart|etsy|temu|wayfair|target|daraz)\./.test(
+      value
+    )
+  ) {
+    return "marketplace";
+  }
+
+  if (
+    /(^|\.)(youtube|facebook|instagram|linkedin|twitter|x|pinterest|reddit|tiktok|quora|wikipedia)\./.test(
+      value
+    )
+  ) {
+    return "social_community";
+  }
+
+  if (
+    /(^|\.)(g2|capterra|getapp|softwareadvice|trustradius|pcmag|techradar|cnet|forbes|nerdwallet|healthline)\./.test(
+      value
+    )
+  ) {
+    return "publisher_review";
+  }
+
+  return "unclassified_overlap";
+};
+
+const getReportCompetitorLandscape = (
+  report: any
+): ReportCompetitorLandscape => {
+  const stored =
+    report?.dataforseo
+      ?.competitorLandscape ||
+    report?.competitorLandscape ||
+    null;
+
+  if (
+    stored &&
+    typeof stored === "object"
+  ) {
+    return {
+      direct:
+        Array.isArray(
+          stored?.direct
+        )
+          ? stored.direct
+          : [],
+
+      searchIntermediaries:
+        Array.isArray(
+          stored?.searchIntermediaries
+        )
+          ? stored.searchIntermediaries
+          : [],
+
+      marketplaces:
+        Array.isArray(
+          stored?.marketplaces
+        )
+          ? stored.marketplaces
+          : [],
+
+      publishersAndReviewSites:
+        Array.isArray(
+          stored?.publishersAndReviewSites
+        )
+          ? stored.publishersAndReviewSites
+          : [],
+
+      manufacturersAndBrands:
+        Array.isArray(
+          stored?.manufacturersAndBrands
+        )
+          ? stored.manufacturersAndBrands
+          : [],
+
+      socialAndCommunity:
+        Array.isArray(
+          stored?.socialAndCommunity
+        )
+          ? stored.socialAndCommunity
+          : [],
+
+      unclassifiedOverlap:
+        Array.isArray(
+          stored?.unclassifiedOverlap
+        )
+          ? stored.unclassifiedOverlap
+          : [],
+    };
+  }
+
+  const fallback:
+    ReportCompetitorLandscape = {
+    direct: [],
+    searchIntermediaries: [],
+    marketplaces: [],
+    publishersAndReviewSites: [],
+    manufacturersAndBrands: [],
+    socialAndCommunity: [],
+    unclassifiedOverlap: [],
+  };
+
+  const auditedRole =
+    String(
+      report?.businessContext
+        ?.marketRole || ""
+    ).toLowerCase();
+
+  (
+    Array.isArray(
+      report?.competitors
+    )
+      ? report.competitors
+      : []
+  ).forEach((item: any) => {
+    const explicitRelationship =
+      String(
+        item?.relationship || ""
+      ).toLowerCase();
+
+    const relationship =
+      explicitRelationship ||
+      getLegacyCompetitorRelationship(
+        item?.domain
+      );
+
+    if (
+      relationship === "direct"
+    ) {
+      fallback.direct.push(item);
+    } else if (
+      relationship ===
+      "search_intermediary"
+    ) {
+      fallback.searchIntermediaries.push(
+        item
+      );
+    } else if (
+      relationship ===
+      "marketplace"
+    ) {
+      fallback.marketplaces.push(
+        item
+      );
+    } else if (
+      relationship ===
+      "manufacturer_brand"
+    ) {
+      fallback.manufacturersAndBrands.push(
+        item
+      );
+    } else if (
+      relationship ===
+      "social_community"
+    ) {
+      fallback.socialAndCommunity.push(
+        item
+      );
+    } else if (
+      relationship ===
+      "publisher_review"
+    ) {
+      if (
+        auditedRole ===
+        "publication"
+      ) {
+        fallback.direct.push(
+          item
+        );
+      } else {
+        fallback.publishersAndReviewSites.push(
+          item
+        );
+      }
+    } else {
+      fallback.unclassifiedOverlap.push(
+        item
+      );
+    }
+  });
+
+  return fallback;
+};
+
+const liveCompetitorLandscape =
+  getReportCompetitorLandscape(
+    data
+  );
+
+const liveDirectCompetitors =
+  liveCompetitorLandscape.direct;
+
+const liveOtherOverlap = [
+  ...liveCompetitorLandscape
+    .searchIntermediaries,
+
+  ...liveCompetitorLandscape
+    .marketplaces,
+
+  ...liveCompetitorLandscape
+    .publishersAndReviewSites,
+
+  ...liveCompetitorLandscape
+    .manufacturersAndBrands,
+
+  ...liveCompetitorLandscape
+    .socialAndCommunity,
+
+  ...liveCompetitorLandscape
+    .unclassifiedOverlap,
+];
+
+const seoCompetitorChartData =
+  liveDirectCompetitors
+    .slice(0, 8)
+    .map((c: any) => ({
+      name:
+        c.domain,
+
+      sharedKeywords:
+        c.sharedKeywords ||
+        c.intersections ||
+        0,
+
+      threatScore:
+        c.threatScore || 0,
+
+      traffic:
+        Number(
+          c?.traffic || 0
+        ) > 0
+          ? Math.round(
+              Number(
+                c.traffic
+              )
+            )
+          : null,
+    }));
   const competitorChartData = [
     {
       name: "Your Brand",
@@ -3707,6 +3964,34 @@ const pdfKeywordResearch =
     pdfData
   );
 
+const pdfCompetitorLandscape =
+  getReportCompetitorLandscape(
+    pdfData
+  );
+
+const pdfDirectCompetitors =
+  pdfCompetitorLandscape.direct;
+
+const pdfOtherCompetitorOverlap = [
+  ...pdfCompetitorLandscape
+    .searchIntermediaries,
+
+  ...pdfCompetitorLandscape
+    .marketplaces,
+
+  ...pdfCompetitorLandscape
+    .publishersAndReviewSites,
+
+  ...pdfCompetitorLandscape
+    .manufacturersAndBrands,
+
+  ...pdfCompetitorLandscape
+    .socialAndCommunity,
+
+  ...pdfCompetitorLandscape
+    .unclassifiedOverlap,
+];
+
   // parse hex accent → RGB
   const hexToRgb = (h: string): [number,number,number] => {
     const r = parseInt(h.slice(1,3),16), g = parseInt(h.slice(3,5),16), b = parseInt(h.slice(5,7),16);
@@ -4362,10 +4647,12 @@ const detailLines =
         pdfData?.aiSearchVisibility ||
         pdfData?.aiVisibility
       ),
-    competitors:
-      pdfShow("competitors") &&
-      Array.isArray(pdfData?.competitors) &&
-      pdfData.competitors.length > 0,
+competitors:
+  pdfShow("competitors") &&
+  (
+    pdfDirectCompetitors.length > 0 ||
+    pdfOtherCompetitorOverlap.length > 0
+  ),
     keywords: pdfShow("keywords") || pdfShow("labs"),
     keywordResearch:
       pdfShow("keywords") &&
@@ -5258,28 +5545,246 @@ hiBox(
   // ════════════════════════════════════════════════════════════════════
   //  SECTION 08 — COMPETITOR INTELLIGENCE
   // ════════════════════════════════════════════════════════════════════
-  if(pdfSections.competitors){
-    secHdr(nextSec(),"Competitor Threat Intelligence","Domains capturing organic visibility through stronger content, authority, or keyword coverage.");
-    kpiRow([
-      {label:"Competitors Found",value:String(pdfData.competitors.length),sub:"Organic overlap",col:C.accent},
-      {label:"Top Competitor",value:cl(pdfData.competitors[0]?.domain),sub:"Highest overlap",col:C.amber},
-      {label:"Top Shared Keywords",value:fmt(Math.max(...pdfData.competitors.map((c:any)=>Number(c.sharedKeywords||c.intersections||0)))),sub:"With top competitor",col:C.blue},
-      {label:"Top Threat Score",value:cl(String(pdfData.competitors[0]?.threatScore??"—")),sub:"Risk level",col:sCol(100-(n(pdfData.competitors[0]?.threatScore)??50))},
-    ]);
-    secTitle("Competitor Overview Table");
-    tbl(["Domain","Traffic","Shared KWs","Threat","Winning Factor"],
-      pdfData.competitors.slice(0,12).map((c:any)=>({
-        col1:cl(c.domain),col2:Number(c?.traffic || 0) > 0 ? fmt(c.traffic) : "Unavailable",col3:fmt(c.sharedKeywords??c.intersections),
-        col4:cl(String(c.threatScore??"—")),col5:cl(c.likelyWinningFactor??c.winningFactor,"—"),
-      })),[48,28,25,20,CW-121]);
-    secTitle("Competitor Intelligence Details");
-    pdfData.competitors.slice(0,6).forEach((c:any)=>{
-      const competitorTrafficLabel =
-        Number(c?.traffic || 0) > 0
-          ? fmt(c.traffic)
-          : "Unavailable";
-      hiBox(cl(c.domain),`Shared KWs: ${fmt(c.sharedKeywords??c.intersections)}  ·  Traffic: ${competitorTrafficLabel}  ·  Threat: ${cl(String(c.threatScore??"—"))}  ·  Strength: ${cl(c.competitiveStrength,"—")}  ·  AI Risk: ${cl(c.aiRisk,"—")}  ·  Winning: ${cl(c.likelyWinningFactor??c.winningFactor,"—")}`,"amber");
-    });
+  if (
+    pdfSections.competitors
+  ) {
+    secHdr(
+      nextSec(),
+      "Competitor Landscape & Search Overlap",
+      "Direct commercial competitors are separated from directories, marketplaces, manufacturers, publishers, social platforms, and unverified organic overlap."
+    );
+
+    if (
+      pdfDirectCompetitors.length > 0
+    ) {
+      kpiRow([
+        {
+          label:
+            "Verified Direct Competitors",
+          value:
+            String(
+              pdfDirectCompetitors.length
+            ),
+          sub:
+            "Business-model match",
+          col:
+            C.accent,
+        },
+        {
+          label:
+            "Top Direct Competitor",
+          value:
+            cl(
+              pdfDirectCompetitors[0]
+                ?.domain
+            ),
+          sub:
+            "Highest validated threat",
+          col:
+            C.amber,
+        },
+        {
+          label:
+            "Top Shared Keywords",
+          value:
+            fmt(
+              Math.max(
+                ...pdfDirectCompetitors.map(
+                  (c: any) =>
+                    Number(
+                      c?.sharedKeywords ||
+                        c?.intersections ||
+                        0
+                    )
+                )
+              )
+            ),
+          sub:
+            "Direct competitors only",
+          col:
+            C.blue,
+        },
+        {
+          label:
+            "Top Threat Score",
+          value:
+            cl(
+              String(
+                pdfDirectCompetitors[0]
+                  ?.threatScore ??
+                  "—"
+              )
+            ),
+          sub:
+            "Direct competitor risk",
+          col:
+            sCol(
+              100 -
+                (
+                  n(
+                    pdfDirectCompetitors[0]
+                      ?.threatScore
+                  ) ?? 50
+                )
+            ),
+        },
+      ]);
+
+      secTitle(
+        "Verified Direct Competitors"
+      );
+
+      tblWrap(
+        [
+          "Domain",
+          "Traffic",
+          "Shared KWs",
+          "Threat",
+          "Evidence",
+        ],
+        pdfDirectCompetitors
+          .slice(0, 10)
+          .map((c: any) => ({
+            col1:
+              cl(c?.domain),
+            col2:
+              Number(
+                c?.traffic || 0
+              ) > 0
+                ? fmt(c.traffic)
+                : "Unavailable",
+            col3:
+              fmt(
+                c?.sharedKeywords ??
+                  c?.intersections
+              ),
+            col4:
+              cl(
+                String(
+                  c?.threatScore ??
+                    "—"
+                )
+              ),
+            col5:
+              cl(
+                c?.classificationReason ??
+                  c?.likelyWinningFactor ??
+                  c?.winningFactor,
+                "Validated business-model and topical overlap"
+              ),
+          })),
+        [
+          43,
+          25,
+          23,
+          18,
+          CW - 109,
+        ],
+        3
+      );
+    } else {
+      hiBox(
+        "No Verified Direct Competitor",
+        "Organic-overlap domains were returned, but the available evidence did not prove a matching commercial business model. These domains are shown separately and excluded from the Top Competitor KPI and keyword-gap generation.",
+        "amber"
+      );
+    }
+
+    const landscapeRows = [
+      ...pdfCompetitorLandscape
+        .searchIntermediaries
+        .map((item: any) => ({
+          ...item,
+          relationshipLabel:
+            "Search Visibility Intermediary",
+        })),
+      ...pdfCompetitorLandscape
+        .marketplaces
+        .map((item: any) => ({
+          ...item,
+          relationshipLabel:
+            "Marketplace",
+        })),
+      ...pdfCompetitorLandscape
+        .publishersAndReviewSites
+        .map((item: any) => ({
+          ...item,
+          relationshipLabel:
+            "Publisher / Review Site",
+        })),
+      ...pdfCompetitorLandscape
+        .manufacturersAndBrands
+        .map((item: any) => ({
+          ...item,
+          relationshipLabel:
+            "Manufacturer / Industry Brand",
+        })),
+      ...pdfCompetitorLandscape
+        .socialAndCommunity
+        .map((item: any) => ({
+          ...item,
+          relationshipLabel:
+            "Social / Community Platform",
+        })),
+      ...pdfCompetitorLandscape
+        .unclassifiedOverlap
+        .map((item: any) => ({
+          ...item,
+          relationshipLabel:
+            "Unclassified Organic Overlap",
+        })),
+    ];
+
+    if (
+      landscapeRows.length > 0
+    ) {
+      secTitle(
+        "Other Search-Visibility Overlap"
+      );
+
+      tblWrap(
+        [
+          "Domain",
+          "Relationship",
+          "Shared KWs",
+          "Reason",
+        ],
+        landscapeRows
+          .slice(0, 15)
+          .map((c: any) => ({
+            col1:
+              cl(c?.domain),
+            col2:
+              cl(
+                c?.relationshipLabel,
+                "Other organic overlap"
+              ),
+            col3:
+              fmt(
+                c?.sharedKeywords ??
+                  c?.intersections
+              ),
+            col4:
+              cl(
+                c?.classificationReason,
+                "Organic overlap does not prove direct commercial competition."
+              ),
+          })),
+        [
+          43,
+          46,
+          23,
+          CW - 112,
+        ],
+        3
+      );
+
+      hiBox(
+        "Competitor Classification Note",
+        "Directories, marketplaces, manufacturers, publishers, social platforms, and unverified overlap can occupy search results, but they are not automatically treated as direct commercial competitors or keyword-gap sources.",
+        "blue"
+      );
+    }
   }
 
   // ════════════════════════════════════════════════════════════════════
@@ -9897,128 +10402,297 @@ const impactClass = impact.toLowerCase().includes("high")
 )}
 
 {/* COMPETITORS */}
-{activeTab === "competitors" && (
-  data?.competitors?.length > 0 ? (
-  <Section title="Competitor Intelligence">
-    <p className="mb-5 max-w-4xl text-sm leading-6 text-[#A0A0A0]">
-      Organic competitors are identified using Crawler Que keyword overlap and ranking visibility.
-    </p>
+{activeTab ===
+  "competitors" && (
+  (
+    liveDirectCompetitors.length > 0 ||
+    liveOtherOverlap.length > 0
+  ) ? (
+    <Section title="Competitor Intelligence">
+      <p className="mb-5 max-w-4xl text-sm leading-6 text-[#A0A0A0]">
+        Direct commercial competitors are separated from directories, marketplaces, manufacturers, publishers, social platforms, and unverified organic overlap.
+      </p>
 
-    <div className="mb-6 grid gap-4 md:grid-cols-3">
-      <MetricCard
-        label="Competitors Found"
-        value={data?.competitors?.length ?? "Data not available"}
-      />
-      <MetricCard
-        label="Top Shared Keywords"
-        value={
-          data?.competitors?.length > 0
-            ? Math.max(
-                ...data.competitors.map((c: any) =>
-                  Number(c.sharedKeywords || c.intersections || 0)
+      <div className="mb-6 grid gap-4 md:grid-cols-3">
+        <MetricCard
+          label="Verified Direct Competitors"
+          value={
+            liveDirectCompetitors.length
+          }
+        />
+
+        <MetricCard
+          label="Other Search Overlap"
+          value={
+            liveOtherOverlap.length
+          }
+        />
+
+        <MetricCard
+          label="Top Shared Keywords"
+          value={
+            liveDirectCompetitors.length > 0
+              ? Math.max(
+                  ...liveDirectCompetitors.map(
+                    (c: any) =>
+                      Number(
+                        c?.sharedKeywords ||
+                          c?.intersections ||
+                          0
+                      )
+                  )
                 )
-              )
-            : "Data not available"
-        }
-      />
-    </div>
-
-<div className="mb-6 rounded-2xl border border-[#222] bg-[#111] p-5">
-      <h3 className="mb-4 font-semibold text-white">
-        Shared Keyword Overlap
-      </h3>
-
-      <div className="h-[280px] w-full min-w-0">
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={seoCompetitorChartData}>
-            <XAxis dataKey="name" stroke="#555" tick={{ fill: "#8A8A8A", fontSize: 10 }} />
-            <YAxis allowDecimals={false} stroke="#333" tick={{ fill: "#8A8A8A", fontSize: 11 }} />
-            <Tooltip
-              contentStyle={{ backgroundColor: "#1a1a1a", border: "1px solid #333", borderRadius: "8px" }}
-              labelStyle={{ color: "#C5FF3D", fontWeight: "bold" }}
-              itemStyle={{ color: "#fff" }}
-            />
-            <Bar dataKey="threatScore" fill="#C5FF3D" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+              : "No verified direct competitor"
+          }
+        />
       </div>
-    </div>
 
-    <div className="grid gap-4">
-      {data?.competitors?.length > 0 ? (
-        data.competitors.slice(0, 10).map((c: any, i: number) => {
-          const shared = Number(c.sharedKeywords || c.intersections || 0);
+      {liveDirectCompetitors.length > 0 ? (
+        <>
+          <div className="mb-6 rounded-2xl border border-[#222] bg-[#111] p-5">
+            <h3 className="mb-4 font-semibold text-white">
+              Verified Direct Competitor Threat
+            </h3>
 
-          return (
-            <div
-              key={i}
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-            >
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="font-bold text-slate-950">
-                    {i + 1}. {c.domain || "Unknown domain"}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-  Shared Keywords: {shared || "Data not available"} | Threat:{" "}
-  {c.threatScore ? `${c.threatScore}/100` : "N/A"}
-</p>
+            <div className="h-[280px] w-full min-w-0">
+              <ResponsiveContainer
+                width="100%"
+                height={280}
+              >
+                <BarChart
+                  data={
+                    seoCompetitorChartData
+                  }
+                >
+                  <XAxis
+                    dataKey="name"
+                    stroke="#555"
+                    tick={{
+                      fill: "#8A8A8A",
+                      fontSize: 10,
+                    }}
+                  />
 
-<p className="mt-1 text-xs text-slate-500">
-  Strength: {c.competitiveStrength || "N/A"} | AI Risk:{" "}
-  {c.aiRisk || "N/A"}
-</p>
+                  <YAxis
+                    allowDecimals={false}
+                    stroke="#333"
+                    tick={{
+                      fill: "#8A8A8A",
+                      fontSize: 11,
+                    }}
+                  />
 
-<p className="mt-2 text-xs font-medium text-blue-700">
-  Winning Factor: {c.likelyWinningFactor || "N/A"}
-</p>
-                </div>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor:
+                        "#1a1a1a",
+                      border:
+                        "1px solid #333",
+                      borderRadius:
+                        "8px",
+                    }}
+                    labelStyle={{
+                      color: "#C5FF3D",
+                      fontWeight:
+                        "bold",
+                    }}
+                    itemStyle={{
+                      color: "#fff",
+                    }}
+                  />
 
-                <div className="text-right">
-                  <p className="font-bold text-slate-950">
-                    {Number(c?.traffic || 0) > 0
-                      ? Math.round(Number(c.traffic)).toLocaleString()
-                      : "Data not available"}
-                  </p>
-                  <p
-  className="text-xs text-slate-500"
-  title="Modeled estimate based on ranking keywords, clickstream data, and CTR calculations. Actual traffic may vary."
->
-  Estimated Traffic Signal
-</p>
-                </div>
-              </div>
-
-              <div className="mt-4 h-2 w-full rounded-full bg-slate-100">
-                <div
-                  className="h-2 rounded-full bg-blue-600"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      Math.max(5, shared * 10)
-                    )}%`,
-                  }}
-                />
-              </div>
+                  <Bar
+                    dataKey="threatScore"
+                    fill="#C5FF3D"
+                    radius={[
+                      4,
+                      4,
+                      0,
+                      0,
+                    ]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-          );
-        })
+          </div>
+
+          <div className="grid gap-4">
+            {liveDirectCompetitors
+              .slice(0, 10)
+              .map(
+                (
+                  c: any,
+                  i: number
+                ) => {
+                  const shared =
+                    Number(
+                      c?.sharedKeywords ||
+                        c?.intersections ||
+                        0
+                    );
+
+                  return (
+                    <div
+                      key={`${c?.domain || "competitor"}-${i}`}
+                      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="font-bold text-slate-950">
+                            {i + 1}.{" "}
+                            {c?.domain ||
+                              "Unknown domain"}
+                          </p>
+
+                          <p className="mt-1 text-xs text-slate-500">
+                            Direct Competitor
+                            {" | "}
+                            Shared Keywords:{" "}
+                            {shared ||
+                              "Data not available"}
+                            {" | "}
+                            Threat:{" "}
+                            {c?.threatScore
+                              ? `${c.threatScore}/100`
+                              : "N/A"}
+                          </p>
+
+                          <p className="mt-1 text-xs text-slate-500">
+                            Strength:{" "}
+                            {c?.competitiveStrength ||
+                              "N/A"}
+                            {" | "}
+                            AI Risk:{" "}
+                            {c?.aiRisk ||
+                              "N/A"}
+                          </p>
+
+                          <p className="mt-2 text-xs font-medium text-blue-700">
+                            Evidence:{" "}
+                            {c?.classificationReason ||
+                              c?.likelyWinningFactor ||
+                              "Validated business-model and topical overlap"}
+                          </p>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="font-bold text-slate-950">
+                            {Number(
+                              c?.traffic || 0
+                            ) > 0
+                              ? Math.round(
+                                  Number(
+                                    c.traffic
+                                  )
+                                ).toLocaleString()
+                              : "Data not available"}
+                          </p>
+
+                          <p
+                            className="text-xs text-slate-500"
+                            title="Modeled estimate based on ranking keywords, clickstream data, and CTR calculations. Actual traffic may vary."
+                          >
+                            Estimated Traffic Signal
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 h-2 w-full rounded-full bg-slate-100">
+                        <div
+                          className="h-2 rounded-full bg-blue-600"
+                          style={{
+                            width:
+                              `${Math.min(
+                                100,
+                                Math.max(
+                                  5,
+                                  shared * 10
+                                )
+                              )}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                }
+              )}
+          </div>
+        </>
       ) : (
-        <p className="text-sm text-slate-500">
-          No verified competitor data was returned for this audit.
-        </p>
+        <div className="mb-6 rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5">
+          <h3 className="font-semibold text-amber-300">
+            No verified direct competitor
+          </h3>
+
+          <p className="mt-2 text-sm leading-6 text-[#A0A0A0]">
+            Organic-overlap domains were found, but the available evidence did not prove a matching commercial business model.
+          </p>
+        </div>
       )}
-    </div>
+
+      {liveOtherOverlap.length > 0 && (
+        <div className="mt-6 rounded-2xl border border-[#222] bg-[#111] p-5">
+          <h3 className="font-semibold text-white">
+            Other Search-Visibility Overlap
+          </h3>
+
+          <p className="mt-2 text-sm leading-6 text-[#A0A0A0]">
+            These domains can occupy search results but are not automatically treated as direct commercial competitors or keyword-gap sources.
+          </p>
+
+          <div className="mt-4 grid gap-3">
+            {liveOtherOverlap
+              .slice(0, 15)
+              .map(
+                (
+                  item: any,
+                  index: number
+                ) => (
+                  <div
+                    key={`${item?.domain || "overlap"}-${index}`}
+                    className="rounded-xl border border-[#252525] bg-[#151515] p-4"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="font-semibold text-white">
+                        {item?.domain ||
+                          "Unknown domain"}
+                      </p>
+
+                      <span className="rounded-full border border-[#2A2A2A] px-3 py-1 text-xs text-[#A0A0A0]">
+                        {item?.relationshipLabel ||
+                          "Unclassified Organic Overlap"}
+                      </span>
+                    </div>
+
+                    <p className="mt-2 text-xs leading-5 text-[#777]">
+                      Shared Keywords:{" "}
+                      {Number(
+                        item?.sharedKeywords ||
+                          item?.intersections ||
+                          0
+                      )}
+                      {" | "}
+                      {item?.classificationReason ||
+                        "Organic overlap does not prove direct commercial competition."}
+                    </p>
+                  </div>
+                )
+              )}
+          </div>
+        </div>
+      )}
     </Section>
   ) : (
-<LockedCard
-  title="Competitor Intelligence"
-  description="Unlock competitor threat scores, shared keyword overlap, and traffic signals."
-  hasAccess={hasTrafficAccess}
-  isProcessing={
-    data?.renderReady !== true
-  }
-/>
+    <LockedCard
+      title="Competitor Intelligence"
+      description="Unlock direct competitor validation, search-overlap classification, and threat signals."
+      hasAccess={
+        hasTrafficAccess
+      }
+      isProcessing={
+        data?.renderReady !== true
+      }
+    />
   )
 )}
           </>

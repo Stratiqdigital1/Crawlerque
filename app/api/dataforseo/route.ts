@@ -889,10 +889,6 @@ const marketRole =
     .trim()
     .toLowerCase();
 
-const allowedCompetitorHints =
-  getAllowedCompetitorHints(
-    detectedNiche
-  );
 
 function detectNiche(
   domain: string,
@@ -1401,6 +1397,630 @@ function getKnownCompetitorBrandTokens(
   return map[niche] || [];
 }
 
+type CompetitorRelationship =
+  | "direct"
+  | "search_intermediary"
+  | "marketplace"
+  | "publisher_review"
+  | "manufacturer_brand"
+  | "social_community"
+  | "unclassified_overlap";
+
+const competitorStopWords = new Set([
+  "and",
+  "best",
+  "business",
+  "company",
+  "companies",
+  "for",
+  "from",
+  "global",
+  "group",
+  "online",
+  "services",
+  "solutions",
+  "the",
+  "this",
+  "top",
+  "with",
+  "your",
+]);
+
+const competitorTokens = (
+  value: unknown
+) =>
+  Array.from(
+    new Set(
+      String(value || "")
+        .toLowerCase()
+        .replace(
+          /[^a-z0-9]+/g,
+          " "
+        )
+        .split(/\s+/)
+        .filter(
+          (token) =>
+            token.length >= 4 &&
+            !competitorStopWords.has(
+              token
+            )
+        )
+    )
+  );
+
+function knownCompetitorRelationship(
+  domainValue: string
+): CompetitorRelationship | null {
+  const value =
+    normalizeDomain(
+      domainValue
+    ).toLowerCase();
+
+  if (
+    /(^|\.)(yelp|yellowpages|mapquest|bbb|manta|chamberofcommerce|foursquare|superpages|hotfrog)\./.test(
+      value
+    )
+  ) {
+    return "search_intermediary";
+  }
+
+  if (
+    /(^|\.)(amazon|ebay|alibaba|aliexpress|walmart|etsy|temu|wayfair|target|daraz)\./.test(
+      value
+    )
+  ) {
+    return "marketplace";
+  }
+
+  if (
+    /(^|\.)(youtube|facebook|instagram|linkedin|twitter|x|pinterest|reddit|tiktok|quora|wikipedia)\./.test(
+      value
+    )
+  ) {
+    return "social_community";
+  }
+
+  if (
+    /(^|\.)(g2|capterra|getapp|softwareadvice|trustradius|pcmag|techradar|cnet|forbes|nerdwallet|healthline)\./.test(
+      value
+    )
+  ) {
+    return "publisher_review";
+  }
+
+  return null;
+}
+
+function competitorRelationshipLabel(
+  relationship:
+    CompetitorRelationship
+) {
+  const labels:
+    Record<
+      CompetitorRelationship,
+      string
+    > = {
+    direct:
+      "Direct Competitor",
+
+    search_intermediary:
+      "Search Visibility Intermediary",
+
+    marketplace:
+      "Marketplace",
+
+    publisher_review:
+      "Publisher / Review Site",
+
+    manufacturer_brand:
+      "Manufacturer / Industry Brand",
+
+    social_community:
+      "Social / Community Platform",
+
+    unclassified_overlap:
+      "Unclassified Organic Overlap",
+  };
+
+  return labels[
+    relationship
+  ];
+}
+
+function readHtmlValue(
+  html: string,
+  pattern: RegExp
+) {
+  return String(
+    html.match(pattern)?.[1] ||
+      ""
+  )
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&[^;]+;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function getCompetitorHomepageText(
+  domainValue: string
+) {
+  const domain =
+    normalizeDomain(
+      domainValue
+    );
+
+  if (
+    !/^[a-z0-9.-]+$/i.test(
+      domain
+    ) ||
+    domain === "localhost" ||
+    domain.endsWith(
+      ".local"
+    ) ||
+    /^\d{1,3}(?:\.\d{1,3}){3}$/.test(
+      domain
+    )
+  ) {
+    return {
+      text: "",
+      title: "",
+      description: "",
+      fetched: false,
+    };
+  }
+
+  try {
+    const response =
+      await fetch(
+        `https://${domain}`,
+        {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (compatible; CrawlerQueCompetitorClassifier/1.0)",
+
+            Accept:
+              "text/html,application/xhtml+xml",
+          },
+
+          redirect:
+            "follow",
+
+          cache:
+            "no-store",
+
+          signal:
+            AbortSignal.timeout(
+              6000
+            ),
+        }
+      );
+
+    if (!response.ok) {
+      throw new Error(
+        `HTTP ${response.status}`
+      );
+    }
+
+    const html = (
+      await response.text()
+    ).slice(0, 300000);
+
+    const title =
+      readHtmlValue(
+        html,
+        /<title[^>]*>([\s\S]*?)<\/title>/i
+      );
+
+    const h1 =
+      readHtmlValue(
+        html,
+        /<h1[^>]*>([\s\S]*?)<\/h1>/i
+      );
+
+    const description =
+      readHtmlValue(
+        html,
+        /<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i
+      ) ||
+      readHtmlValue(
+        html,
+        /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i
+      );
+
+    return {
+      title,
+      description,
+
+      text:
+        `${title} ${description} ${h1}`
+          .toLowerCase(),
+
+      fetched: true,
+    };
+  } catch (error) {
+    console.warn(
+      "Competitor homepage classification failed:",
+      domain,
+      error
+    );
+
+    return {
+      text: "",
+      title: "",
+      description: "",
+      fetched: false,
+    };
+  }
+}
+
+function inferCompetitorRole(
+  textValue: string
+) {
+  const text =
+    String(
+      textValue || ""
+    ).toLowerCase();
+
+  if (
+    /business directory|local businesses|business listings|local reviews|find businesses/.test(
+      text
+    )
+  ) {
+    return "search_intermediary";
+  }
+
+  if (
+    /marketplace|buy and sell|third[- ]party sellers|millions of products/.test(
+      text
+    )
+  ) {
+    return "marketplace";
+  }
+
+  if (
+    /manufacturer|manufactures|manufacturing|authorized dealers|dealer locator|find a dealer|wholesale|\boem\b/.test(
+      text
+    )
+  ) {
+    return "manufacturer_brand";
+  }
+
+  if (
+    /reviews|comparisons|buying guides|editorial|news and reviews|independent reviews/.test(
+      text
+    )
+  ) {
+    return "publisher_review";
+  }
+
+  if (
+    /online store|shop online|add to cart|shopping cart|buy online|product catalog/.test(
+      text
+    )
+  ) {
+    return "ecommerce";
+  }
+
+  if (
+    /saas|software platform|cloud platform|workflow automation|business software/.test(
+      text
+    )
+  ) {
+    return "software_product";
+  }
+
+  if (
+    /agency|consulting|professional services|service provider|development company|we provide/.test(
+      text
+    )
+  ) {
+    return "service_provider";
+  }
+
+  if (
+    /locations|serving the|visit our|local service|near me/.test(
+      text
+    )
+  ) {
+    return "local_business";
+  }
+
+  return "other";
+}
+
+function compatibleCompetitorRole(
+  auditedRole: string,
+  candidateRole: string,
+  auditedBusinessText: string
+) {
+  if (
+    auditedRole ===
+    "publication"
+  ) {
+    return (
+      candidateRole ===
+      "publisher_review"
+    );
+  }
+
+  if (
+    auditedRole ===
+    "ecommerce"
+  ) {
+    return (
+      candidateRole ===
+      "ecommerce"
+    );
+  }
+
+  if (
+    [
+      "software_product",
+      "platform",
+    ].includes(
+      auditedRole
+    )
+  ) {
+    return [
+      "software_product",
+      "service_provider",
+    ].includes(
+      candidateRole
+    );
+  }
+
+  if (
+    auditedRole ===
+    "marketplace"
+  ) {
+    return (
+      candidateRole ===
+      "marketplace"
+    );
+  }
+
+  if (
+    [
+      "service_provider",
+      "local_business",
+      "healthcare_provider",
+      "restaurant",
+    ].includes(
+      auditedRole
+    )
+  ) {
+    const sellsProducts =
+      /shop|store|retail|equipment|supplies|products|dealer/.test(
+        auditedBusinessText
+      );
+
+    return sellsProducts
+      ? [
+          "ecommerce",
+          "local_business",
+          "service_provider",
+        ].includes(
+          candidateRole
+        )
+      : [
+          "service_provider",
+          "local_business",
+        ].includes(
+          candidateRole
+        );
+  }
+
+  return false;
+}
+
+async function classifyCompetitor(
+  item: any,
+  businessContext:
+    | Record<string, any>
+    | null,
+  businessSeed: string,
+  detectedNiche: string
+) {
+  const domain =
+    normalizeDomain(
+      item?.domain || ""
+    );
+
+  const auditedRole =
+    String(
+      businessContext
+        ?.marketRole || ""
+    ).toLowerCase();
+
+  const known =
+    knownCompetitorRelationship(
+      domain
+    );
+
+  if (known) {
+    const relationship:
+      CompetitorRelationship =
+        auditedRole ===
+          "publication" &&
+        known ===
+          "publisher_review"
+          ? "direct"
+          : known;
+
+    return {
+      ...item,
+
+      relationship,
+
+      relationshipLabel:
+        competitorRelationshipLabel(
+          relationship
+        ),
+
+      classificationConfidence:
+        "high",
+
+      classificationReason:
+        "Recognized global platform type.",
+    };
+  }
+
+  const homepage =
+    await getCompetitorHomepageText(
+      domain
+    );
+
+  const candidateRole =
+    inferCompetitorRole(
+      homepage.text
+    );
+
+  const businessTokens =
+    Array.from(
+      new Set(
+        [
+          businessSeed,
+
+          businessContext
+            ?.primaryService,
+
+          businessContext
+            ?.categoryLabel,
+
+          ...(
+            Array.isArray(
+              businessContext
+                ?.coreTokens
+            )
+              ? businessContext
+                  .coreTokens
+              : []
+          ),
+
+          ...(
+            Array.isArray(
+              businessContext
+                ?.categoryKeywords
+            )
+              ? businessContext
+                  .categoryKeywords
+              : []
+          ),
+
+          ...getNicheKeywordHints(
+            detectedNiche
+          ),
+        ].flatMap(
+          competitorTokens
+        )
+      )
+    );
+
+  const topicalMatches =
+    businessTokens.filter(
+      (token) =>
+        homepage.text.includes(
+          token
+        )
+    );
+
+  const auditedBusinessText =
+    `${businessSeed} ${
+      businessContext
+        ?.primaryService || ""
+    } ${
+      businessContext
+        ?.categoryLabel || ""
+    }`.toLowerCase();
+
+  let relationship:
+    CompetitorRelationship =
+      "unclassified_overlap";
+
+  if (
+    candidateRole ===
+    "search_intermediary"
+  ) {
+    relationship =
+      "search_intermediary";
+  } else if (
+    candidateRole ===
+    "manufacturer_brand"
+  ) {
+    relationship =
+      "manufacturer_brand";
+  } else if (
+    candidateRole ===
+      "publisher_review" &&
+    auditedRole !==
+      "publication"
+  ) {
+    relationship =
+      "publisher_review";
+  } else if (
+    candidateRole ===
+      "marketplace" &&
+    auditedRole !==
+      "marketplace"
+  ) {
+    relationship =
+      "marketplace";
+  } else if (
+    compatibleCompetitorRole(
+      auditedRole,
+      candidateRole,
+      auditedBusinessText
+    ) &&
+    (
+      topicalMatches.length >= 2 ||
+      (
+        topicalMatches.length >=
+          1 &&
+        Number(
+          item?.sharedKeywords ||
+            0
+        ) >= 15
+      )
+    )
+  ) {
+    relationship =
+      "direct";
+  }
+
+  return {
+    ...item,
+
+    relationship,
+
+    relationshipLabel:
+      competitorRelationshipLabel(
+        relationship
+      ),
+
+    classificationConfidence:
+      homepage.fetched
+        ? "high"
+        : "low",
+
+    classificationReason:
+      relationship ===
+      "direct"
+        ? `Compatible business model with topical matches: ${topicalMatches.join(", ")}.`
+        : homepage.fetched
+          ? "Organic overlap exists, but homepage evidence did not prove a matching commercial business model."
+          : "Organic overlap exists, but competitor homepage evidence could not be verified.",
+
+    candidateRole,
+    topicalMatches,
+
+    homepageTitle:
+      homepage.title,
+
+    homepageDescription:
+      homepage.description,
+  };
+}
+
 function getCompetitorTrafficValue(item: any): number | null {
   const rawTraffic =
     item?.metrics?.organic?.clickstream_etv ??
@@ -1517,141 +2137,250 @@ const authorityScore = Math.min(
         : "Lower AI competition risk",
   };
 }
-    const blockedCompetitors = [
-  "youtube",
-  "daraz",
-"priceoye",
-"telemart",
-"alibaba",
-"naheed",
-"shophive",
-"alfatah",
-"olx",
-"paklap",
-"mega.pk",
-  "facebook",
-  "instagram",
-  "linkedin",
-  "twitter",
-  "x.com",
-  "pinterest",
-  "wikipedia",
-  "amazon",
-  "ebay",
-  "reddit",
-  "tiktok",
-  "quora",
-  "google",
-  "apple",
-  "walmart",
-  "bestbuy",
-  "getapp",
-"softwareadvice",
-"softwaresuggest",
-"softwareworld",
-"cloud.microsoft",
-"microsoft",
-"cloudflare",
-  "techradar",
-  "forbes",
-  "medium",
-  "nytimes",
-  "cnn",
-  "bbc",
+const ignoredCompetitorDomains = [
+  "google.com",
+  "cloudflare.com",
 ];
 
-    let topCompetitors = competitorItems
-      .map((item: any) => {
-        const competitorDomain = item?.domain || item?.target || "-";
-
-        const sharedKeywords =
-          item?.intersections ||
-          item?.common_keywords ||
-          item?.shared_keywords ||
-          item?.metrics?.organic?.count ||
-          0;
-
-        return enrichCompetitorThreat({
-  domain: competitorDomain,
-  sharedKeywords: Number(sharedKeywords || 0),
-  intersections: Number(sharedKeywords || 0),
-  traffic: getCompetitorTrafficValue(item),
-  rank: item?.rank || item?.competitor_rank || null,
-  relevance: Math.min(100, Math.max(5, Number(sharedKeywords || 0) * 10)),
-});
-      })
-      .filter((item: any) => {
-        const d = String(item.domain || "").toLowerCase();
-
-        const shared = Number(item.sharedKeywords || item.intersections || 0);
-        const traffic = Number(item.traffic || 0);
-        const trafficAvailable = item?.trafficAvailable === true;
-
-return (
-  d &&
-  d !== domain.toLowerCase() &&
-  !blockedCompetitors.some((blocked) => d.includes(blocked)) &&
-  allowedCompetitorHints.some((hint) => d.includes(hint)) &&
-  shared >= 3 &&
-  trafficAvailable &&
-  traffic > 0
-);
-      })
-      .sort((a: any, b: any) => {
-  const scoreA = Number(a.sharedKeywords || 0) * 10 + Number(a.traffic || 0);
-  const scoreB = Number(b.sharedKeywords || 0) * 10 + Number(b.traffic || 0);
-  return scoreB - scoreA;
-})
-      .slice(0, 10);
-
-    if (topCompetitors.length === 0) {
-  topCompetitors = competitorItems
+const rawCompetitorCandidates =
+  competitorItems
     .map((item: any) => {
-      const competitorDomain = item?.domain || item?.target || "-";
+      const competitorDomain =
+        normalizeDomain(
+          item?.domain ||
+            item?.target ||
+            ""
+        );
 
       const sharedKeywords =
         item?.intersections ||
         item?.common_keywords ||
         item?.shared_keywords ||
-        item?.metrics?.organic?.count ||
+        item?.metrics?.organic
+          ?.count ||
         0;
 
       return enrichCompetitorThreat({
-  domain: competitorDomain,
-  sharedKeywords: Number(sharedKeywords || 0),
-  intersections: Number(sharedKeywords || 0),
-  traffic: getCompetitorTrafficValue(item),
-  rank: item?.rank || item?.competitor_rank || null,
-  relevance: Math.min(100, Math.max(5, Number(sharedKeywords || 0) * 10)),
-});
+        domain:
+          competitorDomain,
+
+        sharedKeywords:
+          Number(
+            sharedKeywords || 0
+          ),
+
+        intersections:
+          Number(
+            sharedKeywords || 0
+          ),
+
+        traffic:
+          getCompetitorTrafficValue(
+            item
+          ),
+
+        rank:
+          item?.rank ||
+          item?.competitor_rank ||
+          null,
+
+        relevance:
+          Math.min(
+            100,
+            Math.max(
+              5,
+              Number(
+                sharedKeywords || 0
+              ) * 10
+            )
+          ),
+      });
     })
     .filter((item: any) => {
-      const d = String(item.domain || "").toLowerCase();
-      const shared = Number(item.sharedKeywords || item.intersections || 0);
+      const candidateDomain =
+        String(
+          item?.domain || ""
+        ).toLowerCase();
+
+      const sharedKeywords =
+        Number(
+          item?.sharedKeywords ||
+            item?.intersections ||
+            0
+        );
 
       return (
-        d &&
-        d !== domain.toLowerCase() &&
-        !blockedCompetitors.some((blocked) => d.includes(blocked)) &&
-        shared >= 3
+        candidateDomain &&
+        candidateDomain !==
+          domain.toLowerCase() &&
+        !ignoredCompetitorDomains.some(
+          (ignoredDomain) =>
+            candidateDomain ===
+              ignoredDomain ||
+            candidateDomain.endsWith(
+              `.${ignoredDomain}`
+            )
+        ) &&
+        sharedKeywords >= 3
       );
     })
+    .sort(
+      (a: any, b: any) => {
+        const sharedDifference =
+          Number(
+            b?.sharedKeywords || 0
+          ) -
+          Number(
+            a?.sharedKeywords || 0
+          );
+
+        if (
+          sharedDifference !== 0
+        ) {
+          return sharedDifference;
+        }
+
+        return (
+          Number(
+            b?.traffic || 0
+          ) -
+          Number(
+            a?.traffic || 0
+          )
+        );
+      }
+    )
+    .slice(0, 15);
+
+const classifiedCompetitors =
+  await Promise.all(
+    rawCompetitorCandidates.map(
+      (item: any) =>
+        classifyCompetitor(
+          item,
+          businessContext,
+          businessSeed,
+          detectedNiche
+        )
+    )
+  );
+
+const sortCompetitors = (
+  items: any[]
+) =>
+  Array.from(
+    new Map<string, any>(
+      items.map(
+        (item: any) => [
+          String(
+            item?.domain || ""
+          ),
+          item,
+        ]
+      )
+    ).values()
+  )
+    .sort(
+      (a: any, b: any) => {
+        const threatDifference =
+          Number(
+            b?.threatScore || 0
+          ) -
+          Number(
+            a?.threatScore || 0
+          );
+
+        if (
+          threatDifference !== 0
+        ) {
+          return threatDifference;
+        }
+
+        return (
+          Number(
+            b?.sharedKeywords || 0
+          ) -
+          Number(
+            a?.sharedKeywords || 0
+          )
+        );
+      }
+    )
     .slice(0, 10);
-}
-topCompetitors = Array.from(
-  new Map(
-    topCompetitors.map((item: any) => [item.domain, item])
-  ).values()
-)
-  .sort((a: any, b: any) => {
-    if (Number(b.threatScore || 0) !== Number(a.threatScore || 0)) {
-      return Number(b.threatScore || 0) - Number(a.threatScore || 0);
-    }
 
-    return Number(b.sharedKeywords || 0) - Number(a.sharedKeywords || 0);
-  })
-  .slice(0, 10);
+const topCompetitors =
+  sortCompetitors(
+    classifiedCompetitors.filter(
+      (item: any) =>
+        item?.relationship ===
+        "direct"
+    )
+  );
 
+const competitorLandscape = {
+  direct:
+    topCompetitors,
+
+  searchIntermediaries:
+    sortCompetitors(
+      classifiedCompetitors.filter(
+        (item: any) =>
+          item?.relationship ===
+          "search_intermediary"
+      )
+    ),
+
+  marketplaces:
+    sortCompetitors(
+      classifiedCompetitors.filter(
+        (item: any) =>
+          item?.relationship ===
+          "marketplace"
+      )
+    ),
+
+  publishersAndReviewSites:
+    sortCompetitors(
+      classifiedCompetitors.filter(
+        (item: any) =>
+          item?.relationship ===
+          "publisher_review"
+      )
+    ),
+
+  manufacturersAndBrands:
+    sortCompetitors(
+      classifiedCompetitors.filter(
+        (item: any) =>
+          item?.relationship ===
+          "manufacturer_brand"
+      )
+    ),
+
+  socialAndCommunity:
+    sortCompetitors(
+      classifiedCompetitors.filter(
+        (item: any) =>
+          item?.relationship ===
+          "social_community"
+      )
+    ),
+
+  unclassifiedOverlap:
+    sortCompetitors(
+      classifiedCompetitors.filter(
+        (item: any) =>
+          item?.relationship ===
+          "unclassified_overlap"
+      )
+    ),
+
+  classifiedCandidates:
+    classifiedCompetitors.length,
+
+  methodology:
+    "Direct competitors require compatible business-model evidence plus topical homepage overlap. Directories, marketplaces, manufacturers, publishers, social platforms, and unverified overlap are reported separately and excluded from keyword-gap generation.",
+};  
     const ownKeywordSet = new Set(
       topKeywords
         .map((k: any) => String(k.keyword || "").toLowerCase().trim())
@@ -2096,9 +2825,15 @@ totalRankedKeywordsAvailable,
         backlinkRank: backlinksData.rank,
 domainAuthority: null,
         topKeywords: visibleTopKeywords,
-        competitors: topCompetitors,
-        backlinks: backlinksData,
-        keywordGap,
+competitors:
+  topCompetitors,
+
+competitorLandscape,
+
+backlinks:
+  backlinksData,
+
+keywordGap,
       },
     });
   } catch (error) {
