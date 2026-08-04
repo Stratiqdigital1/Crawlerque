@@ -164,15 +164,35 @@ function cleanCompetitorCandidate(
   value: string,
   brandName: string,
   domain: string,
-  category: string
+  category: string,
+  contextTerms: string[] = [],
+  country = ""
 ) {
-  const cleaned =
+  const original =
     String(value || "")
       .replace(/^https?:\/\//i, "")
       .replace(/^www\./i, "")
       .replace(/[|–—:]+.*$/, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  /*
+   * Reject truncated possessive/entity fragments
+   * such as an incomplete two-letter suffix.
+   */
+  if (
+    /'[a-z]{1,2}$/i.test(
+      original
+    ) &&
+    !/\s/.test(original)
+  ) {
+    return "";
+  }
+
+  const cleaned =
+    original
       .replace(
-        /^[^a-z0-9]+|[^a-z0-9.\- ]+$/gi,
+        /^[^a-z0-9]+|[^a-z0-9.'\- ]+$/gi,
         ""
       )
       .replace(/\s+/g, " ")
@@ -180,7 +200,8 @@ function cleanCompetitorCandidate(
 
   if (
     !cleaned ||
-    cleaned.length < 3 ||
+    cleaned.length < 2 ||
+    cleaned.length > 80 ||
     containsBrand(
       cleaned,
       brandName,
@@ -194,35 +215,74 @@ function cleanCompetitorCandidate(
     /^(ehr|emr|look|create|optimize|optimise|seo|saas|similar|software|platform|solution|solutions|service|services|company|companies|provider|providers|healthcare|medical|technology|tech|content|marketing|search|website|brand|brands|best|top|tools?|strong)$/i;
 
   const blockedGenericPhrase =
-    /^(united states|ppc|focused|founded|could|some|other|others|many|most|maybe|may|also|including|include|various|several|popular|leading|major|well known|there|great|uses?|crm|project management|business tools|software reviews?|reviews?|comparisons?|user[-\s]?friendly interface|customi[sz]ation options?|systems?|ehrs?|emrs?|features?|functionality|integration|interoperability|workflow|security|support|pricing)$/i;
+    /^(ppc|focused|founded|could|some|other|others|many|most|maybe|may|also|including|include|various|several|popular|leading|major|well known|there|great|uses?|crm|project management|business tools|software reviews?|reviews?|comparisons?|country|city|region|market|location|category|products?|user[-\s]?friendly interface|customi[sz]ation options?|systems?|ehrs?|emrs?|features?|functionality|integration|interoperability|workflow|security|support|pricing)$/i;
 
-  const categoryTokenSet =
+  const contextTokenSet =
     new Set(
-      categoryTokens(category)
+      categoryTokens(
+        [
+          category,
+          ...contextTerms,
+        ].join(" ")
+      )
     );
 
   const candidateTokens =
     categoryTokens(cleaned);
 
   /*
-   * Reject phrases that only repeat
-   * the audited category rather than
-   * identifying a real brand/product.
+   * Reject category labels such as
+   * "cosmetics", "healthcare", "software",
+   * or any other context-only phrase.
    */
-  const categoryOnlyPhrase =
+  const contextOnlyPhrase =
     candidateTokens.length > 0 &&
-    candidateTokens.length <= 3 &&
+    candidateTokens.length <= 4 &&
     candidateTokens.every(
       (token) =>
-        categoryTokenSet.has(token)
+        contextTokenSet.has(token)
     );
+
+  const normalizedCountry =
+    normalizedComparable(
+      country
+    );
+
+  const normalizedCandidate =
+    normalizedComparable(
+      cleaned
+        .replace(
+          /^(in|for|from|across|within)\s+/i,
+          ""
+        )
+        .replace(/['’]s$/i, "")
+    );
+
+  /*
+   * Dynamic location filtering. No country
+   * name is hard-coded.
+   */
+  const locationOnlyPhrase =
+    Boolean(
+      normalizedCountry
+    ) &&
+    normalizedCandidate ===
+      normalizedCountry;
+
+  const sentenceFragment =
+    cleaned
+      .split(/\s+/)
+      .filter(Boolean)
+      .length > 6;
 
   if (
     blocked.test(cleaned) ||
     blockedGenericPhrase.test(
       cleaned
     ) ||
-    categoryOnlyPhrase
+    contextOnlyPhrase ||
+    locationOnlyPhrase ||
+    sentenceFragment
   ) {
     return "";
   }
@@ -257,10 +317,31 @@ function uniqueStrings(values: string[]) {
 }
 
 function competitorComparable(value: string) {
-  return String(value || "")
-    .toLowerCase()
-    .replace(/^www\./, "")
-    .replace(/\.(com|net|org|io|co|ai|us|uk|ca|ae|au|in)$/i, "")
+  let normalized =
+    String(value || "")
+      .toLowerCase()
+      .replace(/^https?:\/\//, "")
+      .replace(/^www\./, "")
+      .split(/[/?#]/)[0]
+      .trim();
+
+  /*
+   * Remove any normal public TLD rather than
+   * maintaining a country-specific TLD list.
+   */
+  if (
+    /^[a-z0-9.-]+\.[a-z]{2,24}$/i.test(
+      normalized
+    )
+  ) {
+    normalized =
+      normalized.replace(
+        /\.[a-z]{2,24}$/i,
+        ""
+      );
+  }
+
+  return normalized
     .replace(/[^a-z0-9]/g, "")
     .trim();
 }
@@ -337,14 +418,76 @@ const category = String(
 
     let rankedPages: unknown[] = [];
     let generatedPrompts: string[] = [];
-    let detectedCountry = String(body?.country || body?.locationName || "").trim();
+
+    let detectedCountry =
+      String(
+        body?.country ||
+          body?.locationName ||
+          ""
+      ).trim();
+
     const selectedLanguageName =
-      String(body?.languageName || "English");
+      String(
+        body?.languageName ||
+          "English"
+      );
+
     const selectedLanguageCode =
-      String(body?.languageCode || "en");
+      String(
+        body?.languageCode ||
+          "en"
+      );
+
     const selectedLocationCode =
-      Number(body?.locationCode || 0) ||
+      Number(
+        body?.locationCode || 0
+      ) ||
       undefined;
+
+    /*
+     * Universal business-context vocabulary
+     * used to reject category names, services,
+     * products and market descriptions that
+     * are incorrectly extracted as competitors.
+     */
+    const competitorContextTerms =
+      [
+        suppliedBusinessContext
+          ?.categoryLabel,
+
+        suppliedBusinessContext
+          ?.primaryService,
+
+        suppliedBusinessContext
+          ?.searchSeed,
+
+        ...(
+          Array.isArray(
+            suppliedBusinessContext
+              ?.coreTokens
+          )
+            ? suppliedBusinessContext
+                .coreTokens
+            : []
+        ),
+
+        ...(
+          Array.isArray(
+            suppliedBusinessContext
+              ?.categoryKeywords
+          )
+            ? suppliedBusinessContext
+                .categoryKeywords
+            : []
+        ),
+      ]
+        .map(
+          (value) =>
+            String(
+              value || ""
+            ).trim()
+        )
+        .filter(Boolean);
 
     try {
       const keywordIntel = await getKeywordIntel(
@@ -469,7 +612,17 @@ const iso =
 
     const parsedResponses: ParsedResponse[] = [];
     const promptResults: Array<Record<string, unknown>> = [];
-    const citationsMap = new Map<string, Set<string>>();
+    const categoryCitationsMap =
+  new Map<
+    string,
+    Set<string>
+  >();
+
+const brandKnowledgeCitationsMap =
+  new Map<
+    string,
+    Set<string>
+  >();
 
     for (const { prompt, modelResults } of promptRuns) {
       const row: Record<string, unknown> = {
@@ -506,11 +659,13 @@ const iso =
               []
             )
               .map((value: string) =>
-                cleanCompetitorCandidate(
+cleanCompetitorCandidate(
   value,
   brandName,
   domain,
-  category
+  category,
+  competitorContextTerms,
+  detectedCountry
 )
               )
               .filter(Boolean)
@@ -524,10 +679,26 @@ const iso =
           positions.push(parsed.brandPosition);
         }
 
-        parsed.brandCitations.forEach((url) => {
-          if (!citationsMap.has(url)) citationsMap.set(url, new Set());
-          citationsMap.get(url)?.add(modelResult.model);
-        });
+parsed.brandCitations.forEach(
+  (url) => {
+    if (
+      !categoryCitationsMap.has(
+        url
+      )
+    ) {
+      categoryCitationsMap.set(
+        url,
+        new Set()
+      );
+    }
+
+    categoryCitationsMap
+      .get(url)
+      ?.add(
+        modelResult.model
+      );
+  }
+);
       }
 
       row.models = modelRows;
@@ -564,11 +735,13 @@ const iso =
           ),
         ]
           .map((value: string) =>
-            cleanCompetitorCandidate(
+cleanCompetitorCandidate(
   value,
   brandName,
   domain,
-  category
+  category,
+  competitorContextTerms,
+  detectedCountry
 )
           )
           .filter(Boolean)
@@ -595,10 +768,30 @@ const iso =
       if (responseAvailable) validKnowledgeResponses += 1;
       if (knows) knownCount += 1;
 
-      citations.forEach((url) => {
-        if (!citationsMap.has(url)) citationsMap.set(url, new Set());
-        citationsMap.get(url)?.add(modelResult.model);
-      });
+/*
+ * Awareness citation evidence is attached
+ * only when that model also confidently
+ * recognised the brand.
+ */
+if (knows) {
+  citations.forEach((url) => {
+    if (
+      !brandKnowledgeCitationsMap
+        .has(url)
+    ) {
+      brandKnowledgeCitationsMap.set(
+        url,
+        new Set()
+      );
+    }
+
+    brandKnowledgeCitationsMap
+      .get(url)
+      ?.add(
+        modelResult.model
+      );
+  });
+}
 
       knowledgeModels[modelResult.model] = {
         available: responseAvailable,
@@ -632,10 +825,33 @@ const iso =
       }))
     );
 
-    const citations = Array.from(citationsMap.entries()).map(([url, models]) => ({
+const brandKnowledgeCitations =
+  Array.from(
+    brandKnowledgeCitationsMap
+      .entries()
+  ).map(
+    ([url, models]) => ({
       url,
-      models: Array.from(models),
-    }));
+      models:
+        Array.from(models),
+      evidenceType:
+        "brand-awareness",
+    })
+  );
+
+const categoryCitations =
+  Array.from(
+    categoryCitationsMap
+      .entries()
+  ).map(
+    ([url, models]) => ({
+      url,
+      models:
+        Array.from(models),
+      evidenceType:
+        "unbranded-category",
+    })
+  );
 
     const modelsCalled = uniqueStrings(
       promptRuns.flatMap((run) =>
@@ -664,9 +880,20 @@ const iso =
       },
       promptResults,
       customEvidence,
-      brandKnowledge,
-      citations,
-      rankedPages,
+brandKnowledge,
+
+brandKnowledgeCitations,
+
+categoryCitations,
+
+/*
+ * Compatibility alias used by the
+ * current dashboard/PDF.
+ */
+citations:
+  brandKnowledgeCitations,
+
+rankedPages,
       country: detectedCountry,
       countryIso: iso,
       locationCode:

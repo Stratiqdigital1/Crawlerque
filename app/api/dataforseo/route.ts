@@ -1399,6 +1399,7 @@ function getKnownCompetitorBrandTokens(
 
 type CompetitorRelationship =
   | "direct"
+  | "category_competitor"
   | "search_intermediary"
   | "marketplace"
   | "publisher_review"
@@ -1406,29 +1407,110 @@ type CompetitorRelationship =
   | "social_community"
   | "unclassified_overlap";
 
+/*
+ * These words describe a business model or
+ * generic website operation. They do not prove
+ * that two websites sell the same thing.
+ */
 const competitorStopWords = new Set([
-  "and",
+  "about",
+  "add",
   "best",
   "business",
+  "businesses",
+  "buy",
+  "cart",
+  "checkout",
   "company",
   "companies",
-  "for",
-  "from",
+  "delivery",
+  "ecommerce",
   "global",
   "group",
+  "home",
+  "homepage",
+  "market",
   "online",
+  "platform",
+  "platforms",
+  "product",
+  "products",
+  "provider",
+  "providers",
+  "retail",
+  "service",
   "services",
+  "shop",
+  "shopping",
+  "site",
+  "solution",
   "solutions",
-  "the",
-  "this",
-  "top",
-  "with",
+  "store",
+  "stores",
+  "website",
+  "websites",
+  "world",
   "your",
+  "with",
+  "from",
+  "this",
+  "that",
+  "their",
+  "the",
+  "and",
+  "for",
+  "top",
 ]);
+
+function normalizeCompetitorToken(
+  value: unknown
+) {
+  let token = String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .trim();
+
+  if (
+    token.length < 4 ||
+    competitorStopWords.has(token)
+  ) {
+    return "";
+  }
+
+  /*
+   * Lightweight singular normalization.
+   * This is category-independent and improves
+   * matching such as groceries/grocery,
+   * cosmetics/cosmetic and services/service.
+   */
+  if (
+    token.endsWith("ies") &&
+    token.length > 5
+  ) {
+    token =
+      `${token.slice(0, -3)}y`;
+  } else if (
+    token.endsWith("s") &&
+    token.length > 4 &&
+    !token.endsWith("ss")
+  ) {
+    token =
+      token.slice(0, -1);
+  }
+
+  if (
+    token.length < 4 ||
+    competitorStopWords.has(token)
+  ) {
+    return "";
+  }
+
+  return token;
+}
 
 const competitorTokens = (
   value: unknown
-) =>
+): string[] =>
   Array.from(
     new Set(
       String(value || "")
@@ -1438,15 +1520,64 @@ const competitorTokens = (
           " "
         )
         .split(/\s+/)
-        .filter(
-          (token) =>
-            token.length >= 4 &&
-            !competitorStopWords.has(
-              token
-            )
+        .map(
+          normalizeCompetitorToken
         )
+        .filter(Boolean)
     )
   );
+
+function buildCompetitorTopicProfile(
+  primaryValues: unknown[],
+  supportingValues: unknown[] = []
+) {
+  const tokenScores =
+    new Map<string, number>();
+
+  primaryValues.forEach(
+    (value) => {
+      competitorTokens(value).forEach(
+        (token) => {
+          tokenScores.set(
+            token,
+            (
+              tokenScores.get(
+                token
+              ) || 0
+            ) + 4
+          );
+        }
+      );
+    }
+  );
+
+  supportingValues.forEach(
+    (value) => {
+      competitorTokens(value).forEach(
+        (token) => {
+          tokenScores.set(
+            token,
+            (
+              tokenScores.get(
+                token
+              ) || 0
+            ) + 1
+          );
+        }
+      );
+    }
+  );
+
+  return Array.from(
+    tokenScores.entries()
+  )
+    .sort(
+      (a, b) =>
+        b[1] - a[1]
+    )
+    .slice(0, 24)
+    .map(([token]) => token);
+}
 
 function knownCompetitorRelationship(
   domainValue: string
@@ -1495,32 +1626,35 @@ function competitorRelationshipLabel(
   relationship:
     CompetitorRelationship
 ) {
-  const labels:
-    Record<
-      CompetitorRelationship,
-      string
-    > = {
-    direct:
-      "Direct Competitor",
+const labels:
+  Record<
+    CompetitorRelationship,
+    string
+  > = {
+  direct:
+    "Direct Competitor",
 
-    search_intermediary:
-      "Search Visibility Intermediary",
+  category_competitor:
+    "Category / Vertical Competitor",
 
-    marketplace:
-      "Marketplace",
+  search_intermediary:
+    "Search Visibility Intermediary",
 
-    publisher_review:
-      "Publisher / Review Site",
+  marketplace:
+    "Marketplace",
 
-    manufacturer_brand:
-      "Manufacturer / Industry Brand",
+  publisher_review:
+    "Publisher / Review Site",
 
-    social_community:
-      "Social / Community Platform",
+  manufacturer_brand:
+    "Manufacturer / Industry Brand",
 
-    unclassified_overlap:
-      "Unclassified Organic Overlap",
-  };
+  social_community:
+    "Social / Community Platform",
+
+  unclassified_overlap:
+    "Unclassified Organic Overlap",
+};
 
   return labels[
     relationship
@@ -1819,7 +1953,15 @@ async function classifyCompetitor(
     | Record<string, any>
     | null,
   businessSeed: string,
-  detectedNiche: string
+  detectedNiche: string,
+  siteContext:
+    | {
+        title?: string;
+        description?: string;
+        h1?: string;
+      }
+    | null,
+  topKeywords: any[]
 ) {
   const domain =
     normalizeDomain(
@@ -1830,31 +1972,50 @@ async function classifyCompetitor(
     String(
       businessContext
         ?.marketRole || ""
-    ).toLowerCase();
+    )
+      .trim()
+      .toLowerCase();
 
   const known =
     knownCompetitorRelationship(
       domain
     );
 
-  if (known) {
-    const relationship:
-      CompetitorRelationship =
-        auditedRole ===
-          "publication" &&
-        known ===
-          "publisher_review"
-          ? "direct"
-          : known;
+  /*
+   * Structural platforms are separated early,
+   * except when the audited website has the
+   * same model. A marketplace may compete with
+   * another marketplace, and a publication may
+   * compete with another publication, but they
+   * still need topical validation.
+   */
+  const evaluateKnownAsPeer =
+    (
+      auditedRole ===
+        "publication" &&
+      known ===
+        "publisher_review"
+    ) ||
+    (
+      auditedRole ===
+        "marketplace" &&
+      known ===
+        "marketplace"
+    );
 
+  if (
+    known &&
+    !evaluateKnownAsPeer
+  ) {
     return {
       ...item,
 
-      relationship,
+      relationship:
+        known,
 
       relationshipLabel:
         competitorRelationshipLabel(
-          relationship
+          known
         ),
 
       classificationConfidence:
@@ -1871,67 +2032,195 @@ async function classifyCompetitor(
     );
 
   const candidateRole =
-    inferCompetitorRole(
-      homepage.text
+    known ===
+      "publisher_review"
+      ? "publisher_review"
+      : known ===
+          "marketplace"
+        ? "marketplace"
+        : inferCompetitorRole(
+            homepage.text
+          );
+
+  const auditedPrimaryValues = [
+    businessSeed,
+
+    businessContext
+      ?.primaryService,
+
+    businessContext
+      ?.categoryLabel,
+
+    ...(
+      Array.isArray(
+        businessContext
+          ?.coreTokens
+      )
+        ? businessContext
+            .coreTokens
+        : []
+    ),
+
+    ...(
+      Array.isArray(
+        businessContext
+          ?.categoryKeywords
+      )
+        ? businessContext
+            .categoryKeywords
+        : []
+    ),
+
+    siteContext?.title,
+    siteContext?.description,
+    siteContext?.h1,
+  ].filter(Boolean);
+
+  const auditedSupportingValues =
+    (
+      Array.isArray(
+        topKeywords
+      )
+        ? topKeywords
+        : []
+    )
+      .filter(
+        (item: any) =>
+          item?.branded !== true
+      )
+      .slice(0, 40)
+      .map(
+        (item: any) =>
+          item?.keyword
+      )
+      .filter(Boolean);
+
+  const auditedTopicTokens =
+    buildCompetitorTopicProfile(
+      auditedPrimaryValues,
+      auditedSupportingValues
     );
 
-  const businessTokens =
-    Array.from(
-      new Set(
-        [
-          businessSeed,
+  const candidateTopicTokens =
+    buildCompetitorTopicProfile(
+      [
+        homepage.title,
+        homepage.description,
+        homepage.text,
+      ]
+    );
 
-          businessContext
-            ?.primaryService,
-
-          businessContext
-            ?.categoryLabel,
-
-          ...(
-            Array.isArray(
-              businessContext
-                ?.coreTokens
-            )
-              ? businessContext
-                  .coreTokens
-              : []
-          ),
-
-          ...(
-            Array.isArray(
-              businessContext
-                ?.categoryKeywords
-            )
-              ? businessContext
-                  .categoryKeywords
-              : []
-          ),
-
-          ...getNicheKeywordHints(
-            detectedNiche
-          ),
-        ].flatMap(
-          competitorTokens
-        )
-      )
+  const candidateTokenSet =
+    new Set(
+      candidateTopicTokens
     );
 
   const topicalMatches =
-    businessTokens.filter(
+    auditedTopicTokens.filter(
       (token) =>
-        homepage.text.includes(
+        candidateTokenSet.has(
           token
         )
     );
 
+  const sharedKeywords =
+    Number(
+      item?.sharedKeywords ||
+        item?.intersections ||
+        0
+    );
+
+  const auditedCoverage =
+    topicalMatches.length /
+    Math.max(
+      1,
+      Math.min(
+        12,
+        auditedTopicTokens.length
+      )
+    );
+
+  const candidateCoverage =
+    topicalMatches.length /
+    Math.max(
+      1,
+      Math.min(
+        12,
+        candidateTopicTokens.length
+      )
+    );
+
+  const broadAuditedCategory =
+    auditedTopicTokens.length >= 8;
+
+  /*
+   * Broad retailers, publications and platforms
+   * require broader category coverage. A
+   * specialist matching only one product family
+   * becomes a category competitor, not the main
+   * direct competitor.
+   */
+  const minimumDirectMatches =
+    broadAuditedCategory
+      ? 4
+      : 2;
+
+  const minimumAuditedCoverage =
+    broadAuditedCategory
+      ? 0.35
+      : 0.25;
+
+  const minimumCandidateCoverage =
+    broadAuditedCategory
+      ? 0.2
+      : 0.25;
+
   const auditedBusinessText =
-    `${businessSeed} ${
+    [
+      businessSeed,
       businessContext
-        ?.primaryService || ""
-    } ${
+        ?.primaryService,
       businessContext
-        ?.categoryLabel || ""
-    }`.toLowerCase();
+        ?.categoryLabel,
+      siteContext?.title,
+      siteContext?.description,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+  const sameBusinessModel =
+    compatibleCompetitorRole(
+      auditedRole,
+      candidateRole,
+      auditedBusinessText
+    );
+
+  const qualifiesAsDirect =
+    sameBusinessModel &&
+    homepage.fetched &&
+    sharedKeywords >= 3 &&
+    topicalMatches.length >=
+      minimumDirectMatches &&
+    auditedCoverage >=
+      minimumAuditedCoverage &&
+    candidateCoverage >=
+      minimumCandidateCoverage;
+
+  const qualifiesAsCategoryCompetitor =
+    sameBusinessModel &&
+    homepage.fetched &&
+    !qualifiesAsDirect &&
+    (
+      (
+        topicalMatches.length >= 2 &&
+        sharedKeywords >= 3
+      ) ||
+      (
+        topicalMatches.length >= 1 &&
+        sharedKeywords >= 10
+      )
+    );
 
   let relationship:
     CompetitorRelationship =
@@ -1966,26 +2255,36 @@ async function classifyCompetitor(
     relationship =
       "marketplace";
   } else if (
-    compatibleCompetitorRole(
-      auditedRole,
-      candidateRole,
-      auditedBusinessText
-    ) &&
-    (
-      topicalMatches.length >= 2 ||
-      (
-        topicalMatches.length >=
-          1 &&
-        Number(
-          item?.sharedKeywords ||
-            0
-        ) >= 15
-      )
-    )
+    qualifiesAsDirect
   ) {
     relationship =
       "direct";
+  } else if (
+    qualifiesAsCategoryCompetitor
+  ) {
+    relationship =
+      "category_competitor";
   }
+
+  const roundedAuditedCoverage =
+    Math.round(
+      auditedCoverage * 100
+    );
+
+  const roundedCandidateCoverage =
+    Math.round(
+      candidateCoverage * 100
+    );
+
+  const classificationReason =
+    relationship === "direct"
+      ? `Matching business model with broad topical coverage: ${topicalMatches.join(", ")}. Audited-category coverage: ${roundedAuditedCoverage}%.`
+      : relationship ===
+          "category_competitor"
+        ? `Matching business model with partial category overlap: ${topicalMatches.join(", ")}. This domain competes within part of the audited market but did not match enough category breadth to be treated as a full direct competitor.`
+        : homepage.fetched
+          ? `Organic overlap exists, but the homepage evidence did not prove both a matching business model and sufficient topical coverage. Audited-category coverage: ${roundedAuditedCoverage}%; candidate coverage: ${roundedCandidateCoverage}%.`
+          : "Organic overlap exists, but competitor homepage evidence could not be verified.";
 
   return {
     ...item,
@@ -1998,20 +2297,28 @@ async function classifyCompetitor(
       ),
 
     classificationConfidence:
-      homepage.fetched
-        ? "high"
-        : "low",
-
-    classificationReason:
       relationship ===
-      "direct"
-        ? `Compatible business model with topical matches: ${topicalMatches.join(", ")}.`
+        "direct" ||
+      relationship ===
+        "category_competitor"
+        ? "high"
         : homepage.fetched
-          ? "Organic overlap exists, but homepage evidence did not prove a matching commercial business model."
-          : "Organic overlap exists, but competitor homepage evidence could not be verified.",
+          ? "moderate"
+          : "low",
+
+    classificationReason,
 
     candidateRole,
+
     topicalMatches,
+
+    auditedTopicTokens,
+
+    auditedCategoryCoverage:
+      roundedAuditedCoverage,
+
+    candidateTopicCoverage:
+      roundedCandidateCoverage,
 
     homepageTitle:
       homepage.title,
@@ -2256,12 +2563,14 @@ const classifiedCompetitors =
   await Promise.all(
     rawCompetitorCandidates.map(
       (item: any) =>
-        classifyCompetitor(
-          item,
-          businessContext,
-          businessSeed,
-          detectedNiche
-        )
+classifyCompetitor(
+  item,
+  businessContext,
+  businessSeed,
+  detectedNiche,
+  siteContext,
+  topKeywords
+)
     )
   );
 
@@ -2320,6 +2629,15 @@ const topCompetitors =
 const competitorLandscape = {
   direct:
     topCompetitors,
+
+  categoryCompetitors:
+    sortCompetitors(
+      classifiedCompetitors.filter(
+        (item: any) =>
+          item?.relationship ===
+          "category_competitor"
+      )
+    ),
 
   searchIntermediaries:
     sortCompetitors(

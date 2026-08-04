@@ -1127,6 +1127,7 @@ const cancelAudit = async () => {
   }));
 type ReportCompetitorLandscape = {
   direct: any[];
+  categoryCompetitors: any[];
   searchIntermediaries: any[];
   marketplaces: any[];
   publishersAndReviewSites: any[];
@@ -1194,14 +1195,23 @@ const getReportCompetitorLandscape = (
     typeof stored === "object"
   ) {
     return {
-      direct:
-        Array.isArray(
-          stored?.direct
-        )
-          ? stored.direct
-          : [],
+direct:
+  Array.isArray(
+    stored?.direct
+  )
+    ? stored.direct
+    : [],
 
-      searchIntermediaries:
+categoryCompetitors:
+  Array.isArray(
+    stored
+      ?.categoryCompetitors
+  )
+    ? stored
+        .categoryCompetitors
+    : [],
+
+searchIntermediaries:
         Array.isArray(
           stored?.searchIntermediaries
         )
@@ -1245,11 +1255,12 @@ const getReportCompetitorLandscape = (
     };
   }
 
-  const fallback:
-    ReportCompetitorLandscape = {
-    direct: [],
-    searchIntermediaries: [],
-    marketplaces: [],
+const fallback:
+  ReportCompetitorLandscape = {
+  direct: [],
+  categoryCompetitors: [],
+  searchIntermediaries: [],
+  marketplaces: [],
     publishersAndReviewSites: [],
     manufacturersAndBrands: [],
     socialAndCommunity: [],
@@ -1280,14 +1291,21 @@ const getReportCompetitorLandscape = (
         item?.domain
       );
 
-    if (
-      relationship === "direct"
-    ) {
-      fallback.direct.push(item);
-    } else if (
-      relationship ===
-      "search_intermediary"
-    ) {
+if (
+  relationship === "direct"
+) {
+  fallback.direct.push(item);
+} else if (
+  relationship ===
+  "category_competitor"
+) {
+  fallback.categoryCompetitors.push(
+    item
+  );
+} else if (
+  relationship ===
+  "search_intermediary"
+) {
       fallback.searchIntermediaries.push(
         item
       );
@@ -1347,6 +1365,9 @@ const liveDirectCompetitors =
   liveCompetitorLandscape.direct;
 
 const liveOtherOverlap = [
+  ...liveCompetitorLandscape
+    .categoryCompetitors,
+
   ...liveCompetitorLandscape
     .searchIntermediaries,
 
@@ -1981,36 +2002,198 @@ const compactKeywordValue = (value: any) =>
     .trim();
 
 const cleanAiCompetitorList = (
-  values: any
+  values: any,
+  report: any
 ) => {
-const blocked =
-  /^(ehr|emr|look|strong|tools?|saas|similar|software|platforms?|solutions?|services?|providers?|companies?|brands?|healthcare|medical|technology|tech|best|top|it's|its|their|they|there|great|uses?|could|some|other|others|many|most|also|create|seo|optimize|optimise|search|website|content|marketing|analysis|strategy|strategies|crm|customer relationship management|project management|business tools|software reviews?|reviews?|comparisons?)$/i;
+  const blocked =
+    /^(ehr|emr|look|strong|tools?|saas|similar|software|platforms?|solutions?|services?|providers?|companies?|brands?|healthcare|medical|technology|tech|best|top|it's|its|their|they|there|great|uses?|could|some|other|others|many|most|also|create|seo|optimize|optimise|search|website|content|marketing|analysis|strategy|strategies|crm|customer relationship management|project management|business tools|software reviews?|reviews?|comparisons?|country|city|region|market|location|category|products?)$/i;
 
-  const seen = new Set<string>();
-  const cleaned: string[] = [];
+  const market =
+    String(
+      report
+        ?.aiSearchVisibility
+        ?.country ||
+      report?.auditConfig
+        ?.countryName ||
+      report?.searchContext
+        ?.country ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
 
-  (Array.isArray(values) ? values : []).forEach(
+  const normalizedMarket =
+    market.replace(
+      /[^a-z0-9]/g,
+      ""
+    );
+
+  const contextTokenSet =
+    new Set(
+      [
+        report
+          ?.businessContext
+          ?.categoryLabel,
+
+        report
+          ?.businessContext
+          ?.primaryService,
+
+        ...(
+          Array.isArray(
+            report
+              ?.businessContext
+              ?.coreTokens
+          )
+            ? report
+                .businessContext
+                .coreTokens
+            : []
+        ),
+
+        ...(
+          Array.isArray(
+            report
+              ?.businessContext
+              ?.categoryKeywords
+          )
+            ? report
+                .businessContext
+                .categoryKeywords
+            : []
+        ),
+      ]
+        .flatMap(
+          (value: any) =>
+            String(value || "")
+              .toLowerCase()
+              .replace(
+                /[^a-z0-9]+/g,
+                " "
+              )
+              .split(/\s+/)
+        )
+        .filter(
+          (token) =>
+            token.length >= 4
+        )
+    );
+
+  const seen =
+    new Set<string>();
+
+  const cleaned:
+    string[] = [];
+
+  (
+    Array.isArray(values)
+      ? values
+      : []
+  ).forEach(
     (raw: any) => {
-      const value = String(raw || "")
-        .trim()
-        .replace(/^www\./i, "");
+      const original =
+        String(raw || "")
+          .trim()
+          .replace(
+            /^https?:\/\//i,
+            ""
+          )
+          .replace(/^www\./i, "");
 
       if (
-        value.length < 3 ||
-        blocked.test(value)
+        /'[a-z]{1,2}$/i.test(
+          original
+        ) &&
+        !/\s/.test(original)
       ) {
         return;
       }
 
-      const key = value
-        .toLowerCase()
-        .replace(
-          /\.(com|net|org|io|co|ai|us|uk|ca|ae|au|in)$/i,
-          ""
-        )
-        .replace(/[^a-z0-9]/g, "");
+      const value =
+        original
+          .replace(
+            /\s+/g,
+            " "
+          )
+          .trim();
 
-      if (!key || seen.has(key)) {
+      const normalizedValue =
+        value
+          .toLowerCase()
+          .replace(
+            /^(in|for|from|across|within)\s+/,
+            ""
+          )
+          .replace(/['’]s$/, "")
+          .replace(
+            /[^a-z0-9]/g,
+            ""
+          );
+
+      const valueTokens =
+        value
+          .toLowerCase()
+          .replace(
+            /[^a-z0-9]+/g,
+            " "
+          )
+          .split(/\s+/)
+          .filter(
+            (token) =>
+              token.length >= 4
+          );
+
+      const contextOnlyPhrase =
+        valueTokens.length > 0 &&
+        valueTokens.length <= 4 &&
+        valueTokens.every(
+          (token) =>
+            contextTokenSet.has(
+              token
+            )
+        );
+
+      if (
+        value.length < 2 ||
+        value.length > 80 ||
+        blocked.test(value) ||
+        contextOnlyPhrase ||
+        (
+          normalizedMarket &&
+          normalizedValue ===
+            normalizedMarket
+        )
+      ) {
+        return;
+      }
+
+      let comparable =
+        value
+          .toLowerCase()
+          .split(/[/?#]/)[0];
+
+      if (
+        /^[a-z0-9.-]+\.[a-z]{2,24}$/i.test(
+          comparable
+        )
+      ) {
+        comparable =
+          comparable.replace(
+            /\.[a-z]{2,24}$/i,
+            ""
+          );
+      }
+
+      const key =
+        comparable.replace(
+          /[^a-z0-9]/g,
+          ""
+        );
+
+      if (
+        !key ||
+        seen.has(key)
+      ) {
         return;
       }
 
@@ -3972,9 +4155,13 @@ const pdfCompetitorLandscape =
 const pdfDirectCompetitors =
   pdfCompetitorLandscape.direct;
 
-const pdfOtherCompetitorOverlap = [
-  ...pdfCompetitorLandscape
-    .searchIntermediaries,
+const pdfOtherCompetitorOverlap =
+  [
+    ...pdfCompetitorLandscape
+      .categoryCompetitors,
+
+    ...pdfCompetitorLandscape
+      .searchIntermediaries,
 
   ...pdfCompetitorLandscape
     .marketplaces,
@@ -4979,7 +5166,23 @@ sub("From executive summary to action roadmap — everything your team needs to 
   kpiRow([
     {label:"Share of Voice",value:`${Number(pdfData?.aiSearchVisibility?.shareOfVoice ?? 0)}%`,sub:"Brand vs competitor mentions",col:C.blue},
     {label:"Est. Monthly Traffic",value:fmt(pdfData?.traffic?.rawMonthly??pdfData?.traffic?.monthly),sub:`Confidence: ${cl(normalized.traffic.confidence)}`,col:C.accent},
-    {label:"Organic Keywords",value:fmt(pdfData?.dataforseo?.organicKeywords),sub:"Ranking keywords",col:C.amber},
+    {
+  label:
+    "Provider Total Ranking Keywords",
+
+  value:
+    fmt(
+      pdfData
+        ?.dataforseo
+        ?.organicKeywords
+    ),
+
+  sub:
+    "Complete provider footprint",
+
+  col:
+    C.amber,
+},
     {label:"Referring Domains",value:fmt(pdfData?.backlinks?.referringDomains),sub:"Link authority",col:C.blue},
   ]);
   secTitle("Visual Score Breakdown");
@@ -5049,7 +5252,23 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
     kpiRow([
       {label:"Est. Monthly Visits",value:fmt(pdfData?.traffic?.rawMonthly??pdfData?.traffic?.monthly),sub:`Confidence: ${cl(normalized.traffic.confidence)}`,col:C.accent},
       {label:"Daily Visits",value:fmtDailyVisits(pdfData?.traffic?.rawMonthly??pdfData?.traffic?.monthly, normalized.traffic.daily),sub:"Monthly ÷ 30",col:C.blue},
-      {label:"Keyword Footprint",value:fmt(normalized.traffic.keywordCount),sub:"Ranked keywords",col:C.amber},
+      {
+  label:
+    "Keywords Used in Traffic Model",
+
+  value:
+    fmt(
+      normalized
+        .traffic
+        .keywordCount
+    ),
+
+  sub:
+    "Fetched and modelled set",
+
+  col:
+    C.amber,
+},
       {
         label:"Traffic Score",
         value:cl(String(pdfData?.traffic?.score??"—")),
@@ -5064,7 +5283,20 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
     tblWrap(["Metric","Value","Notes"],[
       {col1:"Est. Monthly Visits",col2:fmt(pdfData?.traffic?.rawMonthly??pdfData?.traffic?.monthly),col3:"Organic visibility estimate"},
       {col1:"Est. Daily Visits",col2:fmtDailyVisits(pdfData?.traffic?.rawMonthly??pdfData?.traffic?.monthly, normalized.traffic.daily),col3:"Monthly ÷ 30"},
-      {col1:"Keyword Footprint",col2:fmt(normalized.traffic.keywordCount),col3:"500+ moderate, 2,000+ strong"},
+      {
+  col1:
+    "Keywords Used in Traffic Model",
+
+  col2:
+    fmt(
+      normalized
+        .traffic
+        .keywordCount
+    ),
+
+  col3:
+    "Fetched ranking terms used for the traffic estimate",
+},
       {col1:"Filtered Keywords",col2:fmt(pdfData?.traffic?.filteredKeywordCount),col3:"Low-volume (<10) removed"},
       {col1:"Confidence",col2:cl(normalized.traffic.confidence),col3:"High requires 2,000+ ranked keywords"},
       {col1:"Data Method",col2:cl(pdfData?.traffic?.method??"CTR curve"),col3:"Clickstream ETV -> CTR fallback"},
@@ -5319,9 +5551,10 @@ if (resolvedSeoTitle) {
         tbl(["Page", "Top Keywords", "Vol"], av.rankedPages.slice(0, 8).map((p: any) => ({ col1: cl(p.path || p.url), col2: cl((p.keywords||[]).slice(0,4).map((k:any)=>k.keyword).join(", ")), col3: fmt(p.totalVolume) })), [CW - 95, 70, 25]);
       }
       const cleanAiCompetitors =
-        cleanAiCompetitorList(
-          av.topCompetitors
-        );
+cleanAiCompetitorList(
+  av.topCompetitors,
+  pdfData
+)
 
       if (cleanAiCompetitors.length) {
         hiBox(
@@ -5691,6 +5924,15 @@ hiBox(
     }
 
     const landscapeRows = [
+
+      ...pdfCompetitorLandscape
+  .categoryCompetitors
+  .map((item: any) => ({
+    ...item,
+
+    relationshipLabel:
+      "Category / Vertical Competitor",
+  })),
       ...pdfCompetitorLandscape
         .searchIntermediaries
         .map((item: any) => ({
@@ -9327,12 +9569,14 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
   Other Brands and Products Mentioned in AI Answers
 </h3>
         {cleanAiCompetitorList(
-          data.aiSearchVisibility.topCompetitors
-        ).length > 0 ? (
+  data.aiSearchVisibility.topCompetitors,
+  data
+).length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {cleanAiCompetitorList(
-              data.aiSearchVisibility.topCompetitors
-            ).map((c: string, i: number) => (
+  data.aiSearchVisibility.topCompetitors,
+  data
+).map((c: string, i: number) => (
               <span key={i} className="rounded-full border border-[#1e3a5f] bg-[#122B4E] px-3 py-1 text-xs text-[#E2E8F0]">{c}</span>
             ))}
           </div>

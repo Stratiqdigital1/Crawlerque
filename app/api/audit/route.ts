@@ -384,6 +384,160 @@ function getBodyText(html: string) {
   );
 }
 
+function buildHomepageContentFallback(
+  input: {
+    url: string;
+    title: string;
+    description: string;
+    h1: string;
+    h1Count: number;
+    bodyText: string;
+    imagesMissingAlt: number;
+  }
+) {
+  const wordCount =
+    String(
+      input.bodyText || ""
+    )
+      .split(/\s+/)
+      .map(
+        (word) =>
+          word.trim()
+      )
+      .filter(Boolean)
+      .length;
+
+  if (
+    wordCount === 0
+  ) {
+    return null;
+  }
+
+  const issues: string[] = [];
+
+  let score = 100;
+
+  if (
+    wordCount < 150
+  ) {
+    score -= 35;
+
+    issues.push(
+      "Very limited first-party text content"
+    );
+  } else if (
+    wordCount < 300
+  ) {
+    score -= 20;
+
+    issues.push(
+      "Content depth is below 300 words"
+    );
+  }
+
+  if (!input.title) {
+    score -= 15;
+
+    issues.push(
+      "Page title was not detected"
+    );
+  }
+
+  if (!input.description) {
+    score -= 10;
+
+    issues.push(
+      "Meta description was not detected"
+    );
+  }
+
+  if (
+    input.h1Count === 0
+  ) {
+    score -= 15;
+
+    issues.push(
+      "No H1 heading was detected"
+    );
+  } else if (
+    input.h1Count > 1
+  ) {
+    score -= 8;
+
+    issues.push(
+      "Multiple H1 headings were detected"
+    );
+  }
+
+  if (
+    input.imagesMissingAlt > 0
+  ) {
+    score -= Math.min(
+      15,
+      Math.max(
+        5,
+        Math.round(
+          input.imagesMissingAlt /
+            2
+        )
+      )
+    );
+
+    issues.push(
+      `${input.imagesMissingAlt} image(s) missing an ALT attribute`
+    );
+  }
+
+  const resolvedScore =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        Math.round(score)
+      )
+    );
+
+  return {
+    requestedPages: 1,
+    analyzedPages: 1,
+    failedPages: 0,
+
+    averageScore:
+      resolvedScore,
+
+    scope:
+      "first-party",
+
+    source:
+      "resolved-homepage-html-fallback",
+
+    fallbackUsed: true,
+
+    note:
+      "The dedicated Content Quality provider did not return usable page evidence, so Crawler Que analyzed the already-resolved first-party homepage HTML from the same audit.",
+
+    results: [
+      {
+        url:
+          input.url,
+
+        title:
+          input.title,
+
+        h1:
+          input.h1,
+
+        wordCount,
+
+        score:
+          resolvedScore,
+
+        issues,
+      },
+    ],
+  };
+}
+
 function getImageAltStats(html: string) {
   const tags = String(html || "").match(/<img\b[^>]*>/gi) || [];
 
@@ -568,9 +722,26 @@ function buildIssues(input: {
   imageCount: number;
   imagesMissingAlt: number;
   mobileScore: number;
-  titleNeedsContext: boolean;
-  descriptionNeedsRewrite: boolean;
-  h1NeedsContext: boolean;
+titleNeedsContext: boolean;
+
+titleIssueType:
+  | "too_short"
+  | "too_long"
+  | "brand_only"
+  | null;
+
+descriptionNeedsRewrite: boolean;
+
+descriptionIssueType:
+  | "too_short"
+  | "too_long"
+  | "template_copy"
+  | null;
+
+titleLength: number;
+descriptionLength: number;
+
+h1NeedsContext: boolean;
 }) {
   const issues: any[] = [];
 
@@ -613,29 +784,107 @@ function buildIssues(input: {
     });
   }
 
-  if (input.titleNeedsContext) {
+if (
+  input.titleNeedsContext
+) {
+  if (
+    input.titleIssueType ===
+    "too_long"
+  ) {
     issues.push({
-      title: "Homepage title lacks descriptive service context",
-      severity: "medium",
-      timeline: "0–30 days",
+      title:
+        "Homepage title is too long",
+      severity:
+        "medium",
+      timeline:
+        "0–30 days",
       impact:
-        "The title is present, but it is too short or too generic to communicate the page topic and search intent clearly.",
+        `The homepage title is ${input.titleLength} characters long and may be truncated or diluted in search results.`,
       fix:
-        "Rewrite the title to approximately 50–60 characters and include the primary service or category.",
+        "Shorten the title to approximately 50–60 characters while retaining the primary category, offer, and market context.",
+    });
+  } else if (
+    input.titleIssueType ===
+    "too_short"
+  ) {
+    issues.push({
+      title:
+        "Homepage title is too short",
+      severity:
+        "medium",
+      timeline:
+        "0–30 days",
+      impact:
+        `The homepage title is only ${input.titleLength} characters long and provides limited topical context.`,
+      fix:
+        "Expand the title to approximately 50–60 characters and include the primary category, offer, or service.",
+    });
+  } else {
+    issues.push({
+      title:
+        "Homepage title lacks descriptive category context",
+      severity:
+        "medium",
+      timeline:
+        "0–30 days",
+      impact:
+        "The homepage title mainly identifies the brand but does not clearly communicate the primary category, product, or service.",
+      fix:
+        "Rewrite the title to approximately 50–60 characters and combine the brand with the primary category or commercial offer.",
     });
   }
+}
 
-  if (input.descriptionNeedsRewrite) {
+if (
+  input.descriptionNeedsRewrite
+) {
+  if (
+    input.descriptionIssueType ===
+    "too_long"
+  ) {
     issues.push({
-      title: "Homepage meta description needs rewriting",
-      severity: "high",
-      timeline: "0–30 days",
+      title:
+        "Homepage meta description is too long",
+      severity:
+        "medium",
+      timeline:
+        "0–30 days",
       impact:
-        "The description is too short, too long, generic, or appears to contain template copy that does not accurately describe the audited business.",
+        `The meta description is ${input.descriptionLength} characters long and may be truncated in search results.`,
       fix:
-        "Replace it with a unique 140–160 character description focused on the business offer and user intent.",
+        "Shorten it to approximately 140–160 characters while retaining the main offer, differentiator, and search intent.",
+    });
+  } else if (
+    input.descriptionIssueType ===
+    "too_short"
+  ) {
+    issues.push({
+      title:
+        "Homepage meta description is too short",
+      severity:
+        "medium",
+      timeline:
+        "0–30 days",
+      impact:
+        `The meta description is only ${input.descriptionLength} characters long and does not use the available search-result space effectively.`,
+      fix:
+        "Expand it to approximately 140–160 characters with the main offer, audience, and reason to click.",
+    });
+  } else {
+    issues.push({
+      title:
+        "Homepage meta description contains generic or template copy",
+      severity:
+        "high",
+      timeline:
+        "0–30 days",
+      impact:
+        "The detected description appears generic or template-based and may not accurately represent the audited business.",
+      fix:
+        "Replace it with a unique 140–160 character description focused on the verified business offer and user intent.",
     });
   }
+}
 
   if (input.h1NeedsContext) {
     issues.push({
@@ -1457,18 +1706,53 @@ const brandNameForAudit =
     const normalizedBrand = compactPhrase(brandNameForAudit);
     const normalizedH1 = compactPhrase(h1);
 
-    const titleNeedsContext = Boolean(
-      title && (titleLength < 30 || titleLength > 65)
-    );
+const titleIssueType:
+  | "too_short"
+  | "too_long"
+  | "brand_only"
+  | null =
+  !title
+    ? null
+    : titleLength < 30
+      ? "too_short"
+      : titleLength > 65
+        ? "too_long"
+        : (
+            normalizedBrand &&
+            compactPhrase(
+              title
+            ) ===
+              normalizedBrand
+          )
+          ? "brand_only"
+          : null;
 
-    const descriptionNeedsRewrite = Boolean(
-      description &&
-        (descriptionLength < 120 ||
-          descriptionLength > 170 ||
-          /webflow template|website template|theme demo|template created|placeholder copy/i.test(
+const titleNeedsContext =
+  Boolean(
+    titleIssueType
+  );
+
+const descriptionIssueType:
+  | "too_short"
+  | "too_long"
+  | "template_copy"
+  | null =
+  !description
+    ? null
+    : descriptionLength < 120
+      ? "too_short"
+      : descriptionLength > 170
+        ? "too_long"
+        : /webflow template|website template|theme demo|template created|placeholder copy/i.test(
             description
-          ))
-    );
+          )
+          ? "template_copy"
+          : null;
+
+const descriptionNeedsRewrite =
+  Boolean(
+    descriptionIssueType
+  );
 
     const h1NeedsContext = Boolean(
       h1 &&
@@ -2567,51 +2851,116 @@ const adjustedScore =
           0
       );
 
-      if (contentAnalysis && analyzedContentPages === 0) {
-        contentAnalysis = {
-          ...contentAnalysis,
-          analyzedPages: 0,
-          failedPages: Math.max(
-            1,
-            Number(
-              contentAnalysis?.failedPages ||
-                contentAnalysis?.requestedPages ||
-                1
-            )
-          ),
-          averageScore: null,
-          unavailableReason:
-            contentAnalysis?.unavailableReason ||
-            "The selected first-party page could not be analyzed during this run. No content-quality score or content-derived recommendation has been generated.",
-          note:
-            contentAnalysis?.note ||
-            "The selected first-party page could not be analyzed during this run. No content-quality score or content-derived recommendation has been generated.",
-          results: [],
-        };
-      }
+if (
+  contentAnalysis &&
+  analyzedContentPages === 0
+) {
+  const homepageFallback =
+    buildHomepageContentFallback({
+      url:
+        auditTargetUrl,
+
+      title,
+      description,
+      h1,
+      h1Count,
+      bodyText,
+      imagesMissingAlt,
+    });
+
+  if (homepageFallback) {
+    contentAnalysis =
+      homepageFallback;
+
+    moduleStatus.contentAnalysis =
+      "completed_with_fallback";
+  } else {
+    contentAnalysis = {
+      ...contentAnalysis,
+
+      analyzedPages: 0,
+
+      failedPages:
+        Math.max(
+          1,
+          Number(
+            contentAnalysis
+              ?.failedPages ||
+            contentAnalysis
+              ?.requestedPages ||
+            1
+          )
+        ),
+
+      averageScore: null,
+
+      unavailableReason:
+        contentAnalysis
+          ?.unavailableReason ||
+        "The selected first-party page could not be analyzed during this run. No content-quality score or content-derived recommendation has been generated.",
+
+      note:
+        contentAnalysis
+          ?.note ||
+        "The selected first-party page could not be analyzed during this run. No content-quality score or content-derived recommendation has been generated.",
+
+      results: [],
+    };
+
+    moduleStatus.contentAnalysis =
+      "not_available";
+  }
+}
     } catch (error) {
   console.error("Content Analysis inside audit failed:", error);
 
+const homepageFallback =
+  buildHomepageContentFallback({
+    url:
+      auditTargetUrl,
+
+    title,
+    description,
+    h1,
+    h1Count,
+    bodyText,
+    imagesMissingAlt,
+  });
+
+if (homepageFallback) {
+  contentAnalysis =
+    homepageFallback;
+
+  moduleStatus.contentAnalysis =
+    "completed_with_fallback";
+} else {
   contentAnalysis = {
-    requestedPages: Math.min(
-      20,
-      Math.max(
-        1,
-        auditConfig.contentPageLimit
-      )
-    ),
+    requestedPages:
+      Math.min(
+        20,
+        Math.max(
+          1,
+          auditConfig
+            .contentPageLimit
+        )
+      ),
+
     analyzedPages: 0,
     failedPages: 1,
     averageScore: null,
     scope: "first-party",
     results: [],
+
     unavailableReason:
       "The selected first-party page could not be analyzed during this run. No content-quality score or content-derived recommendation has been generated.",
+
     note:
       "The selected first-party page could not be analyzed during this run. No content-quality score or content-derived recommendation has been generated.",
   };
 
-  moduleStatus.contentAnalysis = "not_available";
+  moduleStatus.contentAnalysis =
+    "not_available";
+}
 }
 }
 
@@ -3173,9 +3522,15 @@ const overallScore =
       imageCount,
       imagesMissingAlt,
       mobileScore: mobileSpeed.score,
-      titleNeedsContext,
-      descriptionNeedsRewrite,
-      h1NeedsContext,
+titleNeedsContext,
+titleIssueType,
+titleLength,
+
+descriptionNeedsRewrite,
+descriptionIssueType,
+descriptionLength,
+
+h1NeedsContext,
     });
 
     if (
@@ -4078,12 +4433,17 @@ const draftReport = {
       imagesWithAlt,
       imagesEmptyAlt,
       imagesMissingAlt,
-      seoQuality: {
-        titleLength,
-        descriptionLength,
-        titleNeedsContext,
-        descriptionNeedsRewrite,
-        h1NeedsContext,
+seoQuality: {
+  titleLength,
+  descriptionLength,
+
+  titleNeedsContext,
+  titleIssueType,
+
+  descriptionNeedsRewrite,
+  descriptionIssueType,
+
+  h1NeedsContext,
         homepageMultipleH1:
           homepageContentHasMultipleH1,
       },
