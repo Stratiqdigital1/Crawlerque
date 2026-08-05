@@ -110,6 +110,52 @@ function buildRankedPages(items: RankedItem[]): RankedPage[] {
   }).sort((a, b) => b.totalVolume - a.totalVolume).slice(0, 8);
 }
 
+/*
+ * Some country names need a definite article to read naturally
+ * ("in the United States", not "in United States"). Generic rule
+ * based on the country name's own words, never a hard-coded
+ * assumption about any specific audited business.
+ */
+function countryNeedsArticle(country: string): boolean {
+  return /^(united states|united kingdom|united arab emirates|netherlands|philippines|czech republic|dominican republic|bahamas|maldives|gambia)$/i.test(
+    String(country || "").trim()
+  );
+}
+
+const genericLocalityPhrase =
+  /\b(?:in your area|near you|nearby|locally|in your region|in your city|close to you|in your neighbo(?:u)?rhood|in my area)\b/i;
+
+/*
+ * Safety net independent of how well the model follows the prompt
+ * instruction: if a generated question already contains a specific
+ * country/market reference AND a generic locality phrase like "in
+ * your area", the generic phrase is redundant and gets dropped so
+ * the question doesn't read as "...in your area in United States".
+ * This is shape-based and works for any country or market name.
+ */
+function dedupeLocalityPhrasing(line: string, country: string): string {
+  const trimmedCountry = String(country || "").trim();
+  if (!trimmedCountry) return line;
+
+  const escapedCountry = trimmedCountry.replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&"
+  );
+  const countryMentioned = new RegExp(
+    `\\b${escapedCountry}\\b`,
+    "i"
+  ).test(line);
+
+  if (!countryMentioned) return line;
+  if (!genericLocalityPhrase.test(line)) return line;
+
+  return line
+    .replace(genericLocalityPhrase, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+\?/, "?")
+    .trim();
+}
+
 // Turn real keywords into 3 CLEAN buyer questions via OpenAI (no junk like "best glacier arcade").
 async function buildCleanPrompts(
   keywords: string[],
@@ -119,20 +165,24 @@ async function buildCleanPrompts(
   languageName = "English"
 ): Promise<string[]> {
 const top = keywords.slice(0, 20).join(", ");
-  const where = country && country.toLowerCase() !== "us" ? ` Focus on the ${country} market.` : "";
+  const where = country && country.toLowerCase() !== "us" ? ` Focus on the ${countryNeedsArticle(country) ? "the " : ""}${country} market.` : "";
   try {
 const ai = await queryOpenAI(
       `A company called "${brandName}"${industry ? ` (industry: ${industry})` : ""} ranks in Google for these search terms: ${top}. ` +
       `IMPORTANT: some of these terms are UNRELATED topics the site only ranks for by accident (e.g. news, prayer times, or prices of products the company does NOT sell). ` +
       `Step 1: from the company name and the terms, work out the company's ACTUAL core products or services. ` +
       `Step 2: write exactly 5 natural questions a shopper would ask an AI assistant when looking to BUY or CHOOSE those core products/services.${where} ` +
-      `Rules: ONLY cover the company's real core categories — discard every unrelated term. Do NOT mention "${brandName}" or any specific brand, store, or company name in the questions. Write the questions in ${languageName}. Each question on its own line, no numbering, each ends with a question mark.`
+      `Rules: ONLY cover the company's real core categories — discard every unrelated term. Do NOT mention "${brandName}" or any specific brand, store, or company name in the questions. If a question references a location, mention the country/market name at most once and do NOT also use a generic phrase like "in your area", "near you", or "locally" in the same question. Write the questions in ${languageName}. Each question on its own line, no numbering, each ends with a question mark.`
     );
-    const lines = (ai || "").split("\n").map((l) => l.replace(/^[\d.)\-\s]+/, "").trim()).filter((l) => l.length > 8 && l.includes("?"));
+    const lines = (ai || "")
+      .split("\n")
+      .map((l) => l.replace(/^[\d.)\-\s]+/, "").trim())
+      .filter((l) => l.length > 8 && l.includes("?"))
+      .map((l) => dedupeLocalityPhrasing(l, country));
     if (lines.length >= 2) return lines.slice(0, 5);
   } catch { /* fall through */ }
   // Fallback: simple "best X" from top keywords.
-  const w = country && country.toLowerCase() !== "us" ? ` in ${country}` : "";
+  const w = country && country.toLowerCase() !== "us" ? ` in ${countryNeedsArticle(country) ? "the " : ""}${country}` : "";
   return keywords.slice(0, 5).map((k) => `What is the best ${k}${w}?`);
 }
 

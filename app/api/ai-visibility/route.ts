@@ -336,6 +336,18 @@ function cleanCompetitorCandidate(
       cleaned
     );
 
+  /*
+   * A phrase that opens with a generic quantifier/adjective
+   * ("Popular", "Best", "Top", "Leading", etc.) and closes with a
+   * generic collective noun ("Platforms", "Providers", "Tools",
+   * etc.) is descriptive category prose, not a named entity - e.g.
+   * "Popular Freelance Platforms". Shape-based, works for any niche.
+   */
+  const genericCategoryPhrase =
+    /^(?:popular|best|top|leading|other|others|similar|various|several|many|some|common|great|well[- ]known)\b.*\b(?:platforms?|providers?|companies|tools?|solutions?|services?|options?|alternatives?|websites?|apps?|agencies)$/i.test(
+      cleaned
+    );
+
   if (
     blocked.test(cleaned) ||
     blockedGenericPhrase.test(
@@ -344,7 +356,8 @@ function cleanCompetitorCandidate(
     contextOnlyPhrase ||
     locationOnlyPhrase ||
     sentenceFragment ||
-    endsWithFillerWord
+    endsWithFillerWord ||
+    genericCategoryPhrase
   ) {
     return "";
   }

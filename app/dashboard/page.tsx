@@ -2627,6 +2627,22 @@ const cleanAiCompetitorList = (
           value.trim()
         );
 
+      /*
+       * A phrase that opens with a generic quantifier/adjective
+       * ("Popular", "Best", "Top", "Leading", "Other", "Similar",
+       * "Various", "Common", "Well-Known") and closes with a
+       * generic collective noun ("Platforms", "Providers",
+       * "Companies", "Tools", "Solutions", "Services", "Options",
+       * "Alternatives", "Websites", "Apps", "Agencies") is
+       * descriptive category prose, not a named entity - e.g.
+       * "Popular Freelance Platforms". Shape-based, works for any
+       * niche.
+       */
+      const genericCategoryPhrase =
+        /^(?:popular|best|top|leading|other|others|similar|various|several|many|some|common|great|well[- ]known)\b.*\b(?:platforms?|providers?|companies|tools?|solutions?|services?|options?|alternatives?|websites?|apps?|agencies)$/i.test(
+          value.trim()
+        );
+
       const contextOnlyPhrase =
         valueTokens.length > 0 &&
         valueTokens.length <= 4 &&
@@ -2643,6 +2659,7 @@ const cleanAiCompetitorList = (
         blocked.test(value) ||
         isSingleGerundFragment ||
         endsWithFillerWord ||
+        genericCategoryPhrase ||
         contextOnlyPhrase ||
         (
           normalizedMarket &&
