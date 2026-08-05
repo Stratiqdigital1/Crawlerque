@@ -860,6 +860,133 @@ function resolverUnique(
   return output;
 }
 
+function resolverEscapeRegex(
+  value: string
+) {
+  return String(value || "").replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&"
+  );
+}
+
+function resolverStripBrandFromText(
+  value: unknown,
+  brandName: string,
+  domain: string
+) {
+  let output =
+    String(value || "")
+      .normalize("NFKC")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  if (!output) {
+    return "";
+  }
+
+  const domainRoot =
+    normalizeDomainRoot(domain);
+
+  const aliases =
+    resolverUnique(
+      [
+        brandName,
+        domainRoot,
+
+        String(
+          brandName || ""
+        ).replace(
+          /[^\p{L}\p{N}]+/gu,
+          ""
+        ),
+
+        String(
+          domainRoot || ""
+        ).replace(
+          /[^\p{L}\p{N}]+/gu,
+          ""
+        ),
+      ],
+      8
+    )
+      .filter(
+        (alias) =>
+          resolverComparable(
+            alias
+          ).length >= 3
+      )
+      .sort(
+        (a, b) =>
+          b.length - a.length
+      );
+
+  for (const alias of aliases) {
+    const parts =
+      String(alias)
+        .split(/[\s._-]+/)
+        .map((part) =>
+          part.trim()
+        )
+        .filter(Boolean);
+
+    if (!parts.length) {
+      continue;
+    }
+
+    const aliasPattern =
+      parts
+        .map(
+          resolverEscapeRegex
+        )
+        .join(
+          "[\\s._-]*"
+        );
+
+    output = output.replace(
+      new RegExp(
+        `(^|[^\\p{L}\\p{N}])${aliasPattern}(?=$|[^\\p{L}\\p{N}])`,
+        "giu"
+      ),
+      "$1"
+    );
+  }
+
+  return output
+    .replace(/\s+/g, " ")
+    .replace(
+      /^[\s|–—:;,.\-]+|[\s|–—:;,.\-]+$/g,
+      ""
+    )
+    .trim();
+}
+
+function resolverBrandNeutralList(
+  values: unknown[],
+  brandName: string,
+  domain: string,
+  limit = 10
+) {
+  return resolverUnique(
+    values
+      .map((value) =>
+        resolverStripBrandFromText(
+          value,
+          brandName,
+          domain
+        )
+      )
+      .filter(Boolean)
+      .filter(
+        (value) =>
+          !resolverIsBrandLike(
+            value,
+            brandName
+          )
+      ),
+    limit
+  );
+}
+
 function resolverMarketRole(
   value: string
 ): BusinessMarketRole {
@@ -1315,6 +1442,7 @@ async function resolverSemanticFallback(
                     "The selected country is market context only and must not change the website's fundamental business type.",
                     "When countryName is provided, every returned AI prompt must include that selected country.",
                     "Support any industry worldwide including services, SaaS, ecommerce, publications, marketplaces, healthcare, legal, finance, education, restaurants, travel, nonprofits and unknown niches.",
+                    "If homepage title, description, H1 and body evidence are all unavailable, classify from the domain identity only when the business identity is clear; otherwise use primaryService products and services, marketRole other, and confidence low. Do not invent niche details.",
                     "For editorial, review, comparison or news websites use marketRole publication.",
                     "For software products use software_product.",
                     "For ecommerce stores use ecommerce.",
@@ -1504,12 +1632,15 @@ const resolvedBrandName =
     .trim();
 
 const primaryService =
-  String(
+  resolverStripBrandFromText(
     parsed?.primaryService ||
-      ""
-  )
-    .replace(/\s+/g, " ")
-    .trim();
+      "",
+
+    resolvedBrandName ||
+      base.brandName,
+
+    input.domain
+  );
 
 if (
   !primaryService ||
@@ -1551,56 +1682,69 @@ if (
       ? requestedRole
       : "other";
 
-  const categoryKeywords =
-    resolverUnique(
-      Array.isArray(
-        parsed?.categoryKeywords
-      )
-        ? parsed.categoryKeywords
-        : [],
-      10
-    );
-
-  const serpKeywords =
-    resolverUnique(
-      Array.isArray(
-        parsed?.serpKeywords
-      )
-        ? parsed.serpKeywords
-        : [],
-      5
-    );
-
-  const coreTokens =
-    resolverUnique(
-      Array.isArray(
-        parsed?.coreTokens
-      )
-        ? parsed.coreTokens
-        : [],
-      10
-    );
-
-  const returnedPrompts =
-    resolverUnique(
-      Array.isArray(
-        parsed?.aiPrompts
-      )
-        ? parsed.aiPrompts
-        : [],
-      3
+const categoryKeywords =
+  resolverBrandNeutralList(
+    Array.isArray(
+      parsed?.categoryKeywords
     )
-.filter(
-  (prompt) =>
-    !resolverComparable(
-      prompt
-    ).includes(
-      resolverComparable(
-        resolvedBrandName ||
-          base.brandName
-      )
+      ? parsed.categoryKeywords
+      : [],
+
+    resolvedBrandName ||
+      base.brandName,
+
+    input.domain,
+
+    10
+  );
+
+const serpKeywords =
+  resolverBrandNeutralList(
+    Array.isArray(
+      parsed?.serpKeywords
     )
-);
+      ? parsed.serpKeywords
+      : [],
+
+    resolvedBrandName ||
+      base.brandName,
+
+    input.domain,
+
+    5
+  );
+
+const coreTokens =
+  resolverBrandNeutralList(
+    Array.isArray(
+      parsed?.coreTokens
+    )
+      ? parsed.coreTokens
+      : [],
+
+    resolvedBrandName ||
+      base.brandName,
+
+    input.domain,
+
+    10
+  );
+
+const returnedPrompts =
+  resolverBrandNeutralList(
+    Array.isArray(
+      parsed?.aiPrompts
+    )
+      ? parsed.aiPrompts
+      : [],
+
+    resolvedBrandName ||
+      base.brandName,
+
+    input.domain,
+
+    3
+  );
 
 const selectedMarket =
   String(
@@ -1668,19 +1812,59 @@ const localizedReturnedPrompts =
     }
   );
 
+const resolvedCategoryLabel =
+  resolverStripBrandFromText(
+    parsed?.categoryLabel ||
+      primaryService,
+
+    resolvedBrandName ||
+      base.brandName,
+
+    input.domain
+  ) || primaryService;
+
+const resolvedLocalQueryService =
+  resolverStripBrandFromText(
+    parsed?.localQueryService ||
+      primaryService,
+
+    resolvedBrandName ||
+      base.brandName,
+
+    input.domain
+  ) || primaryService;
+
+const homepageEvidenceAvailable =
+  [
+    input.title,
+    input.description,
+    input.h1,
+    input.bodyText,
+  ].some(
+    (value) =>
+      String(value || "")
+        .trim().length > 0
+  );
+
 const confidenceText =
   String(
     parsed?.confidence ||
       "medium"
   ).toLowerCase();
 
-  const confidence:
-    BusinessContextConfidence =
-      confidenceText === "high"
-        ? "high"
-        : confidenceText === "low"
-          ? "low"
-          : "medium";
+const confidence:
+  BusinessContextConfidence =
+    confidenceText === "high"
+      ? "high"
+      : confidenceText === "low"
+        ? "low"
+        : "medium";
+
+const effectiveConfidence:
+  BusinessContextConfidence =
+    homepageEvidenceAvailable
+      ? confidence
+      : "low";
 
   let categoryKey =
     String(
@@ -1712,13 +1896,8 @@ return {
 
   categoryKey,
 
-    categoryLabel:
-      String(
-        parsed?.categoryLabel ||
-          primaryService
-      )
-        .replace(/\s+/g, " ")
-        .trim(),
+categoryLabel:
+  resolvedCategoryLabel,
 
     primaryService,
 
@@ -1742,23 +1921,21 @@ return {
         ? serpKeywords
         : [primaryService],
 
-    localQueryService:
-      String(
-        parsed?.localQueryService ||
-          primaryService
-      )
-        .replace(/\s+/g, " ")
-        .trim(),
+localQueryService:
+  resolvedLocalQueryService,
 
-    confidence,
+confidence:
+  effectiveConfidence,
 
-    confidenceScore:
-      confidence === "high"
-        ? 90
-        : confidence ===
-            "medium"
-          ? 70
-          : 45,
+confidenceScore:
+  effectiveConfidence === "high"
+    ? 90
+    : effectiveConfidence ===
+        "medium"
+      ? 70
+      : homepageEvidenceAvailable
+        ? 45
+        : 30,
 
     matchedSignals:
       resolverUnique([

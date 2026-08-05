@@ -96,8 +96,91 @@ function decodeHtmlEntities(value: string) {
     .trim();
 }
 
+function getMetaTitle(
+  source: string,
+  attribute: "property" | "name",
+  key: string
+) {
+  const escapedKey = key.replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&"
+  );
+
+  const firstMatch = source.match(
+    new RegExp(
+      `<meta[^>]+${attribute}=["']${escapedKey}["'][^>]+content=["']([^"']+)["']`,
+      "i"
+    )
+  )?.[1];
+
+  const reversedMatch = source.match(
+    new RegExp(
+      `<meta[^>]+content=["']([^"']+)["'][^>]+${attribute}=["']${escapedKey}["']`,
+      "i"
+    )
+  )?.[1];
+
+  return decodeHtmlEntities(
+    firstMatch ||
+      reversedMatch ||
+      ""
+  );
+}
+
 function getTitle(html: string) {
-  return decodeHtmlEntities(html.match(/<title[^>]*>(.*?)<\/title>/i)?.[1] || "");
+  /*
+   * Only inspect the document head.
+   * SVGs, payment widgets and embedded
+   * components can contain their own title.
+   */
+  const head =
+    String(html || "").match(
+      /<head\b[^>]*>([\s\S]*?)<\/head>/i
+    )?.[1] || "";
+
+  const source =
+    head ||
+    String(html || "");
+
+  const candidates = [
+    decodeHtmlEntities(
+      source.match(
+        /<title[^>]*>([\s\S]*?)<\/title>/i
+      )?.[1] || ""
+    ),
+
+    getMetaTitle(
+      source,
+      "property",
+      "og:title"
+    ),
+
+    getMetaTitle(
+      source,
+      "name",
+      "twitter:title"
+    ),
+  ]
+    .map((value) =>
+      String(value || "")
+        .replace(/\s+/g, " ")
+        .trim()
+    )
+    .filter(Boolean);
+
+  const paymentOrWidgetTitle =
+    /^(american express|visa|mastercard|paypal|shop pay|apple pay|google pay)$/i;
+
+  return (
+    candidates.find(
+      (candidate) =>
+        !paymentOrWidgetTitle.test(
+          candidate
+        )
+    ) ||
+    candidates[0] ||
+    ""
+  );
 }
 
 function getDescription(html: string) {
@@ -121,6 +204,74 @@ function getBodyText(html: string) {
       .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
       .replace(/<[^>]+>/g, " ")
   );
+}
+
+function previewComparable(
+  value: unknown
+) {
+  return String(value || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(
+      /[^\p{L}\p{N}]+/gu,
+      ""
+    )
+    .trim();
+}
+
+function buildLocalSeoQuery(
+  brandName: string,
+  localQueryService: string,
+  domain: string
+) {
+  const brand =
+    String(brandName || "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const service =
+    String(localQueryService || "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  if (!service) {
+    return brand || null;
+  }
+
+  const serviceKey =
+    previewComparable(service);
+
+  const brandKey =
+    previewComparable(brand);
+
+  const domainRootKey =
+    previewComparable(
+      String(domain || "")
+        .replace(/^www\./i, "")
+        .split(".")[0]
+    );
+
+  const alreadyContainsBrand =
+    Boolean(brandKey) &&
+    serviceKey.includes(
+      brandKey
+    );
+
+  const alreadyContainsDomainRoot =
+    Boolean(domainRootKey) &&
+    serviceKey.includes(
+      domainRootKey
+    );
+
+  if (
+    alreadyContainsBrand ||
+    alreadyContainsDomainRoot ||
+    !brand
+  ) {
+    return service;
+  }
+
+  return `${brand} ${service}`.trim();
 }
 
 async function fetchHomepage(inputUrl: string) {
@@ -178,22 +329,57 @@ async function fetchHomepage(inputUrl: string) {
       continue;
     }
 
-    if (!response.ok) {
-      if (response.status === 403) {
-        throw new Error(
-          "Website blocked the homepage preview with HTTP 403. This is an origin/WAF restriction, not a paid-provider or classifier failure."
-        );
-      }
-      throw new Error(`Website returned HTTP ${response.status}.`);
-    }
+if (!response.ok) {
+  if (response.status === 403) {
+    return {
+      html: "",
+
+      resolvedUrl:
+        currentUrl.toString(),
+
+      redirects,
+
+      homepageAvailable:
+        false,
+
+      fetchStatus:
+        403,
+
+      limitation:
+        "The origin/WAF blocked direct homepage evidence. Context is limited to domain-level classification and must be treated as low confidence.",
+    };
+  }
+
+  throw new Error(
+    `Website returned HTTP ${response.status}.`
+  );
+}
 
     const contentType = response.headers.get("content-type") || "";
     if (!contentType.includes("text/html") && !contentType.includes("application/xhtml+xml")) {
       throw new Error("The URL did not return an HTML page.");
     }
 
-    const html = await response.text();
-    return { html, resolvedUrl: currentUrl.toString(), redirects };
+const html =
+  await response.text();
+
+return {
+  html,
+
+  resolvedUrl:
+    currentUrl.toString(),
+
+  redirects,
+
+  homepageAvailable:
+    true,
+
+  fetchStatus:
+    response.status,
+
+  limitation:
+    null,
+};
   }
 
   throw new Error("Too many redirects.");
@@ -278,18 +464,39 @@ const aiPrompts =
       NextResponse.json({
         success: true,
 costMode:
-  context.semanticFallbackUsed
-    ? "homepage-plus-semantic-fallback"
-    : "homepage-only",
+  page.homepageAvailable === false
+    ? context.semanticFallbackUsed
+      ? "domain-only-semantic-fallback"
+      : "domain-only-limited"
+    : context.semanticFallbackUsed
+      ? "homepage-plus-semantic-fallback"
+      : "homepage-only",
 
 paidProviderCalls:
   context.semanticFallbackUsed
     ? 1
     : 0,
-        url: normalizedInput,
-        resolvedUrl: page.resolvedUrl,
-        redirects: page.redirects,
-        homepage: {
+url: normalizedInput,
+
+resolvedUrl:
+  page.resolvedUrl,
+
+redirects:
+  page.redirects,
+
+homepageAvailable:
+  page.homepageAvailable !== false,
+
+limitedEvidence:
+  page.homepageAvailable === false,
+
+fetchStatus:
+  page.fetchStatus,
+
+limitation:
+  page.limitation,
+
+homepage: {
           title,
           metaDescription: description,
           h1,
@@ -305,11 +512,15 @@ preview: {
   serpKeywords:
     context.serpKeywords,
 
-  localSeoQuery:
-    context.localSeoApplicable ===
-    false
-      ? null
-      : `${context.brandName} ${context.localQueryService}`.trim(),
+localSeoQuery:
+  context.localSeoApplicable ===
+  false
+    ? null
+    : buildLocalSeoQuery(
+        context.brandName,
+        context.localQueryService,
+        resolved.hostname
+      ),
 },
 
 classification: {
