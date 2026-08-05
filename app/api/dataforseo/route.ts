@@ -1778,12 +1778,36 @@ async function getCompetitorHomepageText(
         /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i
       );
 
+    /*
+     * A bot-protection interstitial (Cloudflare "Just a moment...",
+     * a CAPTCHA gate, an "enable JavaScript" notice, etc.) can return
+     * HTTP 200 with almost no real body text and a generic title.
+     * Trusting that page as business evidence would wrongly read as
+     * "no matching business model" instead of "evidence unavailable".
+     * This check is shape-based (challenge-page phrasing + very
+     * little real content), never tied to a specific competitor.
+     */
+    const combinedEvidenceText = `${title} ${description} ${h1}`.trim();
+    const looksLikeBotChallenge =
+      /just a moment|checking your browser|enable javascript|verify you are human|verifying you are human|attention required|access denied|are you a robot|please wait while we verify|ddos protection by cloudflare|one more step/i.test(
+        html.slice(0, 20000)
+      ) && combinedEvidenceText.length < 60;
+
+    if (looksLikeBotChallenge) {
+      return {
+        text: "",
+        title: "",
+        description: "",
+        fetched: false,
+      };
+    }
+
     return {
       title,
       description,
 
       text:
-        `${title} ${description} ${h1}`
+        combinedEvidenceText
           .toLowerCase(),
 
       fetched: true,
@@ -2278,7 +2302,7 @@ async function classifyCompetitor(
   const qualifiesAsUnverifiedStrongOverlap =
     !homepage.fetched &&
     known === null &&
-    sharedKeywords >= 20;
+    sharedKeywords >= 8;
 
   let relationship:
     CompetitorRelationship =

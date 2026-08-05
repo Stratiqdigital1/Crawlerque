@@ -2418,6 +2418,20 @@ const cleanAiCompetitorList = (
       const isSingleGerundFragment =
         gerundFragmentPattern.test(value);
 
+      /*
+       * A short phrase ending in a generic discourse/filler word
+       * (e.g. "US Here", "Market Now", "Freelancers Today") is a
+       * leftover sentence fragment regardless of what precedes the
+       * filler word - shape-based, not tied to any specific brand,
+       * niche, or country.
+       */
+      const endsWithFillerWord =
+        valueTokens.length > 0 &&
+        valueTokens.length <= 3 &&
+        /\b(here|there|now|today|currently|recently|onward|nearby)$/i.test(
+          value.trim()
+        );
+
       const contextOnlyPhrase =
         valueTokens.length > 0 &&
         valueTokens.length <= 4 &&
@@ -2433,6 +2447,7 @@ const cleanAiCompetitorList = (
         value.length > 80 ||
         blocked.test(value) ||
         isSingleGerundFragment ||
+        endsWithFillerWord ||
         contextOnlyPhrase ||
         (
           normalizedMarket &&
@@ -6825,7 +6840,7 @@ const displayedCrawlConfidence = discoveryScopeNarrow
 
     tbl(["Check","Result","Notes"],[
       {col1:"Crawl Status",col2:hasTechnicalEvidence?cl(pdfData?.onPage?.crawlStatus,"—"):"No evidence returned",col3:"Final state is separate from whether usable page evidence was returned"},
-      {col1:"Confidence",col2:hasTechnicalEvidence?cl(pdfData?.onPage?.confidence??pdfData?.reconciliation?.technical?.confidence,"—"):"insufficient-data",col3:"Limited when the crawl times out, returns zero pages, or provides partial coverage"},
+      {col1:"Confidence",col2:hasTechnicalEvidence?displayedCrawlConfidence:"insufficient-data",col3:discoveryScopeNarrow?`Only ${fmt(discoveredPageCount)} page(s) discovered from a requested limit of ${fmt(requestedCrawlLimitForScope)}`:"Limited when the crawl times out, returns zero pages, or provides partial coverage"},
       {col1:"Pages Discovered",col2:hasTechnicalEvidence?fmt(discoveredPageCount):"Unavailable",col3:"Pages identified by the crawl"},
       {
   col1:
@@ -6873,10 +6888,32 @@ const displayedCrawlConfidence = discoveryScopeNarrow
     if(hasTechnicalEvidence && pdfData?.onPage?.pages?.length){
       secTitle("Sample Crawled Pages");
       tbl(["Title","URL","HTTP","Load Time"],
-        pdfData.onPage.pages.slice(0,12).map((p:any)=>({
-          col1:isNonSemanticText(p.title)?"Untitled":cl(p.title,"Untitled"),col2:cl(p.url,"—"),
-          col3:cl(String(p.statusCode??"—")),col4:cl(p.loadTime?`${p.loadTime}ms`:"—"),
-        })),[55,63,18,CW-136]);
+        pdfData.onPage.pages.slice(0,12).map((p:any)=>{
+          const pageUrl = normalizeUrlForComparison(p?.url);
+          const homepageUrl = normalizeUrlForComparison(
+            pdfData?.canonicalUrl || pdfData?.resolvedUrl || pdfData?.url
+          );
+          const isHomepageRow = Boolean(pageUrl) && pageUrl === homepageUrl;
+          const responseIncomplete = !isFinalCrawlResponse(p);
+          const hasVerifiedResolvedTitle =
+            isHomepageRow &&
+            pdfData?.title &&
+            !isNonSemanticText(pdfData.title);
+
+          const titleDisplay =
+            responseIncomplete && hasVerifiedResolvedTitle
+              ? "Metadata unavailable in crawler response (resolved title verified separately)"
+              : isNonSemanticText(p.title)
+                ? "Untitled"
+                : cl(p.title, "Untitled");
+
+          return {
+            col1: titleDisplay,
+            col2: cl(p.url, "—"),
+            col3: cl(String(p.statusCode ?? "—")),
+            col4: cl(p.loadTime ? `${p.loadTime}ms` : "—"),
+          };
+        }),[55,63,18,CW-136]);
     }
   }
 
@@ -10955,7 +10992,23 @@ const impactClass = impact.toLowerCase().includes("high")
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="font-semibold text-slate-950">
-                    {i + 1}. {isNonSemanticText(p.title) ? "Untitled Page" : p.title}
+                    {(() => {
+                      const pageUrl = normalizeUrlForComparison(p?.url);
+                      const homepageUrl = normalizeUrlForComparison(
+                        data?.canonicalUrl || data?.resolvedUrl || data?.url
+                      );
+                      const isHomepageRow = Boolean(pageUrl) && pageUrl === homepageUrl;
+                      const responseIncomplete = !isFinalCrawlResponse(p);
+                      const hasVerifiedResolvedTitle =
+                        isHomepageRow && data?.title && !isNonSemanticText(data.title);
+                      const title =
+                        responseIncomplete && hasVerifiedResolvedTitle
+                          ? "Metadata unavailable in crawler response (resolved title verified separately)"
+                          : isNonSemanticText(p.title)
+                            ? "Untitled Page"
+                            : p.title;
+                      return `${i + 1}. ${title}`;
+                    })()}
                   </p>
                   <p className="mt-1 break-all text-xs text-slate-500">
                     {p.url || "Data not available"}

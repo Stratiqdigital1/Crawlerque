@@ -322,6 +322,20 @@ function cleanCompetitorCandidate(
       .filter(Boolean)
       .length > 6;
 
+  /*
+   * A short phrase ending in a generic discourse/filler word (e.g.
+   * "US Here", "Market Now") is a leftover sentence fragment
+   * regardless of what precedes it - shape-based, not tied to any
+   * specific brand, niche, or country.
+   */
+  const cleanedWordCount = cleaned.split(/\s+/).filter(Boolean).length;
+  const endsWithFillerWord =
+    cleanedWordCount > 0 &&
+    cleanedWordCount <= 3 &&
+    /\b(here|there|now|today|currently|recently|onward|nearby)$/i.test(
+      cleaned
+    );
+
   if (
     blocked.test(cleaned) ||
     blockedGenericPhrase.test(
@@ -329,7 +343,8 @@ function cleanCompetitorCandidate(
     ) ||
     contextOnlyPhrase ||
     locationOnlyPhrase ||
-    sentenceFragment
+    sentenceFragment ||
+    endsWithFillerWord
   ) {
     return "";
   }
