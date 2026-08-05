@@ -74,6 +74,67 @@ function isNonSemanticText(value: unknown): boolean {
   return wordTokens.length === 0;
 }
 
+/*
+ * A crawl response that hasn't actually completed (HTTP 202
+ * "Accepted"/processing, or no status recorded at all) tells us
+ * nothing about whether the page's title/description is really
+ * missing - it only means the crawler hadn't finished reading that
+ * page yet. Only a genuinely final response (a real 2xx other than
+ * 202, or an explicit error status) is treated as evidence either
+ * way. This is a shape-based, universal check - it never references
+ * a specific site or field value.
+ */
+function isFinalCrawlResponse(page: any): boolean {
+  const status = Number(page?.statusCode ?? page?.status ?? NaN);
+  if (Number.isNaN(status) || status === 0) return false;
+  if (status === 202) return false;
+  return true;
+}
+
+function normalizeUrlForComparison(value: unknown): string {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .replace(/\/+$/, "");
+}
+
+/*
+ * A crawled page is only counted as having a missing title/
+ * description when: (1) the crawl response for that page actually
+ * completed, and (2) if the page is the audited homepage itself, the
+ * already-verified resolved homepage value doesn't already prove
+ * otherwise. This prevents an incomplete/pending crawl response for
+ * the homepage from contradicting metadata the audit already
+ * confirmed was present.
+ */
+function isCrawledPageMissingField(
+  page: any,
+  fieldValue: unknown,
+  report: any,
+  resolvedFieldValue: unknown
+): boolean {
+  if (!isFinalCrawlResponse(page)) return false;
+
+  const pageUrl = normalizeUrlForComparison(page?.url);
+  const homepageUrl = normalizeUrlForComparison(
+    report?.canonicalUrl || report?.resolvedUrl || report?.url
+  );
+
+  if (
+    pageUrl &&
+    homepageUrl &&
+    pageUrl === homepageUrl &&
+    resolvedFieldValue &&
+    !isNonSemanticText(resolvedFieldValue)
+  ) {
+    return false;
+  }
+
+  return isNonSemanticText(fieldValue);
+}
+
 const PROMO_REPORT_TYPES = [
   "seo",
   "technical",
@@ -1880,14 +1941,27 @@ const buildFoundationRoadmapActions = (
 
   // Missing titles/descriptions from the crawl sample should always
   // produce a recommendation, even if the provider's own summary
-  // count under-reported relative to the sampled pages.
+  // count under-reported relative to the sampled pages - but an
+  // incomplete crawl response (HTTP 202) for the homepage must not
+  // contradict metadata the audit already verified was present.
   const crawlSamplePages = Array.isArray(report?.onPage?.pages)
     ? report.onPage.pages
     : [];
-  const crawlMissingTitleCount = Math.max(
-    Number(report?.onPage?.missingTitle || 0),
-    crawlSamplePages.filter((p: any) => isNonSemanticText(p?.title)).length
+  const correctedSampleMissingTitleCount = crawlSamplePages.filter(
+    (p: any) => isCrawledPageMissingField(p, p?.title, report, report?.title)
+  ).length;
+  const totalCrawledForTitleCheck = Number(
+    report?.onPage?.crawledPages || crawlSamplePages.length || 0
   );
+  const titleSampleCoversFullCrawl =
+    totalCrawledForTitleCheck > 0 &&
+    crawlSamplePages.length >= totalCrawledForTitleCheck;
+  const crawlMissingTitleCount = titleSampleCoversFullCrawl
+    ? correctedSampleMissingTitleCount
+    : Math.max(
+        Number(report?.onPage?.missingTitle || 0),
+        correctedSampleMissingTitleCount
+      );
 
   if (crawlMissingTitleCount > 0) {
     addAction({
@@ -2332,17 +2406,17 @@ const cleanAiCompetitorList = (
           );
 
       /*
-       * A single word ending in a gerund/participle verb form (e.g.
-       * "Specializing", "Providing") is almost always a sentence
-       * fragment carried over from AI prose, not a named entity.
-       * Shape-based rule only - no brand, niche, or country
-       * reference.
+       * A word ending in a gerund/participle verb form (e.g.
+       * "Specializing", "Providing") starting the candidate,
+       * whether alone or followed by more words ("Finding Top-Rated
+       * Freelancers"), is almost always a sentence fragment carried
+       * over from AI prose, not a named entity. Shape-based rule
+       * only - no brand, niche, or country reference.
        */
+      const gerundFragmentPattern =
+        /^(?:specializ|provid|offer|deliver|focus|operat|serv|develop|design|build|creat|help|assist|support|work|lead|grow|expand|special|find|connect|match|hire|post|explor|discover|compar|choos|search|brows)ing\b/i;
       const isSingleGerundFragment =
-        !/\s/.test(value) &&
-        /^(?:specializ|provid|offer|deliver|focus|operat|serv|develop|design|build|creat|help|assist|support|work|lead|grow|expand|special)ing$/i.test(
-          value
-        );
+        gerundFragmentPattern.test(value);
 
       const contextOnlyPhrase =
         valueTokens.length > 0 &&
@@ -5748,7 +5822,27 @@ if (resolvedSeoTitle) {
           "Brand-Probe Citation Evidence",
           "These citations come from brand-awareness probes and do not count toward the unbranded category visibility score."
         );
-        tbl(["URL", "Cited by"], av.citations.slice(0, 6).map((c: any) => ({ col1: cl(c.url), col2: cl((c.models||[]).join(", ")) })), [CW - 50, 50]);
+        const dedupedCitations = new Map<string, { url: string; models: Set<string> }>();
+        av.citations.forEach((c: any) => {
+          const normalizedKey = String(c?.url || "")
+            .trim()
+            .toLowerCase()
+            .replace(/^https?:\/\//, "")
+            .replace(/^www\./, "")
+            .replace(/\/+$/, "");
+          if (!normalizedKey) return;
+          const existing = dedupedCitations.get(normalizedKey);
+          if (existing) {
+            (c?.models || []).forEach((m: string) => existing.models.add(m));
+          } else {
+            dedupedCitations.set(normalizedKey, {
+              url: normalizedKey,
+              models: new Set(c?.models || []),
+            });
+          }
+        });
+        const citationRows = Array.from(dedupedCitations.values());
+        tbl(["URL", "Cited by"], citationRows.slice(0, 6).map((c) => ({ col1: cl(c.url), col2: cl(Array.from(c.models).join(", ")) })), [CW - 50, 50]);
       }
       if (av.rankedPages?.length) {
         secTitle("Your Pages & The Keywords They Rank For");
@@ -6538,7 +6632,7 @@ col4:
               : ""
           }Automated screening does not certify editorial quality, topical relevance, traffic, or source trust. ${
             backlinkSampleUnreliableForDisplay
-              ? "A meaningful share of the sampled links show integrity risk, so the authority score above should be treated as unverified rather than strong until manually reviewed."
+              ? "A meaningful share of the sampled links show integrity risk, so the authority score above should be treated as provisional and unverified until the sampled links are manually reviewed."
               : linkConcentration >= 20
                 ? "The profile is also concentrated in a relatively small number of domains, so additional independent industry sources should be prioritised."
                 : "Review topical relevance, editorial placement, source trust, and link purpose before treating the backlink profile as strong."
@@ -6600,25 +6694,51 @@ const hasTechnicalEvidence =
     pdfData.onPage.pages
       .length > 0
   );
+
+/*
+ * Discovering only a handful of pages (often just the homepage)
+ * against a much larger requested crawl limit means the crawler
+ * likely could not follow internal links (JS-rendered navigation,
+ * blocked crawling, etc.) rather than the site genuinely having few
+ * pages. In that case "100% coverage" and "high confidence" would
+ * misleadingly read as sitewide completeness. This check is purely
+ * about the ratio of discovered pages to the requested limit, never
+ * about a specific site.
+ */
+const requestedCrawlLimitForScope = Number(pdfData?.onPage?.pageLimit || 0);
+const discoveryScopeNarrow =
+  hasTechnicalEvidence &&
+  requestedCrawlLimitForScope >= 5 &&
+  discoveredPageCount <= 1;
+
+const displayedCrawlConfidence = discoveryScopeNarrow
+  ? "Limited"
+  : cl(
+      pdfData?.onPage?.confidence ?? pdfData?.reconciliation?.technical?.confidence,
+      "Unknown"
+    );
+
     kpiRow([
       {label:"Pages Discovered",value:hasTechnicalEvidence?fmt(discoveredPageCount):"Unavailable",col:hasTechnicalEvidence?C.blue:C.muted},
       {label:"Pages Crawled",value:hasTechnicalEvidence?fmt(crawledPageCount):"Unavailable",col:hasTechnicalEvidence?C.accent:C.muted},
       {
   label:
-    "Usable Coverage",
+    discoveryScopeNarrow ? "Coverage of Discovered Scope" : "Usable Coverage",
   value:
     hasTechnicalEvidence &&
     usableCoveragePercent !== null
       ? `${usableCoveragePercent}%`
       : "Unavailable",
   col:
-    hasTechnicalEvidence &&
-    (
-      usableCoveragePercent ??
-      0
-    ) >= 90
-      ? C.green
-      : C.amber,
+    discoveryScopeNarrow
+      ? C.amber
+      : hasTechnicalEvidence &&
+        (
+          usableCoveragePercent ??
+          0
+        ) >= 90
+        ? C.green
+        : C.amber,
 },
       {label:"Crawl Page Limit",value:fmt(pdfData?.onPage?.pageLimit),col:C.muted},
     ]);
@@ -6639,10 +6759,17 @@ const hasTechnicalEvidence =
 },
       {label:"Failed Pages",value:hasTechnicalEvidence?fmt(pdfData?.onPage?.failedPages):"Not assessed",col:hasTechnicalEvidence&&(n(pdfData?.onPage?.failedPages)??0)>0?C.red:C.muted},
       {label:"Remaining Pages",value:hasTechnicalEvidence?fmt(pdfData?.onPage?.remainingPages):"Not assessed",col:hasTechnicalEvidence&&(n(pdfData?.onPage?.remainingPages)??0)>0?C.amber:C.muted},
-      {label:"Crawl Confidence",value:hasTechnicalEvidence?cl(pdfData?.onPage?.confidence??pdfData?.reconciliation?.technical?.confidence,"Unknown"):"Insufficient data",col:hasTechnicalEvidence&&pdfData?.onPage?.confidence==="high"?C.green:C.amber},
+      {label:"Crawl Confidence",value:hasTechnicalEvidence?displayedCrawlConfidence:"Insufficient data",col:hasTechnicalEvidence&&displayedCrawlConfidence==="high"?C.green:C.amber},
     ]);
     if (!hasTechnicalEvidence) {
       hiBox("Technical Crawl Evidence Unavailable","The crawler reached a final state but returned no crawled-page evidence. Zero values are not presented as verified technical results; rerun the crawl or review the provider task before relying on this section.","amber");
+    }
+    if (discoveryScopeNarrow) {
+      hiBox(
+        "Narrow Discovery Scope",
+        `Only ${fmt(discoveredPageCount)} page(s) were discovered out of a requested crawl limit of ${fmt(requestedCrawlLimitForScope)}. This usually means internal links could not be followed (JavaScript-rendered navigation, crawl blocking, etc.) rather than the site genuinely having only one page. Treat coverage and confidence figures above as scoped to what was actually discovered, not as sitewide verification.`,
+        "amber"
+      );
     }
     if(pdfData?.onPage?.limitation||pdfData?.reconciliation?.technical?.limitation){
       hiBox("Technical Coverage Limitation",cl(pdfData?.onPage?.limitation??pdfData?.reconciliation?.technical?.limitation),"amber");
@@ -6651,29 +6778,50 @@ const hasTechnicalEvidence =
 
     /*
      * The provider's own missingTitle/missingDescription counts can
-     * under-report relative to the actual sampled pages (e.g. a page
-     * with an Untitled/placeholder title). Reconcile by taking the
-     * larger of the two rather than trusting either blindly - this
+     * be wrong in either direction: under-reporting relative to a
+     * visibly Untitled sampled page, or over-reporting when a page's
+     * crawl response hadn't actually finished (HTTP 202) - which
+     * tells us nothing about whether the title is really missing,
+     * especially when that page is the homepage and its title was
+     * already verified elsewhere in this same report. Reconcile
+     * using both signals rather than trusting either blindly. This
      * works for any site because it only inspects the returned page
-     * sample, never a specific brand or domain.
+     * sample and resolved homepage fields, never a specific brand or
+     * domain.
      */
     const crawledPageSample = Array.isArray(pdfData?.onPage?.pages)
       ? pdfData.onPage.pages
       : [];
     const sampleMissingTitleCount = crawledPageSample.filter(
-      (p: any) => isNonSemanticText(p?.title)
+      (p: any) => isCrawledPageMissingField(p, p?.title, pdfData, pdfData?.title)
     ).length;
     const sampleMissingDescriptionCount = crawledPageSample.filter(
-      (p: any) => isNonSemanticText(p?.description ?? p?.metaDescription)
+      (p: any) =>
+        isCrawledPageMissingField(
+          p,
+          p?.description ?? p?.metaDescription,
+          pdfData,
+          pdfData?.description
+        )
     ).length;
-    const reconciledMissingTitle = Math.max(
-      Number(pdfData?.onPage?.missingTitle || 0),
-      sampleMissingTitleCount
+    const totalCrawledForMetaCheck = Number(
+      pdfData?.onPage?.crawledPages || crawledPageSample.length || 0
     );
-    const reconciledMissingDescription = Math.max(
-      Number(pdfData?.onPage?.missingDescription || 0),
-      sampleMissingDescriptionCount
-    );
+    const metaSampleCoversFullCrawl =
+      totalCrawledForMetaCheck > 0 &&
+      crawledPageSample.length >= totalCrawledForMetaCheck;
+    const reconciledMissingTitle = metaSampleCoversFullCrawl
+      ? sampleMissingTitleCount
+      : Math.max(
+          Number(pdfData?.onPage?.missingTitle || 0),
+          sampleMissingTitleCount
+        );
+    const reconciledMissingDescription = metaSampleCoversFullCrawl
+      ? sampleMissingDescriptionCount
+      : Math.max(
+          Number(pdfData?.onPage?.missingDescription || 0),
+          sampleMissingDescriptionCount
+        );
 
     tbl(["Check","Result","Notes"],[
       {col1:"Crawl Status",col2:hasTechnicalEvidence?cl(pdfData?.onPage?.crawlStatus,"—"):"No evidence returned",col3:"Final state is separate from whether usable page evidence was returned"},
@@ -10760,25 +10908,36 @@ const impactClass = impact.toLowerCase().includes("high")
       />
       <MetricCard
         label="Missing Titles"
-        value={
-          Math.max(
-            Number(data?.onPage?.missingTitle || 0),
-            (Array.isArray(data?.onPage?.pages) ? data.onPage.pages : []).filter(
-              (p: any) => isNonSemanticText(p?.title)
-            ).length
-          )
-        }
+        value={(() => {
+          const pages = Array.isArray(data?.onPage?.pages) ? data.onPage.pages : [];
+          const sampleCount = pages.filter((p: any) =>
+            isCrawledPageMissingField(p, p?.title, data, data?.title)
+          ).length;
+          const totalCrawled = Number(data?.onPage?.crawledPages || pages.length || 0);
+          const coversFullCrawl = totalCrawled > 0 && pages.length >= totalCrawled;
+          return coversFullCrawl
+            ? sampleCount
+            : Math.max(Number(data?.onPage?.missingTitle || 0), sampleCount);
+        })()}
       />
       <MetricCard
         label="Missing Descriptions"
-        value={
-          Math.max(
-            Number(data?.onPage?.missingDescription || 0),
-            (Array.isArray(data?.onPage?.pages) ? data.onPage.pages : []).filter(
-              (p: any) => isNonSemanticText(p?.description ?? p?.metaDescription)
-            ).length
-          )
-        }
+        value={(() => {
+          const pages = Array.isArray(data?.onPage?.pages) ? data.onPage.pages : [];
+          const sampleCount = pages.filter((p: any) =>
+            isCrawledPageMissingField(
+              p,
+              p?.description ?? p?.metaDescription,
+              data,
+              data?.description
+            )
+          ).length;
+          const totalCrawled = Number(data?.onPage?.crawledPages || pages.length || 0);
+          const coversFullCrawl = totalCrawled > 0 && pages.length >= totalCrawled;
+          return coversFullCrawl
+            ? sampleCount
+            : Math.max(Number(data?.onPage?.missingDescription || 0), sampleCount);
+        })()}
       />
       <MetricCard
         label="Duplicate Titles"

@@ -89,13 +89,26 @@ function deriveCategory(input: {
   return industry || "products and services in this market";
 }
 
+/*
+ * Some country names need a definite article to read naturally
+ * ("in the United States", not "in United States"). This is a
+ * generic grammar rule based on the country name's own words, not a
+ * hard-coded assumption about any specific audited business.
+ */
+function countryNeedsArticle(country: string): boolean {
+  return /^(united states|united kingdom|united arab emirates|netherlands|philippines|czech republic|dominican republic|bahamas|maldives|gambia)$/i.test(
+    String(country || "").trim()
+  );
+}
+
 function buildNeutralPrompts(
   category: string,
   country: string
 ) {
+  const trimmedCountry = String(country || "").trim();
   const market =
-    country && country !== "US"
-      ? ` in ${country}`
+    trimmedCountry && trimmedCountry !== "US"
+      ? ` in ${countryNeedsArticle(trimmedCountry) ? "the " : ""}${trimmedCountry}`
       : "";
 
   return [
@@ -235,15 +248,15 @@ function cleanCompetitorCandidate(
     /^(ppc|focused|founded|could|some|other|others|many|most|maybe|may|also|including|include|various|several|popular|leading|major|well known|there|great|uses?|crm|project management|business tools|software reviews?|reviews?|comparisons?|country|city|region|market|location|category|products?|user[-\s]?friendly interface|customi[sz]ation options?|systems?|ehrs?|emrs?|features?|functionality|integration|interoperability|workflow|security|support|pricing)$/i;
 
   /*
-   * A single word ending in a gerund/participle verb form (e.g.
-   * "Specializing", "Providing", "Offering") is almost always a
-   * sentence fragment carried over from AI prose, not a named
-   * entity. This is a shape-based rule - it never references a
-   * specific brand, niche, or country.
+   * A word ending in a gerund/participle verb form (e.g.
+   * "Specializing", "Providing", "Finding") starting the candidate -
+   * whether alone or followed by more words ("Finding Top-Rated
+   * Freelancers") - is almost always a sentence fragment carried
+   * over from AI prose, not a named entity. This is a shape-based
+   * rule - it never references a specific brand, niche, or country.
    */
   const isSingleGerundFragment =
-    !/\s/.test(cleaned) &&
-    /^(?:specializ|provid|offer|deliver|focus|operat|serv|develop|design|build|creat|help|assist|support|work|lead|grow|expand|special)ing$/i.test(
+    /^(?:specializ|provid|offer|deliver|focus|operat|serv|develop|design|build|creat|help|assist|support|work|lead|grow|expand|special|find|connect|match|hire|post|explor|discover|compar|choos|search|brows)ing\b/i.test(
       cleaned
     );
 
@@ -715,19 +728,27 @@ cleanCompetitorCandidate(
 
 parsed.brandCitations.forEach(
   (url) => {
+    const normalizedCitationKey =
+      String(url || "")
+        .trim()
+        .toLowerCase()
+        .replace(/^https?:\/\//, "")
+        .replace(/^www\./, "")
+        .replace(/\/+$/, "") || url;
+
     if (
       !categoryCitationsMap.has(
-        url
+        normalizedCitationKey
       )
     ) {
       categoryCitationsMap.set(
-        url,
+        normalizedCitationKey,
         new Set()
       );
     }
 
     categoryCitationsMap
-      .get(url)
+      .get(normalizedCitationKey)
       ?.add(
         modelResult.model
       );

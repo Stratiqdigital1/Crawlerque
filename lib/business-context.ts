@@ -500,6 +500,18 @@ const RELEVANCE_STOP_WORDS = new Set([
   "with",
 ]);
 
+/*
+ * Some country names need a definite article to read naturally
+ * ("in the United States", not "in United States"). This is a
+ * generic grammar rule based on the country name's own words, not a
+ * hard-coded assumption about any specific audited business.
+ */
+function countryNeedsArticle(country: string): boolean {
+  return /^(united states|united kingdom|united arab emirates|netherlands|philippines|czech republic|dominican republic|bahamas|maldives|gambia)$/i.test(
+    String(country || "").trim()
+  );
+}
+
 function decodeHtmlEntities(value: string) {
   return String(value || "")
     .replace(/&amp;/gi, "&")
@@ -1101,7 +1113,7 @@ function resolverBuildPrompts(
 ) {
   const market =
     countryName
-      ? ` in ${countryName}`
+      ? ` in ${countryNeedsArticle(countryName) ? "the " : ""}${countryName}`
       : "";
 
   if (
@@ -1772,6 +1784,9 @@ const selectedMarketAliases =
       : "",
   ]);
 
+const genericLocalityPhrase =
+  /\b(?:in your area|near you|nearby|locally|in your region|in your city|close to you|in your neighbo(?:u)?rhood|in my area)\b/i;
+
 const localizedReturnedPrompts =
   returnedPrompts.map(
     (prompt) => {
@@ -1799,6 +1814,9 @@ const localizedReturnedPrompts =
               cleanPrompt
             );
           }
+        ) ||
+        genericLocalityPhrase.test(
+          cleanPrompt
         );
 
       if (
@@ -1808,7 +1826,7 @@ const localizedReturnedPrompts =
         return `${cleanPrompt}?`;
       }
 
-      return `${cleanPrompt} in ${selectedMarket}?`;
+      return `${cleanPrompt} in ${countryNeedsArticle(selectedMarket) ? "the " : ""}${selectedMarket}?`;
     }
   );
 
@@ -2314,7 +2332,7 @@ export function filterRelevantKeywordItems<T extends Record<string, any>>(
 }
 
 export function buildAiPreviewPrompts(context: BusinessContext, country = "United States") {
-  const market = country ? ` in ${country}` : "";
+  const market = country ? ` in ${countryNeedsArticle(country) ? "the " : ""}${country}` : "";
   const category = context.primaryService;
 
   return [

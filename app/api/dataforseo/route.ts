@@ -1821,7 +1821,7 @@ function inferCompetitorRole(
   }
 
   if (
-    /marketplace|buy and sell|third[- ]party sellers|millions of products/.test(
+    /marketplace|buy and sell|third[- ]party sellers|millions of products|hire (?:freelancers|talent|experts)|find (?:freelancers|freelance|talent|work|a freelancer)|post a job|freelance jobs|freelance marketplace|gig economy|connect with clients|connect with freelancers/.test(
       text
     )
   ) {
@@ -1884,13 +1884,23 @@ function compatibleCompetitorRole(
   candidateRole: string,
   auditedBusinessText: string
 ) {
+  /*
+   * Across every branch below, a candidate whose homepage text
+   * didn't clearly match any of the fixed regex patterns is scored
+   * as "other" - that reflects inconclusive evidence, not proof of a
+   * different business model. Topical/keyword-overlap thresholds
+   * further down still gate the final direct/category decision, so
+   * always allowing "other" through only widens who is eligible to
+   * be evaluated rather than who gets classified as a competitor.
+   */
   if (
     auditedRole ===
     "publication"
   ) {
     return (
       candidateRole ===
-      "publisher_review"
+        "publisher_review" ||
+      candidateRole === "other"
     );
   }
 
@@ -1898,15 +1908,6 @@ function compatibleCompetitorRole(
     auditedRole ===
     "ecommerce"
   ) {
-    /*
-     * "other" means the homepage evidence did not clearly match any
-     * known pattern - it does not mean the candidate is a different
-     * business model. Rejecting it outright was excluding genuine
-     * specialist retailers whose homepage wording did not match the
-     * fixed regex set. Topical/keyword-overlap thresholds further
-     * down still gate the final classification, so this only widens
-     * who is eligible to be evaluated.
-     */
     return [
       "ecommerce",
       "local_business",
@@ -1922,9 +1923,20 @@ function compatibleCompetitorRole(
       auditedRole
     )
   ) {
+    /*
+     * A "platform" business (e.g. a freelance marketplace, gig
+     * platform, dating platform) very often competes with other
+     * platforms/marketplaces, not only software vendors or service
+     * providers. Restricting it to software_product/service_provider
+     * excluded genuine peer platforms whose homepage wording reads
+     * as a marketplace rather than "software".
+     */
     return [
       "software_product",
       "service_provider",
+      "platform",
+      "marketplace",
+      "other",
     ].includes(
       candidateRole
     );
@@ -1934,10 +1946,11 @@ function compatibleCompetitorRole(
     auditedRole ===
     "marketplace"
   ) {
-    return (
-      candidateRole ===
-      "marketplace"
-    );
+    return [
+      "marketplace",
+      "platform",
+      "other",
+    ].includes(candidateRole);
   }
 
   if (
@@ -1960,12 +1973,14 @@ function compatibleCompetitorRole(
           "ecommerce",
           "local_business",
           "service_provider",
+          "other",
         ].includes(
           candidateRole
         )
       : [
           "service_provider",
           "local_business",
+          "other",
         ].includes(
           candidateRole
         );
