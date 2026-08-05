@@ -263,15 +263,21 @@ function buildLocalSeoQuery(
       domainRootKey
     );
 
-  if (
-    alreadyContainsBrand ||
-    alreadyContainsDomainRoot ||
-    !brand
-  ) {
-    return service;
-  }
+const actionBasedQuery =
+  /^(buy|shop|find|order|book|hire|get|discover|compare|explore)\b/i.test(
+    service
+  );
 
-  return `${brand} ${service}`.trim();
+if (
+  alreadyContainsBrand ||
+  alreadyContainsDomainRoot ||
+  actionBasedQuery ||
+  !brand
+) {
+  return service;
+}
+
+return `${brand} ${service}`.trim();
 }
 
 async function fetchHomepage(inputUrl: string) {

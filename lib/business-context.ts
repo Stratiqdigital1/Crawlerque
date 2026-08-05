@@ -1952,14 +1952,23 @@ confidenceScore:
 
     marketRole,
 
-    localSeoApplicable:
-      typeof parsed
+localSeoApplicable:
+  [
+    "publication",
+    "software_product",
+    "marketplace",
+    "platform",
+  ].includes(
+    marketRole
+  )
+    ? false
+    : typeof parsed
         ?.localSeoApplicable ===
       "boolean"
-        ? parsed.localSeoApplicable
-        : resolverLocalSeoApplicable(
-            marketRole
-          ),
+      ? parsed.localSeoApplicable
+      : resolverLocalSeoApplicable(
+          marketRole
+        ),
 
 aiPrompts:
   localizedReturnedPrompts
