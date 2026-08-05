@@ -122,6 +122,23 @@ function categoryTokens(value: string) {
     "and",
     "the",
     "with",
+    "top",
+    "new",
+    "get",
+    "use",
+    "our",
+    "you",
+    "all",
+    "any",
+    "now",
+    "has",
+    "are",
+    "not",
+    "can",
+    "how",
+    "why",
+    "who",
+    "one",
   ]);
 
   return String(value || "")
@@ -131,7 +148,7 @@ function categoryTokens(value: string) {
     .map((token) => token.trim())
     .filter(
       (token) =>
-        token.length >= 4 &&
+        token.length >= 3 &&
         !stopWords.has(token)
     );
 }
@@ -216,6 +233,23 @@ function cleanCompetitorCandidate(
 
   const blockedGenericPhrase =
     /^(ppc|focused|founded|could|some|other|others|many|most|maybe|may|also|including|include|various|several|popular|leading|major|well known|there|great|uses?|crm|project management|business tools|software reviews?|reviews?|comparisons?|country|city|region|market|location|category|products?|user[-\s]?friendly interface|customi[sz]ation options?|systems?|ehrs?|emrs?|features?|functionality|integration|interoperability|workflow|security|support|pricing)$/i;
+
+  /*
+   * A single word ending in a gerund/participle verb form (e.g.
+   * "Specializing", "Providing", "Offering") is almost always a
+   * sentence fragment carried over from AI prose, not a named
+   * entity. This is a shape-based rule - it never references a
+   * specific brand, niche, or country.
+   */
+  const isSingleGerundFragment =
+    !/\s/.test(cleaned) &&
+    /^(?:specializ|provid|offer|deliver|focus|operat|serv|develop|design|build|creat|help|assist|support|work|lead|grow|expand|special)ing$/i.test(
+      cleaned
+    );
+
+  if (isSingleGerundFragment) {
+    return "";
+  }
 
   const contextTokenSet =
     new Set(

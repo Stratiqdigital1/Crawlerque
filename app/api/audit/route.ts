@@ -306,6 +306,45 @@ function getMetaTitle(
   );
 }
 
+/*
+ * Universal check: is this extracted value actually usable evidence,
+ * or is it a comment fragment, arrow/symbol soup, whitespace, or a
+ * known placeholder? This must never be brand-, niche-, or
+ * country-specific — it only looks at the shape of the text.
+ */
+function isNonSemanticText(value: unknown): boolean {
+  const raw = String(value || "");
+
+  // Strip HTML comment markers that can survive naive tag stripping.
+  const withoutComments = raw
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/-->|<!--/g, " ");
+
+  const collapsed = withoutComments.replace(/\s+/g, " ").trim();
+
+  if (!collapsed) return true;
+
+  const knownPlaceholders =
+    /^(untitled|untitled page|untitled document|no title|notitle|title|placeholder|home|n\/a|na|test|lorem ipsum|new page|page title|document|index)$/i;
+
+  if (knownPlaceholders.test(collapsed)) return true;
+
+  // Require at least a couple of real letters/numbers forming words.
+  const letterCount = (collapsed.match(/[a-z0-9]/gi) || []).length;
+  if (letterCount < 3) return true;
+
+  // If, after removing arrows/symbols/punctuation, fewer than 3
+  // alphanumeric characters remain in actual word-like tokens, this
+  // is symbol/arrow soup rather than real content.
+  const wordTokens = collapsed
+    .split(/[^a-z0-9]+/i)
+    .filter((token) => token.length >= 2);
+
+  if (wordTokens.length === 0) return true;
+
+  return false;
+}
+
 function getTitle(html: string) {
   /*
    * Only inspect the document <head>.
@@ -349,16 +388,16 @@ function getTitle(html: string) {
   const paymentOrWidgetTitle =
     /^(american express|visa|mastercard|paypal|shop pay|apple pay|google pay)$/i;
 
-  return (
-    candidates.find(
-      (candidate) =>
-        !paymentOrWidgetTitle.test(
-          candidate
-        )
-    ) ||
-    candidates[0] ||
-    ""
+  const usableCandidate = candidates.find(
+    (candidate) =>
+      !paymentOrWidgetTitle.test(candidate) &&
+      !isNonSemanticText(candidate)
   );
+
+  // If nothing semantic was found, the title is treated as missing
+  // rather than surfacing comment/arrow/symbol soup or a placeholder
+  // like "Untitled" as if it were a real title.
+  return usableCandidate || "";
 }
 
 function getDescription(html: string) {
@@ -371,7 +410,15 @@ function getDescription(html: string) {
 
 function getFirstH1(html: string) {
   const raw = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || "";
-  return decodeHtmlEntities(raw.replace(/<[^>]+>/g, " "));
+  const cleaned = decodeHtmlEntities(
+    raw
+      .replace(/<!--[\s\S]*?-->/g, " ")
+      .replace(/<[^>]+>/g, " ")
+  );
+
+  // A tag that only contains an HTML comment, arrows, or symbols is
+  // not a usable heading — treat it the same as no H1 being present.
+  return isNonSemanticText(cleaned) ? "" : cleaned;
 }
 
 function getBodyText(html: string) {
@@ -1784,15 +1831,18 @@ const descriptionNeedsRewrite =
         assessed: true,
         pass:
           h1Count === 1 &&
+          Boolean(h1) &&
           !h1NeedsContext,
         note:
           h1Count === 0
             ? "No H1 was detected on the resolved homepage."
             : h1Count > 1
               ? `${h1Count} H1 headings were detected; use one primary H1.`
-              : h1NeedsContext
-                ? "The H1 is present but does not provide enough service or topical context."
-                : "One clear, descriptive H1 was detected.",
+              : !h1
+                ? "An H1 tag exists but contains no usable heading text (comment, symbol, or arrow content only)."
+                : h1NeedsContext
+                  ? "The H1 is present but does not provide enough service or topical context."
+                  : "One clear, descriptive H1 was detected.",
       },
       {
         label: "Has a meta description",
@@ -3182,7 +3232,7 @@ if (runLocal) {
         100 -
           (!title ? 15 : 0) -
           (!description ? 15 : 0) -
-          (h1Count === 0 ? 15 : 0) -
+          (h1Count === 0 || !h1 ? 15 : 0) -
           (titleNeedsContext ? 8 : 0) -
           (descriptionNeedsRewrite ? 12 : 0) -
           (h1NeedsContext ? 5 : 0) -
@@ -3339,19 +3389,65 @@ const sampledBacklinks = Array.isArray(
   : [];
 
 const lowQualityBacklinkPattern =
-  /forum|profile|directory|classified|bookmark|guestbook|stream&type=|\/(?:users?|members?|profiles?|tags?|likes?|posts?|evaluate|listings?)(?:\/|$)|(?:^|[\s./_-])(?:social|feedback|directory|listing)(?:[.\s/_-]|$)/i;
+  /forum|profile|directory|classified|bookmark|guestbook|stream&type=|\/(?:users?|members?|profiles?|tags?|likes?|posts?|evaluate|listings?)(?:\/|$)|(?:^|[\s./_-])(?:social|feedback|directory|listing)(?:[.\s/_-]|$)|donat|charity|nonprofit|non-profit|shelter|rescue|adopt|foster|casino|gambl|payday|\bloan\b|pharma|viagra|weight[- ]?loss|diet[- ]?pill|crypto[- ]?(?:casino|bet)|\bcbd\b|\bslot\b|staging\.|admin\.|test\.|localhost|\bwp-content\/uploads\b.*\.(?:pdf|zip)/i;
+
+/*
+ * Provider rank alone cannot prove a link is trustworthy. A sample
+ * that is topically unrelated to the audited business, or that
+ * repeats the same source domain many times, is a data-integrity
+ * risk regardless of niche - this check is universal and does not
+ * reference any specific brand, domain, or country.
+ */
+const backlinkSourceDomainCounts = new Map<string, number>();
+sampledBacklinks.forEach((item: any) => {
+  const sourceDomain = String(item?.domainFrom || "")
+    .toLowerCase()
+    .replace(/^www\./, "")
+    .trim();
+  if (!sourceDomain) return;
+  backlinkSourceDomainCounts.set(
+    sourceDomain,
+    (backlinkSourceDomainCounts.get(sourceDomain) || 0) + 1
+  );
+});
+
+const duplicateBacklinkSourceCount = sampledBacklinks.filter(
+  (item: any) => {
+    const sourceDomain = String(item?.domainFrom || "")
+      .toLowerCase()
+      .replace(/^www\./, "")
+      .trim();
+    return (
+      sourceDomain &&
+      (backlinkSourceDomainCounts.get(sourceDomain) || 0) > 1
+    );
+  }
+).length;
 
 const sampledLowQualityBacklinks =
-  sampledBacklinks.filter((item: any) =>
-    lowQualityBacklinkPattern.test(
-      [
-        item?.domainFrom,
-        item?.sourceUrl,
-      ]
-        .filter(Boolean)
-        .join(" ")
-    )
-  ).length;
+  sampledBacklinks.filter((item: any) => {
+    const sourceText = [
+      item?.domainFrom,
+      item?.sourceUrl,
+      item?.anchor,
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const sourceDomain = String(item?.domainFrom || "")
+      .toLowerCase()
+      .replace(/^www\./, "")
+      .trim();
+
+    const isDuplicateSource =
+      sourceDomain &&
+      (backlinkSourceDomainCounts.get(sourceDomain) || 0) > 1;
+
+    return (
+      lowQualityBacklinkPattern.test(sourceText) ||
+      isDuplicateSource
+    );
+  }).length;
 
 const sampledQualityRatio =
   sampledBacklinks.length > 0
@@ -3413,12 +3509,40 @@ const dofollowQualityScore =
         ) * 15
       );
 
-const backlinkScore = Math.min(
+const uncappedBacklinkScore = Math.min(
   100,
   referringDomainBreadthScore +
     sampleQualityScore +
     dofollowQualityScore
 );
+
+/*
+ * If a meaningful share of the sampled links show data-integrity
+ * problems (topic mismatch, donation/charity/suspicious patterns,
+ * or the same source domain repeated), the breadth-based score must
+ * not still read as "Strong". This does not require knowing the
+ * audited niche - it only requires the sample itself to be
+ * internally consistent and free of obvious integrity risk.
+ */
+const sampleIntegrityRatio =
+  sampledBacklinks.length > 0
+    ? sampledLowQualityBacklinks / sampledBacklinks.length
+    : null;
+
+const backlinkSampleUnreliable =
+  sampleIntegrityRatio !== null && sampleIntegrityRatio >= 0.3;
+
+const backlinkScore = backlinkSampleUnreliable
+  ? Math.min(uncappedBacklinkScore, 55)
+  : uncappedBacklinkScore;
+
+const backlinkTrustLabel = backlinkSampleUnreliable
+  ? "Unverified — manual review required"
+  : sampleIntegrityRatio !== null && sampleIntegrityRatio > 0
+    ? "Moderate — partial manual review recommended"
+    : referringDomainCount > 0
+      ? "Directional"
+      : "Unavailable";
 
 const backlinkAuthoritySignals = {
   referringDomains:
@@ -3426,6 +3550,13 @@ const backlinkAuthoritySignals = {
   sampledBacklinks:
     sampledBacklinks.length,
   sampledLowQualityBacklinks,
+  duplicateBacklinkSourceCount,
+  sampleIntegrityRatio:
+    sampleIntegrityRatio === null
+      ? null
+      : Number(sampleIntegrityRatio.toFixed(2)),
+  manualReviewRequired: backlinkSampleUnreliable,
+  trustLabel: backlinkTrustLabel,
   sampledQualityRatio:
     sampledQualityRatio === null
       ? null
@@ -3437,7 +3568,7 @@ const backlinkAuthoritySignals = {
       ? null
       : Number(dofollowRatio.toFixed(2)),
   methodology:
-    "Authority score combines referring-domain breadth with sampled source-pattern heuristics and link-type signals. The sample screen is directional and does not certify backlink quality or editorial relevance.",
+    "Authority score combines referring-domain breadth with sampled source-pattern heuristics and link-type signals. The sample screen is directional and does not certify backlink quality or editorial relevance. A high proportion of topically unrelated, suspicious-pattern, or duplicate-source sample links caps the score and forces a manual-review label regardless of referring-domain breadth.",
 };
 
 const organicTrafficForScore = Number(organicTraffic || 0);

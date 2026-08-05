@@ -42,6 +42,38 @@ import {
   getPublicErrorMessage,
 } from "@/lib/public-error";
 
+/*
+ * Universal display-time check: is this extracted value real
+ * evidence, or is it a comment fragment, arrow/symbol soup,
+ * whitespace, or a known placeholder like "Untitled"? Applied the
+ * same way regardless of niche, brand, or country so historical
+ * saved reports can be defensively corrected without a backend
+ * re-run.
+ */
+function isNonSemanticText(value: unknown): boolean {
+  const raw = String(value || "");
+  const withoutComments = raw
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/-->|<!--/g, " ");
+  const collapsed = withoutComments.replace(/\s+/g, " ").trim();
+
+  if (!collapsed) return true;
+
+  const knownPlaceholders =
+    /^(untitled|untitled page|untitled document|no title|notitle|title|placeholder|home|n\/a|na|test|lorem ipsum|new page|page title|document|index)$/i;
+
+  if (knownPlaceholders.test(collapsed)) return true;
+
+  const letterCount = (collapsed.match(/[a-z0-9]/gi) || []).length;
+  if (letterCount < 3) return true;
+
+  const wordTokens = collapsed
+    .split(/[^a-z0-9]+/i)
+    .filter((token) => token.length >= 2);
+
+  return wordTokens.length === 0;
+}
+
 const PROMO_REPORT_TYPES = [
   "seo",
   "technical",
@@ -1718,7 +1750,7 @@ const buildFoundationRoadmapActions = (
           sourceModule:
             "AI Citation Readiness",
           validationStatus: "validated",
-          evidence: [label],
+          evidence: ["Structured data (schema) was not detected."],
         });
       }
 
@@ -1736,7 +1768,7 @@ const buildFoundationRoadmapActions = (
           sourceModule:
             "AI Citation Readiness",
           validationStatus: "validated",
-          evidence: [label],
+          evidence: ["FAQPage schema was not detected."],
         });
       }
 
@@ -1798,7 +1830,152 @@ const buildFoundationRoadmapActions = (
     });
   }
 
-  return actions.slice(0, 8);
+  // Performance: failing Core Web Vitals or a weak score did not
+  // always produce a recommendation because that logic lived only
+  // in the initial synchronous scoring pass. Recompute defensively
+  // from whichever device result is available.
+  const desktopScoreForAction = Number(
+    report?.pageSpeed?.desktop?.score ?? NaN
+  );
+  const mobileScoreForAction = Number(
+    report?.pageSpeed?.mobile?.score ?? NaN
+  );
+  const parseMetricNumber = (value: any) =>
+    Number(String(value ?? "").replace(/[^0-9.]/g, "")) || 0;
+  const clsValue = Math.max(
+    parseMetricNumber(report?.pageSpeed?.desktop?.cls),
+    parseMetricNumber(report?.pageSpeed?.mobile?.cls)
+  );
+  const tbtValue = Math.max(
+    parseMetricNumber(report?.pageSpeed?.desktop?.tbt),
+    parseMetricNumber(report?.pageSpeed?.mobile?.tbt)
+  );
+  const performanceFailing =
+    (!Number.isNaN(desktopScoreForAction) && desktopScoreForAction < 70) ||
+    (!Number.isNaN(mobileScoreForAction) && mobileScoreForAction < 70) ||
+    clsValue > 0.1 ||
+    tbtValue > 200;
+
+  if (performanceFailing) {
+    addAction({
+      id: "foundation-performance",
+      title: "Improve Core Web Vitals and page performance",
+      detail:
+        "Reduce layout shift and blocking JavaScript, and compress/lazy-load render-blocking assets to bring performance score and Core Web Vitals within target range.",
+      impact: "High",
+      effort: "Medium",
+      owner: "Developer",
+      timeline: "0–30 days",
+      sourceModule: "Performance & Core Web Vitals",
+      validationStatus: "validated",
+      evidence: [
+        `Desktop score: ${
+          Number.isNaN(desktopScoreForAction) ? "Unavailable" : desktopScoreForAction
+        }, Mobile score: ${
+          Number.isNaN(mobileScoreForAction) ? "Unavailable" : mobileScoreForAction
+        }, CLS: ${clsValue || "Unavailable"}, TBT: ${tbtValue ? `${tbtValue}ms` : "Unavailable"}`,
+      ],
+    });
+  }
+
+  // Missing titles/descriptions from the crawl sample should always
+  // produce a recommendation, even if the provider's own summary
+  // count under-reported relative to the sampled pages.
+  const crawlSamplePages = Array.isArray(report?.onPage?.pages)
+    ? report.onPage.pages
+    : [];
+  const crawlMissingTitleCount = Math.max(
+    Number(report?.onPage?.missingTitle || 0),
+    crawlSamplePages.filter((p: any) => isNonSemanticText(p?.title)).length
+  );
+
+  if (crawlMissingTitleCount > 0) {
+    addAction({
+      id: "foundation-crawl-missing-titles",
+      title: "Add unique titles to crawled pages missing one",
+      detail:
+        "Add unique, keyword-focused title tags to every crawled page currently returning a blank, placeholder, or Untitled value.",
+      impact: "Medium",
+      effort: "Low",
+      owner: "SEO / Content",
+      timeline: "0–30 days",
+      sourceModule: "Technical SEO",
+      validationStatus: "validated",
+      evidence: [
+        `Pages with a missing or non-semantic title in the crawled sample: ${crawlMissingTitleCount}`,
+      ],
+    });
+  }
+
+  // Invalid/non-semantic homepage H1 (comment, arrow, or symbol
+  // content only) should generate a fix even when h1Count alone
+  // looked fine.
+  const homepageH1Value = report?.h1 ?? "";
+  if (
+    Number(report?.h1Count || 0) === 1 &&
+    isNonSemanticText(homepageH1Value)
+  ) {
+    addAction({
+      id: "foundation-h1",
+      title: "Replace the non-semantic H1 with a real heading",
+      detail:
+        "The homepage H1 tag is present but contains only a comment, arrow, or symbol fragment. Replace it with one visible H1 that defines the page's primary product, service, or topic.",
+      impact: "Medium",
+      effort: "Low",
+      owner: "SEO / Content",
+      timeline: "0–30 days",
+      sourceModule: "SEO Foundation",
+      validationStatus: "validated",
+      affectedUrls: [
+        report?.canonicalUrl ||
+          report?.resolvedUrl ||
+          report?.url,
+      ].filter(Boolean),
+      evidence: [
+        "Resolved homepage H1 tag exists but has no usable heading text.",
+      ],
+    });
+  }
+
+  // Suspicious/unreliable backlink samples should always surface a
+  // manual-review recommendation, independent of the raw authority
+  // score.
+  const backlinkTopSample = Array.isArray(report?.backlinks?.topBacklinks)
+    ? report.backlinks.topBacklinks
+    : [];
+  const suspiciousBacklinkPattern =
+    /forum|profile|directory|classified|bookmark|guestbook|donat|charity|nonprofit|shelter|rescue|adopt|foster|casino|gambl|payday|\bloan\b|pharma|viagra|weight[- ]?loss|diet[- ]?pill|\bcbd\b|\bslot\b|staging\.|admin\.|test\./i;
+  const suspiciousBacklinkCount = backlinkTopSample.filter((item: any) =>
+    suspiciousBacklinkPattern.test(
+      [item?.domainFrom, item?.sourceUrl, item?.anchor]
+        .filter(Boolean)
+        .join(" ")
+    )
+  ).length;
+
+  if (
+    report?.backlinkAuthoritySignals?.manualReviewRequired === true ||
+    (backlinkTopSample.length > 0 &&
+      suspiciousBacklinkCount / backlinkTopSample.length >= 0.3)
+  ) {
+    addAction({
+      id: "foundation-backlink-manual-review",
+      title: "Manually review suspicious or unrelated backlink sources",
+      detail:
+        "A meaningful share of the sampled backlinks show topic-mismatch, suspicious-pattern, or duplicate-source signals. Manually review these sources and disavow or ignore any that do not represent legitimate editorial relevance.",
+      impact: "Medium",
+      effort: "Medium",
+      owner: "SEO",
+      timeline: "0–30 days",
+      sourceModule: "Backlink Authority",
+      validationStatus: "validated",
+      evidence: [
+        `Sampled backlinks flagged for manual review: ${suspiciousBacklinkCount} of ${backlinkTopSample.length}`,
+      ],
+    });
+  }
+
+  return actions.slice(0, 10);
 };
 
 const adaptPageTypeForMarketRole = (
@@ -5387,9 +5564,11 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
                 pdfData?.seoQuality
                   ?.homepageMultipleH1 === true
               ? "Multiple H1s detected"
-              : pdfData?.seoQuality?.h1NeedsContext
-                ? "Needs context"
-                : cl(normalized.seo.h1,"Detected"),
+              : isNonSemanticText(normalized.seo.h1)
+                ? "Not detected (tag present but no usable heading text)"
+                : pdfData?.seoQuality?.h1NeedsContext
+                  ? "Needs context"
+                  : cl(normalized.seo.h1,"Detected"),
         col3:"One clear H1 defining the main service or offer",
       },
       {
@@ -5634,6 +5813,7 @@ hiBox("AI Opportunity Insight",opportunity,aiScore>=70?"green":"amber");
             assessed: true,
             pass:
               Boolean(normalized.seo.h1) &&
+              !isNonSemanticText(normalized.seo.h1) &&
               h1Count === 1 &&
               pdfData?.seoQuality
                 ?.h1NeedsContext !== true &&
@@ -6193,13 +6373,17 @@ col4:
       pdfData?.backlinks?.referringDomains ??
         normalized.backlinks.referringDomains
     ) ?? 0;
-    const backlinkAuthorityScore = n(pdfData?.backlinkAuthorityScore) ?? (
+    const uncappedBacklinkAuthorityScore = n(pdfData?.backlinkAuthorityScore) ?? (
       referringDomainsValue >= 200 ? 90 :
       referringDomainsValue >= 50 ? 75 :
       referringDomainsValue >= 20 ? 60 :
       referringDomainsValue >= 5 ? 40 :
       referringDomainsValue >= 1 ? 20 : 0
     );
+    const backlinkAuthorityScore =
+      pdfData?.backlinkAuthoritySignals?.manualReviewRequired === true
+        ? Math.min(uncappedBacklinkAuthorityScore, 55)
+        : uncappedBacklinkAuthorityScore;
     kpiRow([
       {label:"Provider Backlink Rank",value:backlinkRankValue !== null ? String(backlinkRankValue) : "—",sub:"Raw provider metric",col:C.blue},
       {label:"Total Backlinks",value:fmt(pdfData?.backlinks?.backlinks??normalized.backlinks.total),col:C.accent},
@@ -6242,7 +6426,20 @@ col4:
       : [];
 
 const pdfManualReviewBacklinkPattern =
-  /forum|profile|directory|classified|bookmark|guestbook|stream&type=|pages\.dev|\.cloud(?:\/|$)|\.wiki(?:\/|$)|\.fyi(?:\/|$)|url[s-]?shortener|screenshots?|global-ranks|\/(?:users?|members?|profiles?|tags?|likes?|posts?|evaluate|listings?|reports?|share|stats|gallery|galerias|video)(?:\/|$)|(?:^|[\s./_-])(?:social|feedback|directory|listing)(?:[.\s/_-]|$)/i;
+  /forum|profile|directory|classified|bookmark|guestbook|stream&type=|pages\.dev|\.cloud(?:\/|$)|\.wiki(?:\/|$)|\.fyi(?:\/|$)|url[s-]?shortener|screenshots?|global-ranks|\/(?:users?|members?|profiles?|tags?|likes?|posts?|evaluate|listings?|reports?|share|stats|gallery|galerias|video)(?:\/|$)|(?:^|[\s./_-])(?:social|feedback|directory|listing)(?:[.\s/_-]|$)|donat|charity|nonprofit|non-profit|shelter|rescue|adopt|foster|casino|gambl|payday|\bloan\b|pharma|viagra|weight[- ]?loss|diet[- ]?pill|crypto[- ]?(?:casino|bet)|\bcbd\b|\bslot\b|staging\.|admin\.|test\.|localhost/i;
+
+const pdfBacklinkSourceDomainCounts = new Map<string, number>();
+sampledBacklinksForPdf.forEach((item: any) => {
+  const sourceDomain = String(item?.domainFrom || "")
+    .toLowerCase()
+    .replace(/^www\./, "")
+    .trim();
+  if (!sourceDomain) return;
+  pdfBacklinkSourceDomainCounts.set(
+    sourceDomain,
+    (pdfBacklinkSourceDomainCounts.get(sourceDomain) || 0) + 1
+  );
+});
 
 const sampledNeedsManualReview =
   sampledBacklinksForPdf.filter(
@@ -6256,12 +6453,23 @@ const sampledNeedsManualReview =
         [
           item?.domainFrom,
           item?.sourceUrl,
+          item?.anchor,
         ]
           .filter(Boolean)
           .join(" ");
 
+      const sourceDomain = String(item?.domainFrom || "")
+        .toLowerCase()
+        .replace(/^www\./, "")
+        .trim();
+
+      const isDuplicateSource =
+        sourceDomain &&
+        (pdfBacklinkSourceDomainCounts.get(sourceDomain) || 0) > 1;
+
       return (
         rank <= 0 ||
+        isDuplicateSource ||
         pdfManualReviewBacklinkPattern.test(
           source
         )
@@ -6276,22 +6484,46 @@ const sampledWithPositiveSignals =
       sampledNeedsManualReview
   );
 
+/*
+ * If the server already computed a manual-review requirement
+ * (backlinkAuthoritySignals), trust it - it has visibility into the
+ * full sample rather than only the top-12 shown here. Otherwise fall
+ * back to this display-time reconciliation so older saved reports
+ * are still corrected without a re-run.
+ */
+const backlinkSampleUnreliableForDisplay =
+  pdfData?.backlinkAuthoritySignals?.manualReviewRequired === true ||
+  (sampledBacklinksForPdf.length > 0 &&
+    sampledNeedsManualReview / sampledBacklinksForPdf.length >= 0.3);
+
+const displayBacklinkTrustLabel =
+  pdfData?.backlinkAuthoritySignals?.trustLabel ||
+  (backlinkSampleUnreliableForDisplay
+    ? "Unverified — manual review required"
+    : null);
+
 hiBox(
   "Authority Insight",
 
   referringDomainsValue > 0
-    ? `${domain} has ${referringDomainsValue} unique referring domain(s) and ${totalBacklinksValue} total backlinks. ${
+    ? `${domain} has ${referringDomainsValue} unique referring domain(s) and ${totalBacklinksValue} total backlinks.${
+        displayBacklinkTrustLabel
+          ? ` Trust assessment: ${displayBacklinkTrustLabel}.`
+          : ""
+      } ${
         sampledBacklinksForPdf.length > 0
-          ? `${sampledNeedsManualReview} of ${sampledBacklinksForPdf.length} returned sample link(s) require priority manual review because they had a zero or unavailable provider rank, or matched automated low-trust URL patterns. ${sampledWithPositiveSignals} sample link(s) had a positive provider rank and did not match those patterns. `
+          ? `${sampledNeedsManualReview} of ${sampledBacklinksForPdf.length} returned sample link(s) require priority manual review because they had a zero or unavailable provider rank, matched a suspicious or topically unrelated URL/anchor pattern, or repeated the same source domain. ${sampledWithPositiveSignals} sample link(s) had a positive provider rank and did not match those patterns. `
           : ""
       }Automated screening does not certify editorial quality, topical relevance, traffic, or source trust. ${
-        linkConcentration >= 20
-          ? "The profile is also concentrated in a relatively small number of domains, so additional independent industry sources should be prioritised."
-          : "Review topical relevance, editorial placement, source trust, and link purpose before treating the backlink profile as strong."
+        backlinkSampleUnreliableForDisplay
+          ? "A meaningful share of the sampled links show integrity risk, so the authority score above should be treated as unverified rather than strong until manually reviewed."
+          : linkConcentration >= 20
+            ? "The profile is also concentrated in a relatively small number of domains, so additional independent industry sources should be prioritised."
+            : "Review topical relevance, editorial placement, source trust, and link purpose before treating the backlink profile as strong."
       }`
     : "No verified backlink authority evidence was returned for this audit.",
 
-  "blue"
+  backlinkSampleUnreliableForDisplay ? "amber" : "blue"
 );
   }
 
@@ -6394,6 +6626,33 @@ const hasTechnicalEvidence =
       hiBox("Technical Coverage Limitation",cl(pdfData?.onPage?.limitation??pdfData?.reconciliation?.technical?.limitation),"amber");
     }
     const technicalResult = (value: any) => hasTechnicalEvidence ? fmt(value) : "Not assessed";
+
+    /*
+     * The provider's own missingTitle/missingDescription counts can
+     * under-report relative to the actual sampled pages (e.g. a page
+     * with an Untitled/placeholder title). Reconcile by taking the
+     * larger of the two rather than trusting either blindly - this
+     * works for any site because it only inspects the returned page
+     * sample, never a specific brand or domain.
+     */
+    const crawledPageSample = Array.isArray(pdfData?.onPage?.pages)
+      ? pdfData.onPage.pages
+      : [];
+    const sampleMissingTitleCount = crawledPageSample.filter(
+      (p: any) => isNonSemanticText(p?.title)
+    ).length;
+    const sampleMissingDescriptionCount = crawledPageSample.filter(
+      (p: any) => isNonSemanticText(p?.description ?? p?.metaDescription)
+    ).length;
+    const reconciledMissingTitle = Math.max(
+      Number(pdfData?.onPage?.missingTitle || 0),
+      sampleMissingTitleCount
+    );
+    const reconciledMissingDescription = Math.max(
+      Number(pdfData?.onPage?.missingDescription || 0),
+      sampleMissingDescriptionCount
+    );
+
     tbl(["Check","Result","Notes"],[
       {col1:"Crawl Status",col2:hasTechnicalEvidence?cl(pdfData?.onPage?.crawlStatus,"—"):"No evidence returned",col3:"Final state is separate from whether usable page evidence was returned"},
       {col1:"Confidence",col2:hasTechnicalEvidence?cl(pdfData?.onPage?.confidence??pdfData?.reconciliation?.technical?.confidence,"—"):"insufficient-data",col3:"Limited when the crawl times out, returns zero pages, or provides partial coverage"},
@@ -6437,15 +6696,15 @@ const hasTechnicalEvidence =
       {col1:"Pages Remaining",col2:technicalResult(pdfData?.onPage?.remainingPages),col3:"Unprocessed in-scope pages at finalization"},
       {col1:"Crawl Page Limit",col2:fmt(pdfData?.onPage?.pageLimit),col3:"Maximum pages requested for this audit"},
       {col1:"Outside Crawl Limit",col2:technicalResult(pdfData?.onPage?.outsideLimitPages),col3:"Discovered pages excluded by the visible crawl cap"},
-      {col1:"Missing Titles",col2:technicalResult(pdfData?.onPage?.missingTitle),col3:"Every important page needs a unique title"},
-      {col1:"Missing Descriptions",col2:technicalResult(pdfData?.onPage?.missingDescription),col3:"Descriptions improve search CTR"},
+      {col1:"Missing Titles",col2:hasTechnicalEvidence?fmt(reconciledMissingTitle):"Not assessed",col3:"Every important page needs a unique title"},
+      {col1:"Missing Descriptions",col2:hasTechnicalEvidence?fmt(reconciledMissingDescription):"Not assessed",col3:"Descriptions improve search CTR"},
       {col1:"Duplicate Titles",col2:technicalResult(pdfData?.onPage?.duplicateTitle),col3:"Duplicate titles reduce topical clarity"},
     ],[42,34,CW-76]);
     if(hasTechnicalEvidence && pdfData?.onPage?.pages?.length){
       secTitle("Sample Crawled Pages");
       tbl(["Title","URL","HTTP","Load Time"],
         pdfData.onPage.pages.slice(0,12).map((p:any)=>({
-          col1:cl(p.title,"Untitled"),col2:cl(p.url,"—"),
+          col1:isNonSemanticText(p.title)?"Untitled":cl(p.title,"Untitled"),col2:cl(p.url,"—"),
           col3:cl(String(p.statusCode??"—")),col4:cl(p.loadTime?`${p.loadTime}ms`:"—"),
         })),[55,63,18,CW-136]);
     }
@@ -10458,11 +10717,25 @@ const impactClass = impact.toLowerCase().includes("high")
       />
       <MetricCard
         label="Missing Titles"
-        value={data?.onPage?.missingTitle ?? "Data not available"}
+        value={
+          Math.max(
+            Number(data?.onPage?.missingTitle || 0),
+            (Array.isArray(data?.onPage?.pages) ? data.onPage.pages : []).filter(
+              (p: any) => isNonSemanticText(p?.title)
+            ).length
+          )
+        }
       />
       <MetricCard
         label="Missing Descriptions"
-        value={data?.onPage?.missingDescription ?? "Data not available"}
+        value={
+          Math.max(
+            Number(data?.onPage?.missingDescription || 0),
+            (Array.isArray(data?.onPage?.pages) ? data.onPage.pages : []).filter(
+              (p: any) => isNonSemanticText(p?.description ?? p?.metaDescription)
+            ).length
+          )
+        }
       />
       <MetricCard
         label="Duplicate Titles"
@@ -10480,7 +10753,7 @@ const impactClass = impact.toLowerCase().includes("high")
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="font-semibold text-slate-950">
-                    {i + 1}. {p.title || "Untitled Page"}
+                    {i + 1}. {isNonSemanticText(p.title) ? "Untitled Page" : p.title}
                   </p>
                   <p className="mt-1 break-all text-xs text-slate-500">
                     {p.url || "Data not available"}

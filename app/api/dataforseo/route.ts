@@ -1460,6 +1460,23 @@ const competitorStopWords = new Set([
   "and",
   "for",
   "top",
+  "new",
+  "get",
+  "use",
+  "our",
+  "you",
+  "all",
+  "any",
+  "now",
+  "has",
+  "are",
+  "not",
+  "can",
+  "how",
+  "why",
+  "who",
+  "one",
+  "big",
 ]);
 
 function normalizeCompetitorToken(
@@ -1471,7 +1488,7 @@ function normalizeCompetitorToken(
     .trim();
 
   if (
-    token.length < 4 ||
+    token.length < 3 ||
     competitorStopWords.has(token)
   ) {
     return "";
@@ -1499,7 +1516,7 @@ function normalizeCompetitorToken(
   }
 
   if (
-    token.length < 4 ||
+    token.length < 3 ||
     competitorStopWords.has(token)
   ) {
     return "";
@@ -1828,7 +1845,7 @@ function inferCompetitorRole(
   }
 
   if (
-    /online store|shop online|add to cart|shopping cart|buy online|product catalog/.test(
+    /online store|shop online|add to cart|add to bag|add to basket|shopping cart|buy online|product catalog|checkout|wishlist|in stock|out of stock|buy now|order now|free shipping|cash on delivery|rs\.?\s?\d|pkr\s?\d|₹\s?\d|\$\s?\d+(?:\.\d{2})?\b|price:|sku:/.test(
       text
     )
   ) {
@@ -1881,10 +1898,20 @@ function compatibleCompetitorRole(
     auditedRole ===
     "ecommerce"
   ) {
-    return (
-      candidateRole ===
-      "ecommerce"
-    );
+    /*
+     * "other" means the homepage evidence did not clearly match any
+     * known pattern - it does not mean the candidate is a different
+     * business model. Rejecting it outright was excluding genuine
+     * specialist retailers whose homepage wording did not match the
+     * fixed regex set. Topical/keyword-overlap thresholds further
+     * down still gate the final classification, so this only widens
+     * who is eligible to be evaluated.
+     */
+    return [
+      "ecommerce",
+      "local_business",
+      "other",
+    ].includes(candidateRole);
   }
 
   if (
