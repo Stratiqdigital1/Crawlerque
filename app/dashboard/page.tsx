@@ -101,6 +101,49 @@ function normalizeUrlForComparison(value: unknown): string {
 }
 
 /*
+ * Reports saved by earlier builds stored long, multi-sentence
+ * classification reasons that get clipped mid-sentence inside the
+ * PDF table cell (e.g. cutting off right after "Audited-category
+ * coverage:"). Condense them at display time so legacy saved
+ * reports render a complete thought without needing a re-run.
+ */
+function shortenClassificationReason(value: unknown): string {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (!text) return "";
+
+  const coverageMatch = text.match(/audited-category coverage:\s*(\d+)%/i);
+  const topicalMatch = text.match(
+    /topical coverage:\s*([^.]+?)\./i
+  ) || text.match(/category overlap:\s*([^.]+?)\./i);
+
+  if (/^matching business model with broad/i.test(text)) {
+    const topics = topicalMatch?.[1]?.split(",").slice(0, 3).join(",").trim();
+    return `Same business model; broad topical match${topics ? ` (${topics})` : ""}.`;
+  }
+
+  if (/^matching business model with partial/i.test(text)) {
+    const topics = topicalMatch?.[1]?.split(",").slice(0, 3).join(",").trim();
+    return `Same business model; partial category match${topics ? ` (${topics})` : ""}.`;
+  }
+
+  if (/homepage evidence did not prove/i.test(text)) {
+    return `Organic overlap only; business model or topical match not confirmed${
+      coverageMatch ? ` (coverage ${coverageMatch[1]}%)` : ""
+    }.`;
+  }
+
+  if (/could not be verified|could not be fetched/i.test(text)) {
+    return "Organic overlap only; competitor homepage could not be verified.";
+  }
+
+  // Unknown wording: keep the first sentence only, capped in length.
+  const firstSentence = text.split(/(?<=\.)\s/)[0] || text;
+  return firstSentence.length > 110
+    ? `${firstSentence.slice(0, 107).trimEnd()}...`
+    : firstSentence;
+}
+
+/*
  * A crawled page is only counted as having a missing title/
  * description when: (1) the crawl response for that page actually
  * completed, and (2) if the page is the audited homepage itself, the
@@ -1274,6 +1317,92 @@ const getLegacyCompetitorRelationship = (
   return "unclassified_overlap";
 };
 
+/*
+ * Saved reports store whatever grouping the backend produced at
+ * audit time. Re-exporting a report re-runs only the display layer,
+ * so a backend classifier improvement cannot retroactively fix an
+ * older stored report. This pass applies the same safe corrections
+ * at render time: well-known classifieds/marketplace platforms get
+ * their proper relationship, and a domain left unclassified despite
+ * heavy independent shared-keyword overlap is surfaced as an
+ * unverified category competitor rather than being buried. It never
+ * promotes anything to Verified Direct (that still requires real
+ * business-model evidence) and never feeds keyword-gap generation.
+ */
+const applyDisplayTimeCompetitorCorrections = (
+  landscape: ReportCompetitorLandscape,
+  report: any
+): ReportCompetitorLandscape => {
+  const knownMarketplacePattern =
+    /(^|\.)(amazon|ebay|alibaba|aliexpress|walmart|etsy|temu|wayfair|target|daraz|olx|quikr|gumtree|craigslist|mercadolibre|jumia)\./i;
+  const knownSocialPattern =
+    /(^|\.)(youtube|facebook|instagram|linkedin|twitter|x|pinterest|reddit|tiktok|quora|wikipedia|medium)\./i;
+
+  const sharedOf = (item: any) =>
+    Number(item?.sharedKeywords ?? item?.intersections ?? 0);
+
+  const remainingUnclassified: any[] = [];
+  const promotedCategory: any[] = [];
+  const addedMarketplaces: any[] = [];
+  const addedSocial: any[] = [];
+
+  (landscape.unclassifiedOverlap || []).forEach((item: any) => {
+    const domain = String(item?.domain || "").toLowerCase();
+
+    if (knownMarketplacePattern.test(domain)) {
+      addedMarketplaces.push({
+        ...item,
+        relationshipLabel: "Marketplace",
+        classificationReason:
+          "Recognized multi-seller / classifieds platform.",
+      });
+      return;
+    }
+
+    if (knownSocialPattern.test(domain)) {
+      addedSocial.push({
+        ...item,
+        relationshipLabel: "Social / Community Platform",
+        classificationReason:
+          "Recognized social or community platform.",
+      });
+      return;
+    }
+
+    if (sharedOf(item) >= 8) {
+      promotedCategory.push({
+        ...item,
+        relationshipLabel: "Category / Vertical Competitor (unverified)",
+        classificationConfidence: "low",
+        manualVerificationRecommended: true,
+        classificationReason: `Strong organic overlap (${sharedOf(
+          item
+        )} shared keywords); business model unverified — confirm manually.`,
+      });
+      return;
+    }
+
+    remainingUnclassified.push(item);
+  });
+
+  return {
+    ...landscape,
+    categoryCompetitors: [
+      ...(landscape.categoryCompetitors || []),
+      ...promotedCategory,
+    ],
+    marketplaces: [
+      ...(landscape.marketplaces || []),
+      ...addedMarketplaces,
+    ],
+    socialAndCommunity: [
+      ...(landscape.socialAndCommunity || []),
+      ...addedSocial,
+    ],
+    unclassifiedOverlap: remainingUnclassified,
+  };
+};
+
 const getReportCompetitorLandscape = (
   report: any
 ): ReportCompetitorLandscape => {
@@ -1287,7 +1416,7 @@ const getReportCompetitorLandscape = (
     stored &&
     typeof stored === "object"
   ) {
-    return {
+    return applyDisplayTimeCompetitorCorrections({
 direct:
   Array.isArray(
     stored?.direct
@@ -1345,7 +1474,7 @@ searchIntermediaries:
         )
           ? stored.unclassifiedOverlap
           : [],
-    };
+    }, report);
   }
 
 const fallback:
@@ -2022,21 +2151,55 @@ const buildFoundationRoadmapActions = (
     report?.backlinkAuthoritySignals &&
     typeof report.backlinkAuthoritySignals.sampledBacklinks === "number";
   const suspiciousBacklinkPattern =
-    /forum|profile|directory|classified|bookmark|guestbook|donat|charity|nonprofit|shelter|rescue|adopt|foster|casino|gambl|payday|\bloan\b|pharma|viagra|weight[- ]?loss|diet[- ]?pill|\bcbd\b|\bslot\b|staging\.|admin\.|test\./i;
+    /forum|profile|directory|classified|bookmark|guestbook|stream&type=|pages\.dev|\.cloud(?:\/|$)|\.wiki(?:\/|$)|\.fyi(?:\/|$)|url[s-]?shortener|screenshots?|global-ranks|\/(?:users?|members?|profiles?|tags?|likes?|posts?|evaluate|listings?|reports?|share|stats|gallery|galerias|video)(?:\/|$)|(?:^|[\s./_-])(?:social|feedback|directory|listing)(?:[.\s/_-]|$)|donat|charity|nonprofit|non-profit|shelter|rescue|adopt|foster|pet|animal|casino|gambl|payday|\bloan\b|pharma|viagra|weight[- ]?loss|diet[- ]?pill|crypto[- ]?(?:casino|bet)|\bcbd\b|\bslot\b|staging\.|admin\.|test\.|localhost/i;
+
+  const roadmapBacklinkSourceCounts = new Map<string, number>();
+  backlinkTopSample.forEach((item: any) => {
+    const sourceDomain = String(item?.domainFrom || "")
+      .toLowerCase()
+      .replace(/^www\./, "")
+      .trim();
+    if (!sourceDomain) return;
+    roadmapBacklinkSourceCounts.set(
+      sourceDomain,
+      (roadmapBacklinkSourceCounts.get(sourceDomain) || 0) + 1
+    );
+  });
+
   const locallyComputedSuspiciousCount = backlinkTopSample.filter(
-    (item: any) =>
-      suspiciousBacklinkPattern.test(
-        [item?.domainFrom, item?.sourceUrl, item?.anchor]
-          .filter(Boolean)
-          .join(" ")
-      )
+    (item: any) => {
+      const rank = Number(item?.rank || 0);
+      const sourceText = [item?.domainFrom, item?.sourceUrl, item?.anchor]
+        .filter(Boolean)
+        .join(" ");
+      const sourceDomain = String(item?.domainFrom || "")
+        .toLowerCase()
+        .replace(/^www\./, "")
+        .trim();
+      const isDuplicateSource =
+        sourceDomain &&
+        (roadmapBacklinkSourceCounts.get(sourceDomain) || 0) > 1;
+      return (
+        rank <= 0 ||
+        isDuplicateSource ||
+        suspiciousBacklinkPattern.test(sourceText)
+      );
+    }
   ).length;
-  const canonicalSuspiciousCount = hasServerBacklinkSignalsForRoadmap
-    ? report.backlinkAuthoritySignals.sampledLowQualityBacklinks
-    : locallyComputedSuspiciousCount;
-  const canonicalSampleTotal = hasServerBacklinkSignalsForRoadmap
-    ? report.backlinkAuthoritySignals.sampledBacklinks
-    : backlinkTopSample.length;
+  const canonicalSuspiciousCount = Math.max(
+    hasServerBacklinkSignalsForRoadmap
+      ? Number(
+          report.backlinkAuthoritySignals.sampledLowQualityBacklinks || 0
+        )
+      : 0,
+    locallyComputedSuspiciousCount
+  );
+  const canonicalSampleTotal = Math.max(
+    hasServerBacklinkSignalsForRoadmap
+      ? Number(report.backlinkAuthoritySignals.sampledBacklinks || 0)
+      : 0,
+    backlinkTopSample.length
+  );
 
   if (
     report?.backlinkAuthoritySignals?.manualReviewRequired === true ||
@@ -2184,9 +2347,40 @@ const getUsableTechnicalCoverage = (
 
 const getCanonicalRecommendationSet = (
   report: any
-) =>
-  mergeRoadmapActions(
-    report?.recommendations,
+) => {
+  /*
+   * A stored recommendation worded around mobile performance is
+   * dropped when the report has no usable mobile PageSpeed evidence.
+   * Otherwise it claims the shared "performance" dedupe key, pushes
+   * out the desktop-based performance action generated below, and is
+   * then filtered out of the PDF for lacking mobile data - leaving
+   * the report with no performance action at all despite failing
+   * desktop metrics.
+   */
+  const mobileScoreValue = Number(
+    report?.pageSpeed?.mobile?.score ?? NaN
+  );
+  const mobileEvidenceAvailable =
+    !Number.isNaN(mobileScoreValue) && mobileScoreValue > 0;
+
+  const storedRecommendations = (
+    Array.isArray(report?.recommendations) ? report.recommendations : []
+  ).filter((item: any) => {
+    if (mobileEvidenceAvailable) return true;
+    const text = [
+      typeof item === "string" ? item : item?.title,
+      typeof item === "string" ? "" : item?.detail,
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const isMobilePerformanceItem =
+      /mobile/i.test(text) &&
+      /(pagespeed|performance|loading|lcp|core web vitals)/i.test(text);
+    return !isMobilePerformanceItem;
+  });
+
+  return mergeRoadmapActions(
+    storedRecommendations,
     buildFoundationRoadmapActions(
       report
     )
@@ -2205,6 +2399,7 @@ const getCanonicalRecommendationSet = (
         report
       ),
   }));
+};
 
 const keywordStopWords = new Set([
   "a",
@@ -6214,9 +6409,11 @@ hiBox(
               ),
             col5:
               cl(
-                c?.classificationReason ??
-                  c?.likelyWinningFactor ??
-                  c?.winningFactor,
+                shortenClassificationReason(
+                  c?.classificationReason ??
+                    c?.likelyWinningFactor ??
+                    c?.winningFactor
+                ),
                 "Validated business-model and topical overlap"
               ),
           })),
@@ -6322,7 +6519,7 @@ hiBox(
               ),
             col4:
               cl(
-                c?.classificationReason,
+                shortenClassificationReason(c?.classificationReason),
                 "Organic overlap does not prove direct commercial competition."
               ),
           })),
@@ -6514,7 +6711,7 @@ col4:
       : [];
 
     const pdfManualReviewBacklinkPattern =
-      /forum|profile|directory|classified|bookmark|guestbook|stream&type=|pages\.dev|\.cloud(?:\/|$)|\.wiki(?:\/|$)|\.fyi(?:\/|$)|url[s-]?shortener|screenshots?|global-ranks|\/(?:users?|members?|profiles?|tags?|likes?|posts?|evaluate|listings?|reports?|share|stats|gallery|galerias|video)(?:\/|$)|(?:^|[\s./_-])(?:social|feedback|directory|listing)(?:[.\s/_-]|$)|donat|charity|nonprofit|non-profit|shelter|rescue|adopt|foster|casino|gambl|payday|\bloan\b|pharma|viagra|weight[- ]?loss|diet[- ]?pill|crypto[- ]?(?:casino|bet)|\bcbd\b|\bslot\b|staging\.|admin\.|test\.|localhost/i;
+      /forum|profile|directory|classified|bookmark|guestbook|stream&type=|pages\.dev|\.cloud(?:\/|$)|\.wiki(?:\/|$)|\.fyi(?:\/|$)|url[s-]?shortener|screenshots?|global-ranks|\/(?:users?|members?|profiles?|tags?|likes?|posts?|evaluate|listings?|reports?|share|stats|gallery|galerias|video)(?:\/|$)|(?:^|[\s./_-])(?:social|feedback|directory|listing)(?:[.\s/_-]|$)|donat|charity|nonprofit|non-profit|shelter|rescue|adopt|foster|pet|animal|casino|gambl|payday|\bloan\b|pharma|viagra|weight[- ]?loss|diet[- ]?pill|crypto[- ]?(?:casino|bet)|\bcbd\b|\bslot\b|staging\.|admin\.|test\.|localhost/i;
 
     const pdfBacklinkSourceDomainCounts = new Map<string, number>();
     sampledBacklinksForPdf.forEach((item: any) => {
@@ -6563,13 +6760,31 @@ col4:
       pdfData?.backlinkAuthoritySignals &&
       typeof pdfData.backlinkAuthoritySignals.sampledBacklinks === "number";
 
-    const canonicalBacklinkSampleTotal = hasServerBacklinkSignals
-      ? pdfData.backlinkAuthoritySignals.sampledBacklinks
-      : sampledBacklinksForPdf.length;
+    const canonicalBacklinkSampleTotal = Math.max(
+      hasServerBacklinkSignals
+        ? Number(pdfData.backlinkAuthoritySignals.sampledBacklinks || 0)
+        : 0,
+      sampledBacklinksForPdf.length
+    );
 
-    const canonicalBacklinkFlaggedCount = hasServerBacklinkSignals
-      ? pdfData.backlinkAuthoritySignals.sampledLowQualityBacklinks
-      : locallyComputedManualReview;
+    /*
+     * Take the LARGER of the server count and the display-time
+     * recompute. A report saved by an older build stored a count
+     * produced by a narrower suspicious-pattern list, so trusting it
+     * blindly would suppress links this build can now detect. Taking
+     * the max means legacy saved reports still get corrected at
+     * re-export time, while a current-build report (whose server
+     * count is computed over the full sample rather than the top
+     * slice shown here) still wins when it is higher.
+     */
+    const canonicalBacklinkFlaggedCount = Math.max(
+      hasServerBacklinkSignals
+        ? Number(
+            pdfData.backlinkAuthoritySignals.sampledLowQualityBacklinks || 0
+          )
+        : 0,
+      locallyComputedManualReview
+    );
 
     const backlinkSampleUnreliableForDisplay =
       pdfData?.backlinkAuthoritySignals?.manualReviewRequired === true ||
