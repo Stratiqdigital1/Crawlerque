@@ -1939,24 +1939,35 @@ const buildFoundationRoadmapActions = (
 
   // Suspicious/unreliable backlink samples should always surface a
   // manual-review recommendation, independent of the raw authority
-  // score.
+  // score. Use the same canonical counts as the Authority Insight
+  // section so the evidence here can never disagree with it.
   const backlinkTopSample = Array.isArray(report?.backlinks?.topBacklinks)
     ? report.backlinks.topBacklinks
     : [];
+  const hasServerBacklinkSignalsForRoadmap =
+    report?.backlinkAuthoritySignals &&
+    typeof report.backlinkAuthoritySignals.sampledBacklinks === "number";
   const suspiciousBacklinkPattern =
     /forum|profile|directory|classified|bookmark|guestbook|donat|charity|nonprofit|shelter|rescue|adopt|foster|casino|gambl|payday|\bloan\b|pharma|viagra|weight[- ]?loss|diet[- ]?pill|\bcbd\b|\bslot\b|staging\.|admin\.|test\./i;
-  const suspiciousBacklinkCount = backlinkTopSample.filter((item: any) =>
-    suspiciousBacklinkPattern.test(
-      [item?.domainFrom, item?.sourceUrl, item?.anchor]
-        .filter(Boolean)
-        .join(" ")
-    )
+  const locallyComputedSuspiciousCount = backlinkTopSample.filter(
+    (item: any) =>
+      suspiciousBacklinkPattern.test(
+        [item?.domainFrom, item?.sourceUrl, item?.anchor]
+          .filter(Boolean)
+          .join(" ")
+      )
   ).length;
+  const canonicalSuspiciousCount = hasServerBacklinkSignalsForRoadmap
+    ? report.backlinkAuthoritySignals.sampledLowQualityBacklinks
+    : locallyComputedSuspiciousCount;
+  const canonicalSampleTotal = hasServerBacklinkSignalsForRoadmap
+    ? report.backlinkAuthoritySignals.sampledBacklinks
+    : backlinkTopSample.length;
 
   if (
     report?.backlinkAuthoritySignals?.manualReviewRequired === true ||
-    (backlinkTopSample.length > 0 &&
-      suspiciousBacklinkCount / backlinkTopSample.length >= 0.3)
+    (canonicalSampleTotal > 0 &&
+      canonicalSuspiciousCount / canonicalSampleTotal >= 0.3)
   ) {
     addAction({
       id: "foundation-backlink-manual-review",
@@ -1970,7 +1981,7 @@ const buildFoundationRoadmapActions = (
       sourceModule: "Backlink Authority",
       validationStatus: "validated",
       evidence: [
-        `Sampled backlinks flagged for manual review: ${suspiciousBacklinkCount} of ${backlinkTopSample.length}`,
+        `Sampled backlinks flagged for manual review: ${canonicalSuspiciousCount} of ${canonicalSampleTotal}`,
       ],
     });
   }
@@ -2183,7 +2194,7 @@ const cleanAiCompetitorList = (
   report: any
 ) => {
   const blocked =
-    /^(ehr|emr|look|strong|tools?|saas|similar|software|platforms?|solutions?|services?|providers?|companies?|brands?|healthcare|medical|technology|tech|best|top|it's|its|their|they|there|great|uses?|could|some|other|others|many|most|also|create|seo|optimize|optimise|search|website|content|marketing|analysis|strategy|strategies|crm|customer relationship management|project management|business tools|software reviews?|reviews?|comparisons?|country|city|region|market|location|category|products?)$/i;
+    /^(ehr|emr|pcb|api|gui|ui|ux|roi|kpi|sem|erp|faq|b2b|b2c|oem|sku|url|html|css|cta|look|strong|tools?|saas|similar|software|platforms?|solutions?|services?|providers?|companies?|brands?|healthcare|medical|technology|tech|best|top|it's|its|their|they|there|great|uses?|could|some|other|others|many|most|also|create|seo|optimize|optimise|search|website|content|marketing|analysis|strategy|strategies|crm|customer relationship management|project management|business tools|software reviews?|reviews?|comparisons?|country|city|region|market|location|category|products?)$/i;
 
   const market =
     String(
@@ -2252,7 +2263,7 @@ const cleanAiCompetitorList = (
         )
         .filter(
           (token) =>
-            token.length >= 4
+            token.length >= 3
         )
     );
 
@@ -2317,8 +2328,21 @@ const cleanAiCompetitorList = (
           .split(/\s+/)
           .filter(
             (token) =>
-              token.length >= 4
+              token.length >= 3
           );
+
+      /*
+       * A single word ending in a gerund/participle verb form (e.g.
+       * "Specializing", "Providing") is almost always a sentence
+       * fragment carried over from AI prose, not a named entity.
+       * Shape-based rule only - no brand, niche, or country
+       * reference.
+       */
+      const isSingleGerundFragment =
+        !/\s/.test(value) &&
+        /^(?:specializ|provid|offer|deliver|focus|operat|serv|develop|design|build|creat|help|assist|support|work|lead|grow|expand|special)ing$/i.test(
+          value
+        );
 
       const contextOnlyPhrase =
         valueTokens.length > 0 &&
@@ -2334,6 +2358,7 @@ const cleanAiCompetitorList = (
         value.length < 2 ||
         value.length > 80 ||
         blocked.test(value) ||
+        isSingleGerundFragment ||
         contextOnlyPhrase ||
         (
           normalizedMarket &&
@@ -5345,7 +5370,7 @@ sub("From executive summary to action roadmap — everything your team needs to 
     {label:"Est. Monthly Traffic",value:fmt(pdfData?.traffic?.rawMonthly??pdfData?.traffic?.monthly),sub:`Confidence: ${cl(normalized.traffic.confidence)}`,col:C.accent},
     {
   label:
-    "Provider Total Ranking Keywords",
+    "Provider Total Keywords",
 
   value:
     fmt(
@@ -5431,7 +5456,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
       {label:"Daily Visits",value:fmtDailyVisits(pdfData?.traffic?.rawMonthly??pdfData?.traffic?.monthly, normalized.traffic.daily),sub:"Monthly ÷ 30",col:C.blue},
       {
   label:
-    "Keywords Used in Traffic Model",
+    "Traffic Model Keywords",
 
   value:
     fmt(
@@ -6373,6 +6398,75 @@ col4:
       pdfData?.backlinks?.referringDomains ??
         normalized.backlinks.referringDomains
     ) ?? 0;
+    const sampledBacklinksForPdf = Array.isArray(
+      pdfData?.backlinks?.topBacklinks
+    )
+      ? pdfData.backlinks.topBacklinks
+      : [];
+
+    const pdfManualReviewBacklinkPattern =
+      /forum|profile|directory|classified|bookmark|guestbook|stream&type=|pages\.dev|\.cloud(?:\/|$)|\.wiki(?:\/|$)|\.fyi(?:\/|$)|url[s-]?shortener|screenshots?|global-ranks|\/(?:users?|members?|profiles?|tags?|likes?|posts?|evaluate|listings?|reports?|share|stats|gallery|galerias|video)(?:\/|$)|(?:^|[\s./_-])(?:social|feedback|directory|listing)(?:[.\s/_-]|$)|donat|charity|nonprofit|non-profit|shelter|rescue|adopt|foster|casino|gambl|payday|\bloan\b|pharma|viagra|weight[- ]?loss|diet[- ]?pill|crypto[- ]?(?:casino|bet)|\bcbd\b|\bslot\b|staging\.|admin\.|test\.|localhost/i;
+
+    const pdfBacklinkSourceDomainCounts = new Map<string, number>();
+    sampledBacklinksForPdf.forEach((item: any) => {
+      const sourceDomain = String(item?.domainFrom || "")
+        .toLowerCase()
+        .replace(/^www\./, "")
+        .trim();
+      if (!sourceDomain) return;
+      pdfBacklinkSourceDomainCounts.set(
+        sourceDomain,
+        (pdfBacklinkSourceDomainCounts.get(sourceDomain) || 0) + 1
+      );
+    });
+
+    const locallyComputedManualReview =
+      sampledBacklinksForPdf.filter(
+        (item: any) => {
+          const rank = Number(item?.rank || 0);
+          const source = [item?.domainFrom, item?.sourceUrl, item?.anchor]
+            .filter(Boolean)
+            .join(" ");
+          const sourceDomain = String(item?.domainFrom || "")
+            .toLowerCase()
+            .replace(/^www\./, "")
+            .trim();
+          const isDuplicateSource =
+            sourceDomain &&
+            (pdfBacklinkSourceDomainCounts.get(sourceDomain) || 0) > 1;
+          return (
+            rank <= 0 ||
+            isDuplicateSource ||
+            pdfManualReviewBacklinkPattern.test(source)
+          );
+        }
+      ).length;
+
+    /*
+     * Single canonical count used everywhere on this page: prefer
+     * the server's own count (computed over the full sample, not
+     * just the top slice shown here) whenever it is present, so the
+     * KPI score, the trust label, and the Authority Insight text can
+     * never disagree with each other or with the roadmap
+     * recommendation.
+     */
+    const hasServerBacklinkSignals =
+      pdfData?.backlinkAuthoritySignals &&
+      typeof pdfData.backlinkAuthoritySignals.sampledBacklinks === "number";
+
+    const canonicalBacklinkSampleTotal = hasServerBacklinkSignals
+      ? pdfData.backlinkAuthoritySignals.sampledBacklinks
+      : sampledBacklinksForPdf.length;
+
+    const canonicalBacklinkFlaggedCount = hasServerBacklinkSignals
+      ? pdfData.backlinkAuthoritySignals.sampledLowQualityBacklinks
+      : locallyComputedManualReview;
+
+    const backlinkSampleUnreliableForDisplay =
+      pdfData?.backlinkAuthoritySignals?.manualReviewRequired === true ||
+      (canonicalBacklinkSampleTotal > 0 &&
+        canonicalBacklinkFlaggedCount / canonicalBacklinkSampleTotal >= 0.3);
+
     const uncappedBacklinkAuthorityScore = n(pdfData?.backlinkAuthorityScore) ?? (
       referringDomainsValue >= 200 ? 90 :
       referringDomainsValue >= 50 ? 75 :
@@ -6380,10 +6474,9 @@ col4:
       referringDomainsValue >= 5 ? 40 :
       referringDomainsValue >= 1 ? 20 : 0
     );
-    const backlinkAuthorityScore =
-      pdfData?.backlinkAuthoritySignals?.manualReviewRequired === true
-        ? Math.min(uncappedBacklinkAuthorityScore, 55)
-        : uncappedBacklinkAuthorityScore;
+    const backlinkAuthorityScore = backlinkSampleUnreliableForDisplay
+      ? Math.min(uncappedBacklinkAuthorityScore, 55)
+      : uncappedBacklinkAuthorityScore;
     kpiRow([
       {label:"Provider Backlink Rank",value:backlinkRankValue !== null ? String(backlinkRankValue) : "—",sub:"Raw provider metric",col:C.blue},
       {label:"Total Backlinks",value:fmt(pdfData?.backlinks?.backlinks??normalized.backlinks.total),col:C.accent},
@@ -6419,112 +6512,41 @@ col4:
     const linkConcentration = referringDomainsValue > 0
       ? totalBacklinksValue / referringDomainsValue
       : 0;
-    const sampledBacklinksForPdf = Array.isArray(
-      pdfData?.backlinks?.topBacklinks
-    )
-      ? pdfData.backlinks.topBacklinks
-      : [];
 
-const pdfManualReviewBacklinkPattern =
-  /forum|profile|directory|classified|bookmark|guestbook|stream&type=|pages\.dev|\.cloud(?:\/|$)|\.wiki(?:\/|$)|\.fyi(?:\/|$)|url[s-]?shortener|screenshots?|global-ranks|\/(?:users?|members?|profiles?|tags?|likes?|posts?|evaluate|listings?|reports?|share|stats|gallery|galerias|video)(?:\/|$)|(?:^|[\s./_-])(?:social|feedback|directory|listing)(?:[.\s/_-]|$)|donat|charity|nonprofit|non-profit|shelter|rescue|adopt|foster|casino|gambl|payday|\bloan\b|pharma|viagra|weight[- ]?loss|diet[- ]?pill|crypto[- ]?(?:casino|bet)|\bcbd\b|\bslot\b|staging\.|admin\.|test\.|localhost/i;
+    const canonicalBacklinkPositiveCount = Math.max(
+      0,
+      canonicalBacklinkSampleTotal - canonicalBacklinkFlaggedCount
+    );
 
-const pdfBacklinkSourceDomainCounts = new Map<string, number>();
-sampledBacklinksForPdf.forEach((item: any) => {
-  const sourceDomain = String(item?.domainFrom || "")
-    .toLowerCase()
-    .replace(/^www\./, "")
-    .trim();
-  if (!sourceDomain) return;
-  pdfBacklinkSourceDomainCounts.set(
-    sourceDomain,
-    (pdfBacklinkSourceDomainCounts.get(sourceDomain) || 0) + 1
-  );
-});
+    const displayBacklinkTrustLabel =
+      pdfData?.backlinkAuthoritySignals?.trustLabel ||
+      (backlinkSampleUnreliableForDisplay
+        ? "Unverified — manual review required"
+        : null);
 
-const sampledNeedsManualReview =
-  sampledBacklinksForPdf.filter(
-    (item: any) => {
-      const rank =
-        Number(
-          item?.rank || 0
-        );
+    hiBox(
+      "Authority Insight",
 
-      const source =
-        [
-          item?.domainFrom,
-          item?.sourceUrl,
-          item?.anchor,
-        ]
-          .filter(Boolean)
-          .join(" ");
+      referringDomainsValue > 0
+        ? `${domain} has ${referringDomainsValue} unique referring domain(s) and ${totalBacklinksValue} total backlinks.${
+            displayBacklinkTrustLabel
+              ? ` Trust assessment: ${displayBacklinkTrustLabel}.`
+              : ""
+          } ${
+            canonicalBacklinkSampleTotal > 0
+              ? `${canonicalBacklinkFlaggedCount} of ${canonicalBacklinkSampleTotal} returned sample link(s) require priority manual review because they had a zero or unavailable provider rank, matched a suspicious or topically unrelated URL/anchor pattern, or repeated the same source domain. ${canonicalBacklinkPositiveCount} sample link(s) had a positive provider rank and did not match those patterns. `
+              : ""
+          }Automated screening does not certify editorial quality, topical relevance, traffic, or source trust. ${
+            backlinkSampleUnreliableForDisplay
+              ? "A meaningful share of the sampled links show integrity risk, so the authority score above should be treated as unverified rather than strong until manually reviewed."
+              : linkConcentration >= 20
+                ? "The profile is also concentrated in a relatively small number of domains, so additional independent industry sources should be prioritised."
+                : "Review topical relevance, editorial placement, source trust, and link purpose before treating the backlink profile as strong."
+          }`
+        : "No verified backlink authority evidence was returned for this audit.",
 
-      const sourceDomain = String(item?.domainFrom || "")
-        .toLowerCase()
-        .replace(/^www\./, "")
-        .trim();
-
-      const isDuplicateSource =
-        sourceDomain &&
-        (pdfBacklinkSourceDomainCounts.get(sourceDomain) || 0) > 1;
-
-      return (
-        rank <= 0 ||
-        isDuplicateSource ||
-        pdfManualReviewBacklinkPattern.test(
-          source
-        )
-      );
-    }
-  ).length;
-
-const sampledWithPositiveSignals =
-  Math.max(
-    0,
-    sampledBacklinksForPdf.length -
-      sampledNeedsManualReview
-  );
-
-/*
- * If the server already computed a manual-review requirement
- * (backlinkAuthoritySignals), trust it - it has visibility into the
- * full sample rather than only the top-12 shown here. Otherwise fall
- * back to this display-time reconciliation so older saved reports
- * are still corrected without a re-run.
- */
-const backlinkSampleUnreliableForDisplay =
-  pdfData?.backlinkAuthoritySignals?.manualReviewRequired === true ||
-  (sampledBacklinksForPdf.length > 0 &&
-    sampledNeedsManualReview / sampledBacklinksForPdf.length >= 0.3);
-
-const displayBacklinkTrustLabel =
-  pdfData?.backlinkAuthoritySignals?.trustLabel ||
-  (backlinkSampleUnreliableForDisplay
-    ? "Unverified — manual review required"
-    : null);
-
-hiBox(
-  "Authority Insight",
-
-  referringDomainsValue > 0
-    ? `${domain} has ${referringDomainsValue} unique referring domain(s) and ${totalBacklinksValue} total backlinks.${
-        displayBacklinkTrustLabel
-          ? ` Trust assessment: ${displayBacklinkTrustLabel}.`
-          : ""
-      } ${
-        sampledBacklinksForPdf.length > 0
-          ? `${sampledNeedsManualReview} of ${sampledBacklinksForPdf.length} returned sample link(s) require priority manual review because they had a zero or unavailable provider rank, matched a suspicious or topically unrelated URL/anchor pattern, or repeated the same source domain. ${sampledWithPositiveSignals} sample link(s) had a positive provider rank and did not match those patterns. `
-          : ""
-      }Automated screening does not certify editorial quality, topical relevance, traffic, or source trust. ${
-        backlinkSampleUnreliableForDisplay
-          ? "A meaningful share of the sampled links show integrity risk, so the authority score above should be treated as unverified rather than strong until manually reviewed."
-          : linkConcentration >= 20
-            ? "The profile is also concentrated in a relatively small number of domains, so additional independent industry sources should be prioritised."
-            : "Review topical relevance, editorial placement, source trust, and link purpose before treating the backlink profile as strong."
-      }`
-    : "No verified backlink authority evidence was returned for this audit.",
-
-  backlinkSampleUnreliableForDisplay ? "amber" : "blue"
-);
+      backlinkSampleUnreliableForDisplay ? "amber" : "blue"
+    );
   }
 
   // ════════════════════════════════════════════════════════════════════
@@ -7062,6 +7084,27 @@ if(pdfSections.local){
     ),
     canonicalRoadmapRecommendations.filter((item: any) => /61\s*[–-]\s*90|final|90 day/i.test(String(item?.timeline || "")))
   );
+
+  /*
+   * Every canonical recommendation must land in exactly one roadmap
+   * phase. An item whose timeline text doesn't match any of the
+   * three patterns above (e.g. "Ongoing", "As needed", or a missing
+   * field) would otherwise disappear from the roadmap entirely while
+   * still counting toward the flat recommendations list, making the
+   * two sections silently inconsistent. Default any unmatched item
+   * into the Next 30 Days phase rather than dropping it.
+   */
+  const assignedRoadmapKeys = new Set(
+    [...first30DayActions, ...next30DayActions, ...final30DayActions].map(
+      (item: any) => roadmapActionKey(item)
+    )
+  );
+  const unassignedRoadmapActions = canonicalRoadmapRecommendations.filter(
+    (item: any) => !assignedRoadmapKeys.has(roadmapActionKey(item))
+  );
+  if (unassignedRoadmapActions.length > 0) {
+    next30DayActions.push(...unassignedRoadmapActions);
+  }
 
   const roadmapHeading =
     final30DayActions.length > 0

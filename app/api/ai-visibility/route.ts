@@ -229,7 +229,7 @@ function cleanCompetitorCandidate(
   }
 
   const blocked =
-    /^(ehr|emr|look|create|optimize|optimise|seo|saas|similar|software|platform|solution|solutions|service|services|company|companies|provider|providers|healthcare|medical|technology|tech|content|marketing|search|website|brand|brands|best|top|tools?|strong)$/i;
+    /^(ehr|emr|pcb|api|gui|ux|roi|kpi|sem|erp|faq|b2b|b2c|oem|sku|url|html|css|cta|look|create|optimize|optimise|seo|saas|similar|software|platform|solution|solutions|service|services|company|companies|provider|providers|healthcare|medical|technology|tech|content|marketing|search|website|brand|brands|best|top|tools?|strong)$/i;
 
   const blockedGenericPhrase =
     /^(ppc|focused|founded|could|some|other|others|many|most|maybe|may|also|including|include|various|several|popular|leading|major|well known|there|great|uses?|crm|project management|business tools|software reviews?|reviews?|comparisons?|country|city|region|market|location|category|products?|user[-\s]?friendly interface|customi[sz]ation options?|systems?|ehrs?|emrs?|features?|functionality|integration|interoperability|workflow|security|support|pricing)$/i;

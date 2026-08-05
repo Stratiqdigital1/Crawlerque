@@ -1613,7 +1613,7 @@ function knownCompetitorRelationship(
   }
 
   if (
-    /(^|\.)(amazon|ebay|alibaba|aliexpress|walmart|etsy|temu|wayfair|target|daraz)\./.test(
+    /(^|\.)(amazon|ebay|alibaba|aliexpress|walmart|etsy|temu|wayfair|target|daraz|olx)\./.test(
       value
     )
   ) {
@@ -1720,41 +1720,41 @@ async function getCompetitorHomepageText(
     };
   }
 
-  try {
-    const response =
-      await fetch(
-        `https://${domain}`,
-        {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (compatible; CrawlerQueCompetitorClassifier/1.0)",
+  const browserLikeHeaders = {
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    Accept:
+      "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+  };
 
-            Accept:
-              "text/html,application/xhtml+xml",
-          },
-
-          redirect:
-            "follow",
-
-          cache:
-            "no-store",
-
-          signal:
-            AbortSignal.timeout(
-              6000
-            ),
-        }
-      );
+  const attemptFetch = async (headers: Record<string, string>) => {
+    const response = await fetch(`https://${domain}`, {
+      headers,
+      redirect: "follow",
+      cache: "no-store",
+      signal: AbortSignal.timeout(9000),
+    });
 
     if (!response.ok) {
-      throw new Error(
-        `HTTP ${response.status}`
-      );
+      throw new Error(`HTTP ${response.status}`);
     }
 
-    const html = (
-      await response.text()
-    ).slice(0, 300000);
+    return (await response.text()).slice(0, 300000);
+  };
+
+  try {
+    let html: string;
+
+    try {
+      html = await attemptFetch(browserLikeHeaders);
+    } catch (firstError) {
+      // Some sites block the identifying UA above but allow a plain
+      // default fetch; retry once before giving up on this domain.
+      html = await attemptFetch({
+        Accept: "text/html,application/xhtml+xml",
+      });
+    }
 
     const title =
       readHtmlValue(
@@ -2249,6 +2249,22 @@ async function classifyCompetitor(
       )
     );
 
+  /*
+   * Homepage evidence could not be gathered at all (WAF/bot
+   * protection, timeout after retry, etc.). Rather than silently
+   * discarding a domain with a very strong independent
+   * shared-keyword signal from the search-data provider, surface it
+   * as a lower-confidence category competitor that still requires
+   * manual verification. This threshold is high enough that generic
+   * search-visibility overlap alone should not trigger it, and it
+   * never assumes a specific business model - it only reflects that
+   * the provider itself found heavy organic overlap.
+   */
+  const qualifiesAsUnverifiedStrongOverlap =
+    !homepage.fetched &&
+    known === null &&
+    sharedKeywords >= 20;
+
   let relationship:
     CompetitorRelationship =
       "unclassified_overlap";
@@ -2291,6 +2307,11 @@ async function classifyCompetitor(
   ) {
     relationship =
       "category_competitor";
+  } else if (
+    qualifiesAsUnverifiedStrongOverlap
+  ) {
+    relationship =
+      "category_competitor";
   }
 
   const roundedAuditedCoverage =
@@ -2303,15 +2324,23 @@ async function classifyCompetitor(
       candidateCoverage * 100
     );
 
+  const topicalMatchSummary =
+    topicalMatches.slice(0, 3).join(", ") || "limited overlap";
+
   const classificationReason =
     relationship === "direct"
-      ? `Matching business model with broad topical coverage: ${topicalMatches.join(", ")}. Audited-category coverage: ${roundedAuditedCoverage}%.`
+      ? `Same business model; broad topical match (${topicalMatchSummary}).`
       : relationship ===
-          "category_competitor"
-        ? `Matching business model with partial category overlap: ${topicalMatches.join(", ")}. This domain competes within part of the audited market but did not match enough category breadth to be treated as a full direct competitor.`
-        : homepage.fetched
-          ? `Organic overlap exists, but the homepage evidence did not prove both a matching business model and sufficient topical coverage. Audited-category coverage: ${roundedAuditedCoverage}%; candidate coverage: ${roundedCandidateCoverage}%.`
-          : "Organic overlap exists, but competitor homepage evidence could not be verified.";
+          "category_competitor" &&
+        qualifiesAsCategoryCompetitor
+        ? `Same business model; partial category match (${topicalMatchSummary}).`
+        : relationship ===
+            "category_competitor" &&
+          qualifiesAsUnverifiedStrongOverlap
+          ? `Homepage blocked (bot protection); ${sharedKeywords} shared keywords — verify manually.`
+          : homepage.fetched
+            ? "Organic overlap only; business model or topical match not confirmed."
+            : "Organic overlap only; competitor homepage could not be verified.";
 
   return {
     ...item,
@@ -2324,14 +2353,20 @@ async function classifyCompetitor(
       ),
 
     classificationConfidence:
-      relationship ===
-        "direct" ||
-      relationship ===
-        "category_competitor"
+      relationship === "direct"
         ? "high"
-        : homepage.fetched
-          ? "moderate"
-          : "low",
+        : relationship === "category_competitor" &&
+          qualifiesAsCategoryCompetitor
+          ? "high"
+          : relationship === "category_competitor" &&
+            qualifiesAsUnverifiedStrongOverlap
+            ? "low"
+            : homepage.fetched
+              ? "moderate"
+              : "low",
+
+    manualVerificationRecommended:
+      qualifiesAsUnverifiedStrongOverlap,
 
     classificationReason,
 
