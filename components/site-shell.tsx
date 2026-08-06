@@ -38,6 +38,7 @@ export function SiteNav() {
 const links: [string, string][] = [
   ["/#pricing", "Pricing"],
   ["/sample-report", "Sample report"],
+  ["/testimonials", "Reviews"],
   ["/blog", "Blog"],
   ["/login", "Login"],
 ];
@@ -182,7 +183,12 @@ const FOOTER_COLS: { title: string; links: [string, string][] }[] = [
   },
   {
     title: "Company",
-    links: [["/blog", "Blog"], ["/contact", "Contact"], ["/affiliate-program", "Affiliate program"]],
+    links: [
+      ["/blog", "Blog"],
+      ["/testimonials", "Testimonials"],
+      ["/contact", "Contact"],
+      ["/affiliate-program", "Affiliate program"],
+    ],
   },
   {
     title: "Legal",
