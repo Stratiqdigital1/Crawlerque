@@ -2000,7 +2000,7 @@ localSeoApplicable:
     ? false
     : marketRole === "ecommerce"
       ? hasPhysicalLocalIntentEvidence(
-          `${title} ${description} ${bodyText}`
+          `${input.title || ""} ${input.description || ""} ${input.bodyText || ""}`
         ) &&
         (
           typeof parsed?.localSeoApplicable === "boolean"
