@@ -2106,6 +2106,25 @@ const buildFoundationRoadmapActions = (
   const mobileScoreForAction = mobileEvidenceAvailable
     ? Number(mobileSnapshotForAction?.score) || 0
     : NaN;
+  const hasReturnedValue = (value: any): boolean =>
+    value !== null &&
+    value !== undefined &&
+    String(value).trim() !== "" &&
+    String(value).trim() !== "--";
+
+  const clsAvailable =
+    hasReturnedValue(desktopSnapshotForAction?.cls) ||
+    hasReturnedValue(mobileSnapshotForAction?.cls);
+  const tbtAvailable =
+    hasReturnedValue(desktopSnapshotForAction?.tbt) ||
+    hasReturnedValue(mobileSnapshotForAction?.tbt);
+  const lcpAvailable =
+    hasReturnedValue(desktopSnapshotForAction?.lcp) ||
+    hasReturnedValue(mobileSnapshotForAction?.lcp);
+  const fcpAvailable =
+    hasReturnedValue(desktopSnapshotForAction?.fcp) ||
+    hasReturnedValue(mobileSnapshotForAction?.fcp);
+
   const clsValue = Math.max(
     desktopEvidenceAvailable ? parseMetricNumber(desktopSnapshotForAction?.cls) : 0,
     mobileEvidenceAvailable ? parseMetricNumber(mobileSnapshotForAction?.cls) : 0
@@ -2123,10 +2142,10 @@ const buildFoundationRoadmapActions = (
   const performanceFailing =
     (!Number.isNaN(desktopScoreForAction) && desktopScoreForAction < 70) ||
     (!Number.isNaN(mobileScoreForAction) && mobileScoreForAction < 70) ||
-    clsValue > 0.1 ||
-    tbtValue > 200 ||
-    lcpValue > 2.5 ||
-    fcpValue > 1.8;
+    (clsAvailable && clsValue > 0.1) ||
+    (tbtAvailable && tbtValue > 200) ||
+    (lcpAvailable && lcpValue > 2.5) ||
+    (fcpAvailable && fcpValue > 1.8);
 
   if (performanceFailing) {
     addAction({
@@ -2145,7 +2164,7 @@ const buildFoundationRoadmapActions = (
           Number.isNaN(desktopScoreForAction) ? "Unavailable" : desktopScoreForAction
         }, Mobile score: ${
           Number.isNaN(mobileScoreForAction) ? "Unavailable" : mobileScoreForAction
-        }, LCP: ${lcpValue ? `${lcpValue}s` : "Unavailable"}, FCP: ${fcpValue ? `${fcpValue}s` : "Unavailable"}, CLS: ${clsValue || "Unavailable"}, TBT: ${tbtValue ? `${tbtValue}ms` : "Unavailable"}`,
+        }, LCP: ${lcpAvailable ? `${lcpValue}s` : "Unavailable"}, FCP: ${fcpAvailable ? `${fcpValue}s` : "Unavailable"}, CLS: ${clsAvailable ? clsValue : "Unavailable"}, TBT: ${tbtAvailable ? `${tbtValue}ms` : "Unavailable"}`,
       ],
     });
   }
@@ -2226,19 +2245,29 @@ const buildFoundationRoadmapActions = (
     });
   }
 
-  // Invalid/non-semantic homepage H1 (comment, arrow, or symbol
-  // content only) should generate a fix even when h1Count alone
-  // looked fine.
+  // H1 issues should always generate a fix: missing entirely,
+  // multiple H1 tags, or present but non-semantic (comment/arrow/
+  // symbol-only content).
   const homepageH1Value = report?.h1 ?? "";
-  if (
-    Number(report?.h1Count || 0) === 1 &&
-    isNonSemanticText(homepageH1Value)
-  ) {
+  const homepageH1Count = Number(report?.h1Count || 0);
+  const h1IsMissing = homepageH1Count === 0;
+  const h1IsMultiple = homepageH1Count > 1;
+  const h1IsNonSemantic =
+    homepageH1Count === 1 && isNonSemanticText(homepageH1Value);
+
+  if (h1IsMissing || h1IsMultiple || h1IsNonSemantic) {
     addAction({
       id: "foundation-h1",
-      title: "Replace the non-semantic H1 with a real heading",
-      detail:
-        "The homepage H1 tag is present but contains only a comment, arrow, or symbol fragment. Replace it with one visible H1 that defines the page's primary product, service, or topic.",
+      title: h1IsMissing
+        ? "Add a clear H1 heading to the homepage"
+        : h1IsMultiple
+          ? "Reduce the homepage to one primary H1 heading"
+          : "Replace the non-semantic H1 with a real heading",
+      detail: h1IsMissing
+        ? "No H1 tag was detected on the resolved homepage. Add one visible H1 that defines the page's primary product, service, or topic."
+        : h1IsMultiple
+          ? `${homepageH1Count} H1 tags were detected on the resolved homepage. Keep exactly one H1 that defines the page's primary product, service, or topic.`
+          : "The homepage H1 tag is present but contains only a comment, arrow, or symbol fragment. Replace it with one visible H1 that defines the page's primary product, service, or topic.",
       impact: "Medium",
       effort: "Low",
       owner: "SEO / Content",
@@ -2251,7 +2280,11 @@ const buildFoundationRoadmapActions = (
           report?.url,
       ].filter(Boolean),
       evidence: [
-        "Resolved homepage H1 tag exists but has no usable heading text.",
+        h1IsMissing
+          ? "Resolved homepage has no H1 tag."
+          : h1IsMultiple
+            ? `Resolved homepage has ${homepageH1Count} H1 tags; expected exactly one.`
+            : "Resolved homepage H1 tag exists but has no usable heading text.",
       ],
     });
   }
@@ -2362,7 +2395,7 @@ const buildFoundationRoadmapActions = (
     });
   }
 
-  return actions.slice(0, 10);
+  return actions.slice(0, 30);
 };
 
 const adaptPageTypeForMarketRole = (
@@ -7447,8 +7480,18 @@ const displayedCrawlConfidence = discoveryScopeNarrow
     ],[42,34,CW-76]);
     if(hasTechnicalEvidence && pdfData?.onPage?.pages?.length){
       secTitle("Sample Crawled Pages");
+      const validCrawledPages = pdfData.onPage.pages.filter((p: any) => {
+        let decodedUrl = String(p?.url || "");
+        try {
+          decodedUrl = decodeURIComponent(decodedUrl);
+        } catch {
+          // Keep as-is if decoding fails.
+        }
+        const slugNormalized = decodedUrl.replace(/[-_+]/g, " ");
+        return !isNonSemanticText(slugNormalized);
+      });
       tbl(["Title","URL","HTTP","Load Time"],
-        pdfData.onPage.pages.slice(0,12).map((p:any)=>{
+        validCrawledPages.slice(0,12).map((p:any)=>{
           const pageUrl = normalizeUrlForComparison(p?.url);
           const homepageUrl = normalizeUrlForComparison(
             pdfData?.canonicalUrl || pdfData?.resolvedUrl || pdfData?.url
@@ -11591,7 +11634,17 @@ const impactClass = impact.toLowerCase().includes("high")
 
       {data?.onPage?.pages?.length > 0 ? (
         <div className="grid gap-3">
-          {data.onPage.pages.slice(0, 15).map((p: any, i: number) => (
+          {data.onPage.pages
+            .filter((p: any) => {
+              let decodedUrl = String(p?.url || "");
+              try {
+                decodedUrl = decodeURIComponent(decodedUrl);
+              } catch {
+                // Keep as-is if decoding fails.
+              }
+              return !isNonSemanticText(decodedUrl.replace(/[-_+]/g, " "));
+            })
+            .slice(0, 15).map((p: any, i: number) => (
             <div key={i} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>

@@ -2010,6 +2010,23 @@ function compatibleCompetitorRole(
         );
   }
 
+  if (
+    auditedRole ===
+      "other" ||
+    !auditedRole
+  ) {
+    /*
+     * The audited site's own business model couldn't be confidently
+     * determined. Blocking every candidate here would make direct/
+     * category competitor classification permanently impossible for
+     * any audited site with ambiguous role evidence - regardless of
+     * how obviously related a candidate is. Topical/keyword-overlap
+     * thresholds further down still do the real gatekeeping, so
+     * this only widens who is eligible to be evaluated.
+     */
+    return true;
+  }
+
   return false;
 }
 

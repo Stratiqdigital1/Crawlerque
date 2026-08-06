@@ -1105,20 +1105,6 @@ if (
  * This is a generic textual-shape check, not tied to any specific
  * brand, product, or country.
  */
-/*
- * Purely online retail signals (cart, checkout, shipping language)
- * used as a role-independent safety net. This looks only at the
- * shape of the homepage text - not any specific brand, product, or
- * country - so it applies the same way to any online store anywhere
- * in the world.
- */
-function hasPureOnlineRetailSignal(text: string): boolean {
-  const value = String(text || "").toLowerCase();
-  return /add to cart|add to bag|add to basket|shopping cart|checkout|buy online|ships? (?:worldwide|internationally|to your door)|free shipping|shipping (?:on|calculated)|order online|online store/i.test(
-    value
-  );
-}
-
 function computeLocalSeoApplicable(
   marketRole: BusinessMarketRole,
   parsed: any,
@@ -1127,40 +1113,49 @@ function computeLocalSeoApplicable(
   const combinedText = `${input.title || ""} ${input.description || ""} ${input.bodyText || ""}`;
   const hasPhysicalEvidence = hasPhysicalLocalIntentEvidence(combinedText);
 
-  const roleBasedValue: boolean = [
-    "publication",
-    "software_product",
-    "marketplace",
-    "platform",
-  ].includes(marketRole)
-    ? false
-    : marketRole === "ecommerce"
-      ? hasPhysicalEvidence &&
-        (typeof parsed?.localSeoApplicable === "boolean"
-          ? parsed.localSeoApplicable
-          : true)
-      : typeof parsed?.localSeoApplicable === "boolean"
-        ? parsed.localSeoApplicable
-        : resolverLocalSeoApplicable(marketRole);
-
-  if (!roleBasedValue) return false;
-
   /*
-   * Even if the assigned role would normally allow Local SEO (e.g.
-   * the classifier mislabeled a pure online store as
-   * "local_business" or "other"), a site whose homepage reads as
-   * purely online retail with no physical-location evidence should
-   * never get Local SEO applicable=true. This is an unconditional
-   * safety net independent of role classification accuracy.
+   * Roles that are never location-dependent by definition.
    */
   if (
-    hasPureOnlineRetailSignal(combinedText) &&
-    !hasPhysicalEvidence
+    [
+      "publication",
+      "software_product",
+      "marketplace",
+      "platform",
+    ].includes(marketRole)
   ) {
     return false;
   }
 
-  return roleBasedValue;
+  /*
+   * "ecommerce" and "other" (ambiguous/unconfirmed role) must not
+   * default to locally relevant just because the model guessed
+   * true or because a role like "local_business" was assigned
+   * without strong grounds. Both require actual physical-location
+   * textual evidence before Local SEO can be applicable - this
+   * applies the same way regardless of niche or country, and does
+   * not depend on detecting specific retail phrasing (which can
+   * vary too much, or be JS-rendered and invisible to the crawler).
+   */
+  if (marketRole === "ecommerce" || marketRole === "other") {
+    return (
+      hasPhysicalEvidence &&
+      (typeof parsed?.localSeoApplicable === "boolean"
+        ? parsed.localSeoApplicable
+        : true)
+    );
+  }
+
+  /*
+   * Remaining roles (service_provider, local_business,
+   * healthcare_provider, restaurant, etc.) are already evidence-
+   * based location-dependent classifications - trust the model's
+   * own judgment when given, otherwise fall back to the role
+   * default.
+   */
+  return typeof parsed?.localSeoApplicable === "boolean"
+    ? parsed.localSeoApplicable
+    : resolverLocalSeoApplicable(marketRole);
 }
 
 function hasPhysicalLocalIntentEvidence(text: string): boolean {
