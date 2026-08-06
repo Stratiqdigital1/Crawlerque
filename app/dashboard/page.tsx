@@ -71,7 +71,21 @@ function isNonSemanticText(value: unknown): boolean {
     .split(/[^a-z0-9]+/i)
     .filter((token) => token.length >= 2);
 
-  return wordTokens.length === 0;
+  if (wordTokens.length === 0) return true;
+
+  /*
+   * A scraped UI toast/validation message (coupon errors, cart
+   * warnings, session notices) is not a real page title, even
+   * though it's grammatically a full sentence. This is a shape/
+   * phrase check based on common UI-message wording, not tied to
+   * any specific site or product.
+   */
+  const looksLikeUiMessage =
+    /\b(no further|cannot be applied|can(?:'|no)t be applied|please try again|out of stock|session expired|invalid coupon|invalid code|coupon code|added to (?:cart|bag|basket)|removed from (?:cart|bag|basket)|item(?:s)? unavailable|already applied|minimum order|maximum quantity|please select|please choose|field is required|something went wrong|an error occurred)\b/i.test(
+      collapsed
+    );
+
+  return looksLikeUiMessage;
 }
 
 /*
@@ -1385,7 +1399,7 @@ const applyDisplayTimeCompetitorCorrections = (
     if (sharedOf(item) >= 8) {
       promotedCategory.push({
         ...item,
-        relationshipLabel: "Category / Vertical Competitor (unverified)",
+        relationshipLabel: "Category / Vertical Competitor (Unverified — Homepage Blocked)",
         classificationConfidence: "low",
         manualVerificationRecommended: true,
         classificationReason: `Strong organic overlap (${sharedOf(
@@ -1758,18 +1772,39 @@ const mergeRoadmapActions = (
       : []),
   ];
 
-  const seen = new Set<string>();
+  const evidenceRichness = (item: any) => {
+    const evidence = Array.isArray(item?.evidence) ? item.evidence : [];
+    return evidence.join(" ").length;
+  };
 
-  return combined.filter((item: any) => {
+  const byKey = new Map<string, any>();
+  const order: string[] = [];
+
+  combined.forEach((item: any) => {
     const key = roadmapActionKey(item);
+    if (!key) return;
 
-    if (!key || seen.has(key)) {
-      return false;
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, item);
+      order.push(key);
+      return;
     }
 
-    seen.add(key);
-    return true;
+    /*
+     * Prefer whichever version has richer evidence rather than
+     * always keeping the first one seen - a pre-existing but
+     * incomplete recommendation (e.g. mobile-only performance
+     * evidence) should not silently hide a more complete one (e.g.
+     * mobile + desktop + CLS + TBT) just because it happened to be
+     * generated earlier.
+     */
+    if (evidenceRichness(item) > evidenceRichness(existing)) {
+      byKey.set(key, item);
+    }
   });
+
+  return order.map((key) => byKey.get(key));
 };
 
 const buildFoundationRoadmapActions = (
@@ -2127,6 +2162,40 @@ const buildFoundationRoadmapActions = (
       validationStatus: "validated",
       evidence: [
         `Pages with a missing or non-semantic title in the crawled sample: ${crawlMissingTitleCount}`,
+      ],
+    });
+  }
+
+  const correctedSampleMissingDescriptionCount = crawlSamplePages.filter(
+    (p: any) =>
+      isCrawledPageMissingField(
+        p,
+        p?.description ?? p?.metaDescription,
+        report,
+        report?.description
+      )
+  ).length;
+  const crawlMissingDescriptionCount = titleSampleCoversFullCrawl
+    ? correctedSampleMissingDescriptionCount
+    : Math.max(
+        Number(report?.onPage?.missingDescription || 0),
+        correctedSampleMissingDescriptionCount
+      );
+
+  if (crawlMissingDescriptionCount > 0) {
+    addAction({
+      id: "foundation-crawl-missing-descriptions",
+      title: "Add meta descriptions to crawled pages missing one",
+      detail:
+        "Add unique, benefit-focused meta descriptions to every crawled page currently returning a blank or non-semantic value, to improve search-result click-through rate.",
+      impact: "Medium",
+      effort: "Low",
+      owner: "SEO / Content",
+      timeline: "0–30 days",
+      sourceModule: "Technical SEO",
+      validationStatus: "validated",
+      evidence: [
+        `Pages with a missing or non-semantic meta description in the crawled sample: ${crawlMissingDescriptionCount}`,
       ],
     });
   }
@@ -2683,7 +2752,7 @@ const cleanAiCompetitorList = (
        * niche.
        */
       const genericCategoryPhrase =
-        /^(?:popular|best|top|leading|other|others|similar|various|several|many|some|common|great|well[- ]known)\b.*\b(?:platforms?|providers?|companies|tools?|solutions?|services?|options?|alternatives?|websites?|apps?|agencies)$/i.test(
+        /^(?:popular|best|top|leading|other|others|similar|various|several|many|some|common|great|well[- ]known|online|local|international|global|national|regional|independent)\b.*\b(?:platforms?|providers?|companies|tools?|solutions?|services?|options?|alternatives?|websites?|apps?|agencies|retailers?|stores?|shops?|sellers?|vendors?|brands?|merchants?)$/i.test(
           value.trim()
         );
 
@@ -5981,7 +6050,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   if(pdfSections.seo){
     secHdr(nextSec(),"SEO Foundation Audit","Core SEO elements: metadata, heading structure, alt text, and basic on-page signals.");
     kpiRow([
-      {label:"SEO Score",value:`${cl(String(pdfData?.seoScore??"—"))}/100`,sub:sLbl(pdfData?.seoScore),col:sCol(pdfData?.seoScore)},
+      {label:"SEO Score",value:`${cl(String(normalized.scores.seo??"—"))}/100`,sub:sLbl(normalized.scores.seo),col:sCol(normalized.scores.seo)},
       {label:"On-Page UX Signal",value:`${cl(String(pdfData?.uxScore??"—"))}/100`,sub:sLbl(pdfData?.uxScore),col:sCol(pdfData?.uxScore)},
       {
   label:
@@ -10190,7 +10259,36 @@ value={
     </p>
 
     <div className="mb-6 grid gap-4 md:grid-cols-4">
-      <MetricCard label="SEO Score" value={data?.seoScore ?? "Data not available"} score={Number(data?.seoScore || 0)} />
+      <MetricCard
+        label="SEO Score"
+        value={(() => {
+          const pages = Array.isArray(data?.onPage?.pages) ? data.onPage.pages : [];
+          const missingTitleCount = Math.max(
+            Number(data?.onPage?.missingTitle || 0),
+            pages.filter((p: any) => isCrawledPageMissingField(p, p?.title, data, data?.title)).length
+          );
+          const missingDescriptionCount = Math.max(
+            Number(data?.onPage?.missingDescription || 0),
+            pages.filter((p: any) =>
+              isCrawledPageMissingField(p, p?.description ?? p?.metaDescription, data, data?.description)
+            ).length
+          );
+          const multiH1PageCount = pages.filter(
+            (p: any) => Number(p?.h1Count ?? (Array.isArray(p?.h1) ? p.h1.length : 0)) > 1
+          ).length;
+          const duplicateTitleCount = Number(data?.onPage?.duplicateTitle || 0);
+          const penalty = Math.min(
+            30,
+            (missingTitleCount > 0 ? 8 : 0) +
+              (missingDescriptionCount > 0 ? 6 : 0) +
+              (multiH1PageCount > 0 ? 8 : 0) +
+              (duplicateTitleCount > 0 ? 6 : 0)
+          );
+          const rawScore = Number(data?.seoScore || 0);
+          return rawScore ? Math.max(0, rawScore - penalty) : (data?.seoScore ?? "Data not available");
+        })()}
+        score={Number(data?.seoScore || 0)}
+      />
 <MetricCard label="Mobile Speed" value={data?.mobilePerformance ?? "Data not available"} score={Number(data?.mobilePerformance || 0)} />
 <MetricCard label="Desktop Speed" value={data?.desktopPerformance ?? "Data not available"} score={Number(data?.desktopPerformance || 0)} />
 <MetricCard label="On-Page UX Signal" value={data?.uxScore ?? "Data not available"} score={Number(data?.uxScore || 0)} />

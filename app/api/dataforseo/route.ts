@@ -1869,7 +1869,7 @@ function inferCompetitorRole(
   }
 
   if (
-    /online store|shop online|add to cart|add to bag|add to basket|shopping cart|buy online|product catalog|checkout|wishlist|in stock|out of stock|buy now|order now|free shipping|cash on delivery|rs\.?\s?\d|pkr\s?\d|₹\s?\d|\$\s?\d+(?:\.\d{2})?\b|price:|sku:/.test(
+    /online store|shop online|add to cart|add to bag|add to basket|shopping cart|buy online|product catalog|checkout|wishlist|in stock|out of stock|buy now|order now|free shipping|cash on delivery|rs\.?\s?\d|pkr\s?\d|₹\s?\d|\$\s?\d+(?:\.\d{2})?\b|price:|sku:|shop (?:our|now|the|all)|our (?:products|collection|range)|new arrivals|best ?sellers?|free returns|money[- ]back guarantee|\d{1,2}%\s*off|shipping (?:on|worldwide)|secure checkout/.test(
       text
     )
   ) {
@@ -2272,17 +2272,13 @@ async function classifyCompetitor(
     topicalMatches.length >=
       (
         candidateRoleIsAmbiguous
-          ? minimumDirectMatches + 2
+          ? minimumDirectMatches + 1
           : minimumDirectMatches
       ) &&
     auditedCoverage >=
       minimumAuditedCoverage &&
     candidateCoverage >=
-      (
-        candidateRoleIsAmbiguous
-          ? minimumCandidateCoverage + 0.15
-          : minimumCandidateCoverage
-      );
+      minimumCandidateCoverage;
 
   const qualifiesAsCategoryCompetitor =
     sameBusinessModel &&
@@ -2291,7 +2287,7 @@ async function classifyCompetitor(
     (
       candidateRoleIsAmbiguous
         ? (
-            topicalMatches.length >= minimumDirectMatches &&
+            topicalMatches.length >= Math.max(2, minimumDirectMatches - 1) &&
             sharedKeywords >= 5 &&
             candidateCoverage >= minimumCandidateCoverage
           )
@@ -2406,9 +2402,12 @@ async function classifyCompetitor(
     relationship,
 
     relationshipLabel:
-      competitorRelationshipLabel(
-        relationship
-      ),
+      relationship === "category_competitor" &&
+      qualifiesAsUnverifiedStrongOverlap
+        ? "Category / Vertical Competitor (Unverified — Homepage Blocked)"
+        : competitorRelationshipLabel(
+            relationship
+          ),
 
     classificationConfidence:
       relationship === "direct"

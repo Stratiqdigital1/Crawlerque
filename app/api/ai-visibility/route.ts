@@ -232,6 +232,21 @@ function cleanCompetitorCandidate(
     return "";
   }
 
+  /*
+   * A name ending in a bare abbreviation that normally expects a
+   * number or continuation right after it (e.g. "Chanel No" missing
+   * its "5", "Vol" missing its volume number) strongly suggests the
+   * entity was cut off mid-parse upstream. Shape-based check, not
+   * tied to any specific brand or product.
+   */
+  if (
+    /\b(?:no|vol|pt|ver|ep|ch)\.?$/i.test(
+      original
+    )
+  ) {
+    return "";
+  }
+
   const cleaned =
     original
       .replace(
@@ -357,7 +372,7 @@ function cleanCompetitorCandidate(
    * "Popular Freelance Platforms". Shape-based, works for any niche.
    */
   const genericCategoryPhrase =
-    /^(?:popular|best|top|leading|other|others|similar|various|several|many|some|common|great|well[- ]known)\b.*\b(?:platforms?|providers?|companies|tools?|solutions?|services?|options?|alternatives?|websites?|apps?|agencies)$/i.test(
+    /^(?:popular|best|top|leading|other|others|similar|various|several|many|some|common|great|well[- ]known|online|local|international|global|national|regional|independent)\b.*\b(?:platforms?|providers?|companies|tools?|solutions?|services?|options?|alternatives?|websites?|apps?|agencies|retailers?|stores?|shops?|sellers?|vendors?|brands?|merchants?)$/i.test(
       cleaned
     );
 

@@ -342,7 +342,18 @@ function isNonSemanticText(value: unknown): boolean {
 
   if (wordTokens.length === 0) return true;
 
-  return false;
+  /*
+   * A scraped UI toast/validation message (coupon errors, cart
+   * warnings, session notices) is not real page evidence, even
+   * though it's grammatically a full sentence. Phrase-based check
+   * on common UI-message wording, not tied to any specific site.
+   */
+  const looksLikeUiMessage =
+    /\b(no further|cannot be applied|can(?:'|no)t be applied|please try again|out of stock|session expired|invalid coupon|invalid code|coupon code|added to (?:cart|bag|basket)|removed from (?:cart|bag|basket)|item(?:s)? unavailable|already applied|minimum order|maximum quantity|please select|please choose|field is required|something went wrong|an error occurred)\b/i.test(
+      collapsed
+    );
+
+  return looksLikeUiMessage;
 }
 
 function getTitle(html: string) {
