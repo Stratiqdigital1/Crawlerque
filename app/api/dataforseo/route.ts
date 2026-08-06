@@ -2262,30 +2262,49 @@ async function classifyCompetitor(
       auditedBusinessText
     );
 
+  const candidateRoleIsAmbiguous =
+    candidateRole === "other";
+
   const qualifiesAsDirect =
     sameBusinessModel &&
     homepage.fetched &&
     sharedKeywords >= 3 &&
     topicalMatches.length >=
-      minimumDirectMatches &&
+      (
+        candidateRoleIsAmbiguous
+          ? minimumDirectMatches + 2
+          : minimumDirectMatches
+      ) &&
     auditedCoverage >=
       minimumAuditedCoverage &&
     candidateCoverage >=
-      minimumCandidateCoverage;
+      (
+        candidateRoleIsAmbiguous
+          ? minimumCandidateCoverage + 0.15
+          : minimumCandidateCoverage
+      );
 
   const qualifiesAsCategoryCompetitor =
     sameBusinessModel &&
     homepage.fetched &&
     !qualifiesAsDirect &&
     (
-      (
-        topicalMatches.length >= 2 &&
-        sharedKeywords >= 3
-      ) ||
-      (
-        topicalMatches.length >= 1 &&
-        sharedKeywords >= 10
-      )
+      candidateRoleIsAmbiguous
+        ? (
+            topicalMatches.length >= minimumDirectMatches &&
+            sharedKeywords >= 5 &&
+            candidateCoverage >= minimumCandidateCoverage
+          )
+        : (
+            (
+              topicalMatches.length >= 2 &&
+              sharedKeywords >= 3
+            ) ||
+            (
+              topicalMatches.length >= 1 &&
+              sharedKeywords >= 10
+            )
+          )
     );
 
   /*
@@ -2617,10 +2636,30 @@ const rawCompetitorCandidates =
             0
         );
 
+      /*
+       * A candidate whose domain's first label matches the audited
+       * domain's own first label (e.g. brand.nl vs brand.com) is
+       * almost always the same company's other-country or
+       * other-TLD storefront, not a competitor. This is derived
+       * purely from comparing the two domains to each other, never
+       * from a fixed brand/domain list.
+       */
+      const auditedDomainSlug = String(domain || "")
+        .toLowerCase()
+        .replace(/^www\./, "")
+        .split(".")[0];
+      const candidateDomainSlug = candidateDomain
+        .replace(/^www\./, "")
+        .split(".")[0];
+      const isOwnOtherCountryDomain =
+        auditedDomainSlug.length >= 3 &&
+        candidateDomainSlug === auditedDomainSlug;
+
       return (
         candidateDomain &&
         candidateDomain !==
           domain.toLowerCase() &&
+        !isOwnOtherCountryDomain &&
         !ignoredCompetitorDomains.some(
           (ignoredDomain) =>
             candidateDomain ===
@@ -3109,13 +3148,29 @@ const recommendedPageType =
               keyword.includes(hint)
           );
 
+    const businessCategoryTokens = Array.from(
+      new Set(
+        [
+          ...(Array.isArray(businessContext?.coreTokens) ? businessContext.coreTokens : []),
+          ...(Array.isArray(businessContext?.categoryKeywords)
+            ? businessContext.categoryKeywords.flatMap((phrase: string) =>
+                String(phrase || "").toLowerCase().split(/\s+/)
+              )
+            : []),
+        ]
+          .map((token: string) => String(token || "").toLowerCase().trim())
+          .filter((token: string) => token.length > 3)
+      )
+    );
+
     const isRelevantToBrandCategory =
       topKeywords.some((own: any) => {
         const ownKeyword = String(own.keyword || "").toLowerCase();
         return ownKeyword
           .split(" ")
           .some((word) => word.length > 4 && keyword.includes(word));
-      });
+      }) ||
+      businessCategoryTokens.some((token) => keyword.includes(token));
 
     const hasCommercialOrTopicalIntent =
   /best|top|vs|review|reviews|comparison|company|companies|service|services|agency|software|app|platform|development|developer|developers|consulting|solution|solutions|cost|pricing|near me|guide|how|what/.test(
@@ -3132,9 +3187,9 @@ const isStrongBusinessIntent =
 
 return (
   isRelevantToNiche &&
-  (isRelevantToBrandCategory || isStrongBusinessIntent) &&
+  isRelevantToBrandCategory &&
   keywordVolume >= 20 &&
-(competitorCoverage >= 2 || isStrongBusinessIntent)
+  competitorCoverage >= 2
 );
   })
 .sort((a, b) => {

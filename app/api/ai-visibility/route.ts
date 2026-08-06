@@ -11,6 +11,19 @@ import { calculateAIVisibilityScore } from "@/lib/ai-visibility-score";
 
 export const maxDuration = 120;
 
+const knownEntityCleanupCountryNames = new Set([
+  "united states","united kingdom","united arab emirates","canada","australia","germany",
+  "france","italy","spain","portugal","netherlands","belgium","switzerland","austria",
+  "sweden","norway","denmark","finland","ireland","poland","czech republic","hungary",
+  "romania","bulgaria","greece","turkey","russia","ukraine","india","pakistan","bangladesh",
+  "china","japan","south korea","north korea","indonesia","malaysia","singapore","thailand",
+  "vietnam","philippines","new zealand","south africa","nigeria","egypt","kenya","morocco",
+  "saudi arabia","qatar","kuwait","bahrain","oman","israel","jordan","lebanon","brazil",
+  "argentina","chile","colombia","mexico","peru","venezuela","cuba","dominican republic",
+  "jamaica","bahamas","panama","costa rica","iceland","luxembourg","malta","cyprus",
+  "croatia","serbia","slovakia","slovenia","estonia","latvia","lithuania","gambia","maldives",
+]);
+
 const MODEL_ROSTER = ["ChatGPT", "Claude", "Gemini"] as const;
 
 function normalizeDomain(value: string) {
@@ -364,6 +377,16 @@ function cleanCompetitorCandidate(
       cleaned
     );
 
+  const isBareCountryName =
+    cleanedWordCount <= 2 &&
+    knownEntityCleanupCountryNames.has(cleaned.toLowerCase());
+
+  const isGenericSingleVerb =
+    cleanedWordCount === 1 &&
+    /^(?:make|get|buy|shop|choose|compare|pick|select|save|start|begin|try|use)$/i.test(
+      cleaned
+    );
+
   if (
     blocked.test(cleaned) ||
     blockedGenericPhrase.test(
@@ -375,7 +398,9 @@ function cleanCompetitorCandidate(
     endsWithFillerWord ||
     genericCategoryPhrase ||
     isContraction ||
-    isGenericAssortmentNoun
+    isGenericAssortmentNoun ||
+    isBareCountryName ||
+    isGenericSingleVerb
   ) {
     return "";
   }

@@ -178,6 +178,19 @@ function isCrawledPageMissingField(
   return isNonSemanticText(fieldValue);
 }
 
+const knownEntityCleanupCountryNames = new Set([
+  "united states","united kingdom","united arab emirates","canada","australia","germany",
+  "france","italy","spain","portugal","netherlands","belgium","switzerland","austria",
+  "sweden","norway","denmark","finland","ireland","poland","czech republic","hungary",
+  "romania","bulgaria","greece","turkey","russia","ukraine","india","pakistan","bangladesh",
+  "china","japan","south korea","north korea","indonesia","malaysia","singapore","thailand",
+  "vietnam","philippines","new zealand","south africa","nigeria","egypt","kenya","morocco",
+  "saudi arabia","qatar","kuwait","bahrain","oman","israel","jordan","lebanon","brazil",
+  "argentina","chile","colombia","mexico","peru","venezuela","cuba","dominican republic",
+  "jamaica","bahamas","panama","costa rica","iceland","luxembourg","malta","cyprus",
+  "croatia","serbia","slovakia","slovenia","estonia","latvia","lithuania","gambia","maldives",
+]);
+
 const PROMO_REPORT_TYPES = [
   "seo",
   "technical",
@@ -2692,6 +2705,30 @@ const cleanAiCompetitorList = (
           value.trim()
         );
 
+      /*
+       * A country name alone (e.g. "Italy") is geography, not a
+       * named brand/competitor entity - it typically leaks in from
+       * page navigation (language/country switchers) rather than
+       * being a real business mentioned in AI text. Universal
+       * geography reference, not tied to any single audited market.
+       */
+      const isBareCountryName =
+        valueTokens.length <= 2 &&
+        knownEntityCleanupCountryNames.has(
+          value.trim().toLowerCase()
+        );
+
+      /*
+       * A single common English verb ("Make", "Get", "Buy", "Shop",
+       * "Choose") is descriptive/action prose, not a named entity,
+       * regardless of niche.
+       */
+      const isGenericSingleVerb =
+        valueTokens.length === 1 &&
+        /^(?:make|get|buy|shop|choose|compare|pick|select|save|start|begin|try|use)$/i.test(
+          value.trim()
+        );
+
       const contextOnlyPhrase =
         valueTokens.length > 0 &&
         valueTokens.length <= 4 &&
@@ -2711,6 +2748,8 @@ const cleanAiCompetitorList = (
         genericCategoryPhrase ||
         isContraction ||
         isGenericAssortmentNoun ||
+        isBareCountryName ||
+        isGenericSingleVerb ||
         contextOnlyPhrase ||
         (
           normalizedMarket &&
@@ -4626,6 +4665,53 @@ const normalized =
   normalizeAuditData(
     pdfData
   );
+
+/*
+ * The raw SEO score is computed from the resolved homepage's own
+ * metadata before the technical crawl finishes, so it can't reflect
+ * site-wide issues the crawl later found (multiple-H1 pages,
+ * missing titles/descriptions across other crawled pages). Apply a
+ * capped, clearly-disclosed penalty here so the displayed score
+ * can't contradict the crawl evidence shown elsewhere in the same
+ * report. This uses only the report's own crawl data - no
+ * per-brand, per-niche, or per-country assumptions.
+ */
+const seoScoreCrawlPages = Array.isArray(pdfData?.onPage?.pages)
+  ? pdfData.onPage.pages
+  : [];
+const seoScoreMissingTitleCount = Math.max(
+  Number(pdfData?.onPage?.missingTitle || 0),
+  seoScoreCrawlPages.filter((p: any) =>
+    isCrawledPageMissingField(p, p?.title, pdfData, pdfData?.title)
+  ).length
+);
+const seoScoreMissingDescriptionCount = Math.max(
+  Number(pdfData?.onPage?.missingDescription || 0),
+  seoScoreCrawlPages.filter((p: any) =>
+    isCrawledPageMissingField(
+      p,
+      p?.description ?? p?.metaDescription,
+      pdfData,
+      pdfData?.description
+    )
+  ).length
+);
+const seoScoreMultiH1PageCount = seoScoreCrawlPages.filter(
+  (p: any) => Number(p?.h1Count ?? (Array.isArray(p?.h1) ? p.h1.length : 0)) > 1
+).length;
+const seoScoreDuplicateTitleCount = Number(pdfData?.onPage?.duplicateTitle || 0);
+
+const seoScoreCrawlPenalty = Math.min(
+  30,
+  (seoScoreMissingTitleCount > 0 ? 8 : 0) +
+    (seoScoreMissingDescriptionCount > 0 ? 6 : 0) +
+    (seoScoreMultiH1PageCount > 0 ? 8 : 0) +
+    (seoScoreDuplicateTitleCount > 0 ? 6 : 0)
+);
+
+if (seoScoreCrawlPenalty > 0 && typeof normalized?.scores?.seo === "number") {
+  normalized.scores.seo = Math.max(0, normalized.scores.seo - seoScoreCrawlPenalty);
+}
 
 const domain =
   normalized.domain ||

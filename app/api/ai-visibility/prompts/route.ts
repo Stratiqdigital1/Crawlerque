@@ -122,8 +122,54 @@ function countryNeedsArticle(country: string): boolean {
   );
 }
 
+/*
+ * A reference list of country names, used only to detect when a
+ * generated question mentions a DIFFERENT country than the one
+ * selected for this audit (e.g. the AI picked up "Italy" from a
+ * country/language switcher in the page content). This is universal
+ * geography, not a rule for any single market - the selected
+ * country is always determined by the audit's own settings, never
+ * by this list.
+ */
+const KNOWN_COUNTRY_NAMES = [
+  "united states","united kingdom","united arab emirates","canada","australia","germany",
+  "france","italy","spain","portugal","netherlands","belgium","switzerland","austria",
+  "sweden","norway","denmark","finland","ireland","poland","czech republic","hungary",
+  "romania","bulgaria","greece","turkey","russia","ukraine","india","pakistan","bangladesh",
+  "china","japan","south korea","north korea","indonesia","malaysia","singapore","thailand",
+  "vietnam","philippines","new zealand","south africa","nigeria","egypt","kenya","morocco",
+  "saudi arabia","qatar","kuwait","bahrain","oman","israel","jordan","lebanon","brazil",
+  "argentina","chile","colombia","mexico","peru","venezuela","cuba","dominican republic",
+  "jamaica","bahamas","panama","costa rica","iceland","luxembourg","malta","cyprus",
+  "croatia","serbia","slovakia","slovenia","estonia","latvia","lithuania","gambia","maldives",
+];
+
 const genericLocalityPhrase =
   /\b(?:in your area|near you|nearby|locally|in your region|in your city|close to you|in your neighbo(?:u)?rhood|in my area)\b/i;
+
+/*
+ * Remove any country name OTHER than the audit's selected market
+ * from the generated text. Content-driven signals (a language
+ * switcher, footer links to other regional storefronts, etc.) can
+ * cause the model to mention a country that isn't the actual
+ * audited market - only the selected country should ever appear.
+ */
+function stripConflictingCountryMentions(line: string, correctCountry: string): string {
+  const normalizedCorrect = String(correctCountry || "").trim().toLowerCase();
+  let result = line;
+
+  KNOWN_COUNTRY_NAMES.forEach((name) => {
+    if (name === normalizedCorrect) return;
+    const pattern = new RegExp(`\\b${name}\\b`, "gi");
+    result = result.replace(pattern, "").trim();
+  });
+
+  return result
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+\?/, "?")
+    .replace(/\b(in|for|from|across|within)\s*\?/i, "?")
+    .trim();
+}
 
 /*
  * Safety net independent of how well the model follows the prompt
@@ -135,7 +181,12 @@ const genericLocalityPhrase =
  */
 function dedupeLocalityPhrasing(line: string, country: string): string {
   const trimmedCountry = String(country || "").trim();
-  if (!trimmedCountry) return line;
+
+  const withoutConflictingCountries = trimmedCountry
+    ? stripConflictingCountryMentions(line, trimmedCountry)
+    : line;
+
+  if (!trimmedCountry) return withoutConflictingCountries;
 
   const escapedCountry = trimmedCountry.replace(
     /[.*+?^${}()|[\]\\]/g,
@@ -144,12 +195,12 @@ function dedupeLocalityPhrasing(line: string, country: string): string {
   const countryMentioned = new RegExp(
     `\\b${escapedCountry}\\b`,
     "i"
-  ).test(line);
+  ).test(withoutConflictingCountries);
 
-  if (!countryMentioned) return line;
-  if (!genericLocalityPhrase.test(line)) return line;
+  if (!countryMentioned) return withoutConflictingCountries;
+  if (!genericLocalityPhrase.test(withoutConflictingCountries)) return withoutConflictingCountries;
 
-  return line
+  return withoutConflictingCountries
     .replace(genericLocalityPhrase, "")
     .replace(/\s{2,}/g, " ")
     .replace(/\s+\?/, "?")
@@ -172,7 +223,7 @@ const ai = await queryOpenAI(
       `IMPORTANT: some of these terms are UNRELATED topics the site only ranks for by accident (e.g. news, prayer times, or prices of products the company does NOT sell). ` +
       `Step 1: from the company name and the terms, work out the company's ACTUAL core products or services. ` +
       `Step 2: write exactly 5 natural questions a shopper would ask an AI assistant when looking to BUY or CHOOSE those core products/services.${where} ` +
-      `Rules: ONLY cover the company's real core categories — discard every unrelated term. Do NOT mention "${brandName}" or any specific brand, store, or company name in the questions. If a question references a location, mention the country/market name at most once and do NOT also use a generic phrase like "in your area", "near you", or "locally" in the same question. Write the questions in ${languageName}. Each question on its own line, no numbering, each ends with a question mark.`
+      `Rules: ONLY cover the company's real core categories — discard every unrelated term, including any country/region names that appear only because of a language or country switcher menu, not because they describe the company's core business. Do NOT mention "${brandName}" or any specific brand, store, or company name in the questions. The ONLY country/market name allowed anywhere in the questions is "${country || "the selected market"}" — never name any other country, even if one of the search terms mentions a different country or region. If a question references a location, mention that one selected country/market name at most once and do NOT also use a generic phrase like "in your area", "near you", or "locally" in the same question. Write the questions in ${languageName}. Each question on its own line, no numbering, each ends with a question mark.`
     );
     const lines = (ai || "")
       .split("\n")

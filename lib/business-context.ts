@@ -1469,6 +1469,7 @@ async function resolverSemanticFallback(
                     "Return the canonical brandName exactly as presented in the strongest page evidence.",
                     "When the page title or meta description disagrees with the H1 or domain spelling, prefer the clear editorial brand spelling from the page title and meta description.",
                     "The selected country is market context only and must not change the website's fundamental business type.",
+                    "Ignore language switchers, country selector menus, and regional storefront links when inferring content - those are navigation, not evidence of the business's core identity or market. Every AI prompt you return must reference the provided countryName only and must never name any other country or region, even if the homepage evidence mentions other countries (for example in a language/country switcher).",
                     "When countryName is provided, every returned AI prompt must include that selected country.",
                     "Support any industry worldwide including services, SaaS, ecommerce, publications, marketplaces, healthcare, legal, finance, education, restaurants, travel, nonprofits and unknown niches.",
                     "If homepage title, description, H1 and body evidence are all unavailable, classify from the domain identity only when the business identity is clear; otherwise use primaryService products and services, marketRole other, and confidence low. Do not invent niche details.",
@@ -1805,16 +1806,62 @@ const selectedMarketAliases =
 const genericLocalityPhrase =
   /\b(?:in your area|near you|nearby|locally|in your region|in your city|close to you|in your neighbo(?:u)?rhood|in my area)\b/i;
 
+/*
+ * A reference list of country names used only to detect when a
+ * semantically generated prompt mentions a DIFFERENT country than
+ * the audit's selected market (e.g. picked up from a language or
+ * country switcher in the page content). Universal geography
+ * reference, not a rule tied to any single market - the selected
+ * country always comes from the audit's own settings.
+ */
+const knownCountryNames = [
+  "united states","united kingdom","united arab emirates","canada","australia","germany",
+  "france","italy","spain","portugal","netherlands","belgium","switzerland","austria",
+  "sweden","norway","denmark","finland","ireland","poland","czech republic","hungary",
+  "romania","bulgaria","greece","turkey","russia","ukraine","india","pakistan","bangladesh",
+  "china","japan","south korea","north korea","indonesia","malaysia","singapore","thailand",
+  "vietnam","philippines","new zealand","south africa","nigeria","egypt","kenya","morocco",
+  "saudi arabia","qatar","kuwait","bahrain","oman","israel","jordan","lebanon","brazil",
+  "argentina","chile","colombia","mexico","peru","venezuela","cuba","dominican republic",
+  "jamaica","bahamas","panama","costa rica","iceland","luxembourg","malta","cyprus",
+  "croatia","serbia","slovakia","slovenia","estonia","latvia","lithuania","gambia","maldives",
+];
+
+function stripConflictingCountryMentions(
+  value: string,
+  correctCountry: string
+): string {
+  const normalizedCorrect = String(correctCountry || "")
+    .trim()
+    .toLowerCase();
+  let result = value;
+
+  knownCountryNames.forEach((name) => {
+    if (name === normalizedCorrect) return;
+    const pattern = new RegExp(`\\b${name}\\b`, "gi");
+    result = result.replace(pattern, "").trim();
+  });
+
+  return result
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+[?.!]/, (m) => m.trim())
+    .trim();
+}
+
 const localizedReturnedPrompts =
   returnedPrompts.map(
     (prompt) => {
-      const cleanPrompt =
+      const rawPrompt =
         String(prompt)
           .replace(
             /[?.!]+$/,
             ""
           )
           .trim();
+
+      const cleanPrompt = selectedMarket
+        ? stripConflictingCountryMentions(rawPrompt, selectedMarket)
+        : rawPrompt;
 
       const alreadyLocalized =
         selectedMarketAliases.some(
