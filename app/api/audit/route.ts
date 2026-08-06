@@ -1699,10 +1699,111 @@ await updateAuditJob(auditJob.id, {
 });
 
     const htmlResult = await fetchHtml(url);
-    const html = htmlResult.html;
-    const resolvedUrl = htmlResult.resolvedUrl || url;
-    const redirectCount =
+    let html = htmlResult.html;
+    let resolvedUrl = htmlResult.resolvedUrl || url;
+    let redirectCount =
       Number(htmlResult.redirectCount || 0);
+
+    /*
+     * A generic country-code-to-subdomain-label map used only to
+     * detect when the resolved homepage landed on a different
+     * country's storefront subdomain than the one selected for this
+     * audit (e.g. selected United States but the site's own
+     * geo-redirect sent our crawler to ca.site.com). This is
+     * universal domain-structure detection, not a rule for any
+     * single site - it only fires when the resolved hostname's
+     * first label matches a known country-code pattern.
+     */
+    const countrySubdomainCodes: Record<string, string[]> = {
+      "united states": ["us", "usa"],
+      "united kingdom": ["uk", "gb"],
+      "canada": ["ca"],
+      "australia": ["au"],
+      "germany": ["de"],
+      "france": ["fr"],
+      "india": ["in"],
+      "pakistan": ["pk"],
+      "united arab emirates": ["ae", "uae"],
+      "spain": ["es"],
+      "italy": ["it"],
+      "netherlands": ["nl"],
+      "mexico": ["mx"],
+      "brazil": ["br"],
+      "japan": ["jp"],
+      "singapore": ["sg"],
+      "new zealand": ["nz"],
+      "ireland": ["ie"],
+      "south africa": ["za"],
+    };
+    const allKnownSubdomainCodes = new Set(
+      Object.values(countrySubdomainCodes).flat()
+    );
+
+    let marketDomainMismatch: {
+      detected: boolean;
+      resolvedSubdomain: string | null;
+      expectedSubdomains: string[];
+      correctedFetchAttempted: boolean;
+      correctedFetchSucceeded: boolean;
+      note: string | null;
+    } = {
+      detected: false,
+      resolvedSubdomain: null,
+      expectedSubdomains: [],
+      correctedFetchAttempted: false,
+      correctedFetchSucceeded: false,
+      note: null,
+    };
+
+    try {
+      const resolvedHost = new URL(resolvedUrl).hostname.toLowerCase();
+      const firstLabel = resolvedHost.split(".")[0];
+      const normalizedSelectedCountry = String(locationName || "")
+        .trim()
+        .toLowerCase();
+      const expectedCodes =
+        countrySubdomainCodes[normalizedSelectedCountry] || [];
+
+      if (
+        allKnownSubdomainCodes.has(firstLabel) &&
+        expectedCodes.length > 0 &&
+        !expectedCodes.includes(firstLabel)
+      ) {
+        marketDomainMismatch = {
+          detected: true,
+          resolvedSubdomain: firstLabel,
+          expectedSubdomains: expectedCodes,
+          correctedFetchAttempted: false,
+          correctedFetchSucceeded: false,
+          note: `The resolved homepage (${firstLabel}.${resolvedHost.split(".").slice(1).join(".")}) is on a different country storefront than the selected market (${locationName}). This can happen when the site's own geo-redirect responds to the crawler's network location rather than the selected market.`,
+        };
+
+        const correctedHost = resolvedHost.replace(
+          new RegExp(`^${firstLabel}\\.`),
+          `${expectedCodes[0]}.`
+        );
+        const correctedUrl = resolvedUrl.replace(resolvedHost, correctedHost);
+
+        marketDomainMismatch.correctedFetchAttempted = true;
+        try {
+          const correctedResult = await fetchHtml(correctedUrl);
+          if (correctedResult.html && correctedResult.html.length > 200) {
+            html = correctedResult.html;
+            resolvedUrl = correctedResult.resolvedUrl || correctedUrl;
+            redirectCount = Number(correctedResult.redirectCount || 0);
+            marketDomainMismatch.correctedFetchSucceeded = true;
+            marketDomainMismatch.note += ` A corrected fetch of the ${expectedCodes[0]}. subdomain succeeded and was used for this audit instead.`;
+          } else {
+            marketDomainMismatch.note += ` A corrected fetch of the ${expectedCodes[0]}. subdomain did not return usable evidence, so the originally resolved page was kept - treat market-specific findings with caution.`;
+          }
+        } catch {
+          marketDomainMismatch.note += ` A corrected fetch of the ${expectedCodes[0]}. subdomain failed, so the originally resolved page was kept - treat market-specific findings with caution.`;
+        }
+      }
+    } catch {
+      // Non-fatal: URL parsing failed, skip mismatch detection.
+    }
+
     const canonicalUrl = getCanonicalUrl(html, resolvedUrl);
     const auditTargetUrl = canonicalUrl || resolvedUrl || url;
     const title = getTitle(html);
@@ -4593,6 +4694,7 @@ const draftReport = {
   redirectCount,
   domain,
   businessContext,
+  marketDomainMismatch,
   moduleStatus,
       unifiedOverview,
       title,

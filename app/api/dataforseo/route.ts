@@ -2265,20 +2265,45 @@ async function classifyCompetitor(
   const candidateRoleIsAmbiguous =
     candidateRole === "other";
 
+  /*
+   * A second, independent qualification path: when the candidate's
+   * business-model role was clearly confirmed (not "other") and the
+   * search-data provider found heavy shared-keyword overlap, that is
+   * strong real-world evidence of direct competition even if the
+   * two homepages don't share much specific vocabulary (a broad
+   * major retailer's generic copy vs. a niche specialist's copy).
+   * Still requires at least one genuine topical match so pure
+   * keyword-overlap coincidence alone cannot qualify.
+   */
+  const strongKeywordOverlapPath =
+    !candidateRoleIsAmbiguous &&
+    sharedKeywords >= 15 &&
+    topicalMatches.length >= 1;
+
+  const moderateKeywordOverlapPath =
+    !candidateRoleIsAmbiguous &&
+    sharedKeywords >= 6 &&
+    topicalMatches.length >= 1;
+
   const qualifiesAsDirect =
     sameBusinessModel &&
     homepage.fetched &&
-    sharedKeywords >= 3 &&
-    topicalMatches.length >=
+    (
       (
-        candidateRoleIsAmbiguous
-          ? minimumDirectMatches + 1
-          : minimumDirectMatches
-      ) &&
-    auditedCoverage >=
-      minimumAuditedCoverage &&
-    candidateCoverage >=
-      minimumCandidateCoverage;
+        sharedKeywords >= 3 &&
+        topicalMatches.length >=
+          (
+            candidateRoleIsAmbiguous
+              ? minimumDirectMatches + 1
+              : minimumDirectMatches
+          ) &&
+        auditedCoverage >=
+          minimumAuditedCoverage &&
+        candidateCoverage >=
+          minimumCandidateCoverage
+      ) ||
+      strongKeywordOverlapPath
+    );
 
   const qualifiesAsCategoryCompetitor =
     sameBusinessModel &&
@@ -2299,7 +2324,8 @@ async function classifyCompetitor(
             (
               topicalMatches.length >= 1 &&
               sharedKeywords >= 10
-            )
+            ) ||
+            moderateKeywordOverlapPath
           )
     );
 
@@ -2383,7 +2409,10 @@ async function classifyCompetitor(
 
   const classificationReason =
     relationship === "direct"
-      ? `Same business model; broad topical match (${topicalMatchSummary}).`
+      ? strongKeywordOverlapPath &&
+        topicalMatches.length < minimumDirectMatches
+        ? `Same business model; ${sharedKeywords} shared keywords (strong overlap), topical match: ${topicalMatchSummary}.`
+        : `Same business model; broad topical match (${topicalMatchSummary}).`
       : relationship ===
           "category_competitor" &&
         qualifiesAsCategoryCompetitor

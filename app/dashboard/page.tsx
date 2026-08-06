@@ -2072,27 +2072,53 @@ const buildFoundationRoadmapActions = (
   // always produce a recommendation because that logic lived only
   // in the initial synchronous scoring pass. Recompute defensively
   // from whichever device result is available.
-  const desktopScoreForAction = Number(
-    report?.pageSpeed?.desktop?.score ?? NaN
-  );
-  const mobileScoreForAction = Number(
-    report?.pageSpeed?.mobile?.score ?? NaN
-  );
   const parseMetricNumber = (value: any) =>
     Number(String(value ?? "").replace(/[^0-9.]/g, "")) || 0;
+
+  /*
+   * This codebase's PageSpeed data uses 0 as a sentinel for
+   * "no data returned," not a real score of zero. A device is only
+   * treated as having real evidence when its score is genuinely
+   * positive or at least one Core Web Vital metric was returned -
+   * otherwise "Unavailable" must be shown instead of a misleading 0.
+   */
+  const deviceHasPageSpeedEvidence = (snapshot: any): boolean => {
+    if (!snapshot || typeof snapshot !== "object") return false;
+    const hasAnyMetric = [
+      snapshot?.lcp,
+      snapshot?.fcp,
+      snapshot?.cls,
+      snapshot?.tbt,
+      snapshot?.speedIndex,
+    ].some((v) => v !== null && v !== undefined && String(v).trim() !== "" && String(v).trim() !== "--");
+    const rawScore = Number(snapshot?.score);
+    return hasAnyMetric || (!Number.isNaN(rawScore) && rawScore > 0);
+  };
+
+  const desktopSnapshotForAction = report?.pageSpeed?.desktop || {};
+  const mobileSnapshotForAction = report?.pageSpeed?.mobile || {};
+  const desktopEvidenceAvailable = deviceHasPageSpeedEvidence(desktopSnapshotForAction);
+  const mobileEvidenceAvailable = deviceHasPageSpeedEvidence(mobileSnapshotForAction);
+
+  const desktopScoreForAction = desktopEvidenceAvailable
+    ? Number(desktopSnapshotForAction?.score) || 0
+    : NaN;
+  const mobileScoreForAction = mobileEvidenceAvailable
+    ? Number(mobileSnapshotForAction?.score) || 0
+    : NaN;
   const clsValue = Math.max(
-    parseMetricNumber(report?.pageSpeed?.desktop?.cls),
-    parseMetricNumber(report?.pageSpeed?.mobile?.cls)
+    desktopEvidenceAvailable ? parseMetricNumber(desktopSnapshotForAction?.cls) : 0,
+    mobileEvidenceAvailable ? parseMetricNumber(mobileSnapshotForAction?.cls) : 0
   );
   const tbtValue = Math.max(
-    parseMetricNumber(report?.pageSpeed?.desktop?.tbt),
-    parseMetricNumber(report?.pageSpeed?.mobile?.tbt)
+    desktopEvidenceAvailable ? parseMetricNumber(desktopSnapshotForAction?.tbt) : 0,
+    mobileEvidenceAvailable ? parseMetricNumber(mobileSnapshotForAction?.tbt) : 0
   );
-  const desktopLcpValue = parseMetricNumber(report?.pageSpeed?.desktop?.lcp);
-  const mobileLcpValue = parseMetricNumber(report?.pageSpeed?.mobile?.lcp);
+  const desktopLcpValue = desktopEvidenceAvailable ? parseMetricNumber(desktopSnapshotForAction?.lcp) : 0;
+  const mobileLcpValue = mobileEvidenceAvailable ? parseMetricNumber(mobileSnapshotForAction?.lcp) : 0;
   const lcpValue = Math.max(desktopLcpValue, mobileLcpValue);
-  const desktopFcpValue = parseMetricNumber(report?.pageSpeed?.desktop?.fcp);
-  const mobileFcpValue = parseMetricNumber(report?.pageSpeed?.mobile?.fcp);
+  const desktopFcpValue = desktopEvidenceAvailable ? parseMetricNumber(desktopSnapshotForAction?.fcp) : 0;
+  const mobileFcpValue = mobileEvidenceAvailable ? parseMetricNumber(mobileSnapshotForAction?.fcp) : 0;
   const fcpValue = Math.max(desktopFcpValue, mobileFcpValue);
   const performanceFailing =
     (!Number.isNaN(desktopScoreForAction) && desktopScoreForAction < 70) ||
@@ -2798,6 +2824,31 @@ const cleanAiCompetitorList = (
           value.trim()
         );
 
+      /*
+       * A bare compass/directional adjective ("Southern", "Northern")
+       * is geography-flavored prose, not a brand name.
+       */
+      const isDirectionalAdjective =
+        valueTokens.length === 1 &&
+        /^(?:northern|southern|eastern|western|central)$/i.test(
+          value.trim()
+        );
+
+      /*
+       * A bare product-attribute descriptor (a scent/flavor note, a
+       * color, a material, a size) commonly leaks into AI-generated
+       * "other brands mentioned" lists from product-listing prose
+       * (e.g. "Notes: Vanilla, Amber, Musk") across many different
+       * niches - fragrance, food, fashion, home goods. None of these
+       * are brand names on their own. Shape-based, not tied to any
+       * single industry.
+       */
+      const isGenericAttributeWord =
+        valueTokens.length === 1 &&
+        /^(?:vanilla|chocolate|lavender|rose|musk|amber|citrus|mint|berry|floral|woody|sweet|spicy|classic|premium|luxury|natural|organic|vegan|leather|cotton|silk|wool|gold|silver|black|white|red|blue|green|pink|purple|small|medium|large|mini|compact|portable|wireless|digital|smart|eco|sustainable|fresh|original|deluxe|standard|basic|essential)$/i.test(
+          value.trim()
+        );
+
       const contextOnlyPhrase =
         valueTokens.length > 0 &&
         valueTokens.length <= 4 &&
@@ -2819,6 +2870,8 @@ const cleanAiCompetitorList = (
         isGenericAssortmentNoun ||
         isBareCountryName ||
         isGenericSingleVerb ||
+        isDirectionalAdjective ||
+        isGenericAttributeWord ||
         contextOnlyPhrase ||
         (
           normalizedMarket &&
@@ -5945,6 +5998,18 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
     [42, 72, CW - 114]
   );
 
+  if (pdfData?.marketDomainMismatch?.detected) {
+    hiBox(
+      "Market / Domain Mismatch",
+      `${pdfData.marketDomainMismatch.note || "The resolved homepage landed on a different country storefront than the selected market."}${
+        pdfData.marketDomainMismatch.correctedFetchSucceeded
+          ? ""
+          : " Traffic, SERP, and content findings in this report may reflect the resolved storefront's market rather than the selected one."
+      }`,
+      "amber"
+    );
+  }
+
   if (performanceFallbackUsed) {
     hiBox(
       "Performance Device Fallback",
@@ -6031,7 +6096,7 @@ hiBox("Biggest Risk",cl(normalized.summary.biggestIssue),"red");
   if(pdfSections.domainAnalytics){
     secHdr(nextSec(),"Domain Analytics — Provider Signals","Separate organic and paid provider signals. These figures do not replace the canonical Traffic Intelligence estimate.");
     kpiRow([
-      {label:"Organic Keywords",value:fmt(pdfData?.domainAnalytics?.organicKeywords),col:C.accent},
+      {label:"Domain Analytics Keywords",value:fmt(pdfData?.domainAnalytics?.organicKeywords),sub:"Full domain-level provider footprint; may differ from the Labs rank-overview count",col:C.accent},
       {label:"Organic Traffic Signal",value:fmt(pdfData?.domainAnalytics?.organicTrafficSignal??pdfData?.domainAnalytics?.organicTraffic),col:C.green},
       {label:"Organic Cost",value:fmtMoney(pdfData?.domainAnalytics?.organicCost),col:C.muted},
       {label:"Paid Keywords",value:fmt(pdfData?.domainAnalytics?.paidKeywords),col:C.blue},
@@ -6783,7 +6848,8 @@ hiBox(
     if(pdfData?.dataforseo?.keywordGap){
       kpiRow([
         {label:"Own Keywords",value:fmt(pdfData?.dataforseo?.keywordGap?.ownKeywords),col:C.accent},
-        {label:"Competitors Checked",value:fmt(pdfData?.dataforseo?.keywordGap?.competitorCount),col:C.blue},
+        {label:"Verified Direct Competitors Checked",value:fmt(pdfData?.dataforseo?.keywordGap?.directCompetitorsUsed??0),col:C.blue},
+        {label:"Category Competitors Checked",value:fmt(pdfData?.dataforseo?.keywordGap?.categoryCompetitorsUsed??0),col:C.muted},
         {label:"Missing Keywords",value:fmt(pdfData?.dataforseo?.keywordGap?.missingKeywords?.length),col:C.amber},
         {
           label:"Gap Quality",
@@ -6888,7 +6954,7 @@ col4:
     if(pdfData?.dataforseo?.topKeywords?.length){
       secTitle("Crawler Que Labs — Ranked Keywords");
       kpiRow([
-        {label:"Organic Keywords",value:fmt(pdfData?.dataforseo?.organicKeywords),col:C.accent},
+        {label:"Rank Overview Keywords",value:fmt(pdfData?.dataforseo?.organicKeywords),sub:"From this labs rank-overview call; may differ from Domain Analytics",col:C.accent},
         {label:"Top Keywords Fetched",value:fmt(pdfData?.dataforseo?.topKeywords?.length),col:C.blue},
         {label:"Competitors Found",value:fmt(pdfData?.dataforseo?.competitors?.length),col:C.amber},
         {label:"Fetch Iterations",value:cl(String(pdfData?.dataforseo?.keywordFetchIterations??"—")),col:C.muted},
@@ -8710,6 +8776,17 @@ data?.renderReady !== true
       <ScopeValue label="Primary Device" value={data?.auditConfig?.device || data?.searchContext?.device} />
       <ScopeValue label="Crawl Limit" value={`${data?.auditConfig?.maxCrawlPages || data?.onPage?.pageLimit || 100} pages`} />
     </div>
+    {data?.marketDomainMismatch?.detected && (
+      <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+        <p className="font-semibold">Market / Domain Mismatch</p>
+        <p className="mt-1">
+          {data.marketDomainMismatch.note ||
+            "The resolved homepage landed on a different country storefront than the selected market."}
+          {!data.marketDomainMismatch.correctedFetchSucceeded &&
+            " Traffic, SERP, and content findings in this report may reflect the resolved storefront's market rather than the selected one."}
+        </p>
+      </div>
+    )}
   </div>
 )}
 
@@ -10757,14 +10834,18 @@ data?.aiSearchVisibility || data?.aiOptimization || data?.aiVisibility ? (
       Powered by Crawler Que Labs competitor keyword overlap. Shows keywords competitors rank for where this domain has weak or no visibility.
     </p>
 
-    <div className="mb-6 grid gap-4 md:grid-cols-3">
+    <div className="mb-6 grid gap-4 md:grid-cols-4">
       <MetricCard
         label="Own Keywords"
         value={data?.dataforseo?.keywordGap?.ownKeywords ?? "Data not available"}
       />
       <MetricCard
-        label="Competitors Checked"
-        value={data?.dataforseo?.keywordGap?.competitorCount ?? "Data not available"}
+        label="Verified Direct Competitors"
+        value={data?.dataforseo?.keywordGap?.directCompetitorsUsed ?? 0}
+      />
+      <MetricCard
+        label="Category Competitors"
+        value={data?.dataforseo?.keywordGap?.categoryCompetitorsUsed ?? 0}
       />
       <MetricCard
         label="Missing Keywords"

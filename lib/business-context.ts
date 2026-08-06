@@ -1105,6 +1105,64 @@ if (
  * This is a generic textual-shape check, not tied to any specific
  * brand, product, or country.
  */
+/*
+ * Purely online retail signals (cart, checkout, shipping language)
+ * used as a role-independent safety net. This looks only at the
+ * shape of the homepage text - not any specific brand, product, or
+ * country - so it applies the same way to any online store anywhere
+ * in the world.
+ */
+function hasPureOnlineRetailSignal(text: string): boolean {
+  const value = String(text || "").toLowerCase();
+  return /add to cart|add to bag|add to basket|shopping cart|checkout|buy online|ships? (?:worldwide|internationally|to your door)|free shipping|shipping (?:on|calculated)|order online|online store/i.test(
+    value
+  );
+}
+
+function computeLocalSeoApplicable(
+  marketRole: BusinessMarketRole,
+  parsed: any,
+  input: ResolveBusinessContextInput
+): boolean {
+  const combinedText = `${input.title || ""} ${input.description || ""} ${input.bodyText || ""}`;
+  const hasPhysicalEvidence = hasPhysicalLocalIntentEvidence(combinedText);
+
+  const roleBasedValue: boolean = [
+    "publication",
+    "software_product",
+    "marketplace",
+    "platform",
+  ].includes(marketRole)
+    ? false
+    : marketRole === "ecommerce"
+      ? hasPhysicalEvidence &&
+        (typeof parsed?.localSeoApplicable === "boolean"
+          ? parsed.localSeoApplicable
+          : true)
+      : typeof parsed?.localSeoApplicable === "boolean"
+        ? parsed.localSeoApplicable
+        : resolverLocalSeoApplicable(marketRole);
+
+  if (!roleBasedValue) return false;
+
+  /*
+   * Even if the assigned role would normally allow Local SEO (e.g.
+   * the classifier mislabeled a pure online store as
+   * "local_business" or "other"), a site whose homepage reads as
+   * purely online retail with no physical-location evidence should
+   * never get Local SEO applicable=true. This is an unconditional
+   * safety net independent of role classification accuracy.
+   */
+  if (
+    hasPureOnlineRetailSignal(combinedText) &&
+    !hasPhysicalEvidence
+  ) {
+    return false;
+  }
+
+  return roleBasedValue;
+}
+
 function hasPhysicalLocalIntentEvidence(text: string): boolean {
   const value = String(text || "").toLowerCase();
   return /store locator|find a store|visit our store|in-?store pickup|curbside pickup|our (?:stores?|branches?|locations?|showrooms?)|nearest (?:store|branch|location)|open(?:ing)? hours|\bshowroom\b|\bbranch(?:es)?\b|\bwarehouse (?:pickup|location)\b|\b\d{5}(?:-\d{4})?\b|same[- ]day delivery in|local delivery in/i.test(
@@ -2036,31 +2094,11 @@ confidenceScore:
     marketRole,
 
 localSeoApplicable:
-  [
-    "publication",
-    "software_product",
-    "marketplace",
-    "platform",
-  ].includes(
-    marketRole
-  )
-    ? false
-    : marketRole === "ecommerce"
-      ? hasPhysicalLocalIntentEvidence(
-          `${input.title || ""} ${input.description || ""} ${input.bodyText || ""}`
-        ) &&
-        (
-          typeof parsed?.localSeoApplicable === "boolean"
-            ? parsed.localSeoApplicable
-            : true
-        )
-      : typeof parsed
-        ?.localSeoApplicable ===
-      "boolean"
-      ? parsed.localSeoApplicable
-      : resolverLocalSeoApplicable(
-          marketRole
-        ),
+  computeLocalSeoApplicable(
+    marketRole,
+    parsed,
+    input
+  ),
 
 aiPrompts:
   localizedReturnedPrompts

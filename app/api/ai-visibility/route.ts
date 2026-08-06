@@ -402,6 +402,16 @@ function cleanCompetitorCandidate(
       cleaned
     );
 
+  const isDirectionalAdjective =
+    cleanedWordCount === 1 &&
+    /^(?:northern|southern|eastern|western|central)$/i.test(cleaned);
+
+  const isGenericAttributeWord =
+    cleanedWordCount === 1 &&
+    /^(?:vanilla|chocolate|lavender|rose|musk|amber|citrus|mint|berry|floral|woody|sweet|spicy|classic|premium|luxury|natural|organic|vegan|leather|cotton|silk|wool|gold|silver|black|white|red|blue|green|pink|purple|small|medium|large|mini|compact|portable|wireless|digital|smart|eco|sustainable|fresh|original|deluxe|standard|basic|essential)$/i.test(
+      cleaned
+    );
+
   if (
     blocked.test(cleaned) ||
     blockedGenericPhrase.test(
@@ -415,7 +425,9 @@ function cleanCompetitorCandidate(
     isContraction ||
     isGenericAssortmentNoun ||
     isBareCountryName ||
-    isGenericSingleVerb
+    isGenericSingleVerb ||
+    isDirectionalAdjective ||
+    isGenericAttributeWord
   ) {
     return "";
   }
