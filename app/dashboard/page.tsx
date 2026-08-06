@@ -1703,7 +1703,7 @@ const roadmapActionKey = (
     return "meta-description";
   }
 
-  if (/page title|seo title|title tag/.test(text)) {
+  if (/page title|seo title|title tag|missing titles?\b|unique titles?\b|untitled pages?/.test(text)) {
     return "page-title";
   }
 
@@ -2040,11 +2040,19 @@ const buildFoundationRoadmapActions = (
     parseMetricNumber(report?.pageSpeed?.desktop?.tbt),
     parseMetricNumber(report?.pageSpeed?.mobile?.tbt)
   );
+  const desktopLcpValue = parseMetricNumber(report?.pageSpeed?.desktop?.lcp);
+  const mobileLcpValue = parseMetricNumber(report?.pageSpeed?.mobile?.lcp);
+  const lcpValue = Math.max(desktopLcpValue, mobileLcpValue);
+  const desktopFcpValue = parseMetricNumber(report?.pageSpeed?.desktop?.fcp);
+  const mobileFcpValue = parseMetricNumber(report?.pageSpeed?.mobile?.fcp);
+  const fcpValue = Math.max(desktopFcpValue, mobileFcpValue);
   const performanceFailing =
     (!Number.isNaN(desktopScoreForAction) && desktopScoreForAction < 70) ||
     (!Number.isNaN(mobileScoreForAction) && mobileScoreForAction < 70) ||
     clsValue > 0.1 ||
-    tbtValue > 200;
+    tbtValue > 200 ||
+    lcpValue > 2.5 ||
+    fcpValue > 1.8;
 
   if (performanceFailing) {
     addAction({
@@ -2063,7 +2071,7 @@ const buildFoundationRoadmapActions = (
           Number.isNaN(desktopScoreForAction) ? "Unavailable" : desktopScoreForAction
         }, Mobile score: ${
           Number.isNaN(mobileScoreForAction) ? "Unavailable" : mobileScoreForAction
-        }, CLS: ${clsValue || "Unavailable"}, TBT: ${tbtValue ? `${tbtValue}ms` : "Unavailable"}`,
+        }, LCP: ${lcpValue ? `${lcpValue}s` : "Unavailable"}, FCP: ${fcpValue ? `${fcpValue}s` : "Unavailable"}, CLS: ${clsValue || "Unavailable"}, TBT: ${tbtValue ? `${tbtValue}ms` : "Unavailable"}`,
       ],
     });
   }
@@ -2153,8 +2161,28 @@ const buildFoundationRoadmapActions = (
   const suspiciousBacklinkPattern =
     /forum|profile|directory|classified|bookmark|guestbook|stream&type=|pages\.dev|\.cloud(?:\/|$)|\.wiki(?:\/|$)|\.fyi(?:\/|$)|url[s-]?shortener|screenshots?|global-ranks|\/(?:users?|members?|profiles?|tags?|likes?|posts?|evaluate|listings?|reports?|share|stats|gallery|galerias|video)(?:\/|$)|(?:^|[\s./_-])(?:social|feedback|directory|listing)(?:[.\s/_-]|$)|donat|charity|nonprofit|non-profit|shelter|rescue|adopt|foster|pet|animal|casino|gambl|payday|\bloan\b|pharma|viagra|weight[- ]?loss|diet[- ]?pill|crypto[- ]?(?:casino|bet)|\bcbd\b|\bslot\b|staging\.|admin\.|test\.|localhost/i;
 
+  const roadmapAuditedDomainRoot = String(
+    report?.domain || report?.normalizedDomain || ""
+  )
+    .toLowerCase()
+    .replace(/^www\./, "")
+    .split(".")
+    .slice(-2)
+    .join(".");
+  const isOwnedRoadmapBacklinkSource = (item: any) => {
+    const sourceDomain = String(item?.domainFrom || "")
+      .toLowerCase()
+      .replace(/^www\./, "");
+    if (!sourceDomain || !roadmapAuditedDomainRoot) return false;
+    return (
+      sourceDomain.split(".").slice(-2).join(".") ===
+      roadmapAuditedDomainRoot
+    );
+  };
+
   const roadmapBacklinkSourceCounts = new Map<string, number>();
   backlinkTopSample.forEach((item: any) => {
+    if (isOwnedRoadmapBacklinkSource(item)) return;
     const sourceDomain = String(item?.domainFrom || "")
       .toLowerCase()
       .replace(/^www\./, "")
@@ -2168,6 +2196,7 @@ const buildFoundationRoadmapActions = (
 
   const locallyComputedSuspiciousCount = backlinkTopSample.filter(
     (item: any) => {
+      if (isOwnedRoadmapBacklinkSource(item)) return false;
       const rank = Number(item?.rank || 0);
       const sourceText = [item?.domainFrom, item?.sourceUrl, item?.anchor]
         .filter(Boolean)
@@ -2186,20 +2215,22 @@ const buildFoundationRoadmapActions = (
       );
     }
   ).length;
-  const canonicalSuspiciousCount = Math.max(
-    hasServerBacklinkSignalsForRoadmap
-      ? Number(
-          report.backlinkAuthoritySignals.sampledLowQualityBacklinks || 0
-        )
-      : 0,
-    locallyComputedSuspiciousCount
-  );
-  const canonicalSampleTotal = Math.max(
-    hasServerBacklinkSignalsForRoadmap
-      ? Number(report.backlinkAuthoritySignals.sampledBacklinks || 0)
-      : 0,
-    backlinkTopSample.length
-  );
+  /*
+   * Prefer the server's canonical count whenever it is present - it
+   * has visibility into the full sample and the owned-property
+   * exclusion. Falling back to Math.max with a locally recomputed
+   * value could let a stale/looser local pattern override a correct
+   * (lower) server value, causing this recommendation's evidence to
+   * disagree with the Authority Insight section above it.
+   */
+  const canonicalSuspiciousCount = hasServerBacklinkSignalsForRoadmap
+    ? Number(
+        report.backlinkAuthoritySignals.sampledLowQualityBacklinks || 0
+      )
+    : locallyComputedSuspiciousCount;
+  const canonicalSampleTotal = hasServerBacklinkSignalsForRoadmap
+    ? Number(report.backlinkAuthoritySignals.sampledBacklinks || 0)
+    : backlinkTopSample.length;
 
   if (
     report?.backlinkAuthoritySignals?.manualReviewRequired === true ||
@@ -2643,6 +2674,24 @@ const cleanAiCompetitorList = (
           value.trim()
         );
 
+      /*
+       * A contraction ("It's", "They're", "Don't", "We're") is
+       * pronoun/discourse text, never a named entity. A single
+       * generic assortment noun ("Mix", "Blend", "Range",
+       * "Variety", "Selection", "Assortment", "Collection",
+       * "Lineup") is descriptive prose left over from AI text, not
+       * a brand or product name. Both are shape-based checks.
+       */
+      const isContraction =
+        /^(?:it's|they're|we're|you're|i'm|don't|doesn't|can't|won't|isn't|aren't|wasn't|weren't|there's|that's|what's|here's)$/i.test(
+          value.trim()
+        );
+      const isGenericAssortmentNoun =
+        valueTokens.length === 1 &&
+        /^(?:mix|blend|range|variety|selection|assortment|collection|lineup|array)$/i.test(
+          value.trim()
+        );
+
       const contextOnlyPhrase =
         valueTokens.length > 0 &&
         valueTokens.length <= 4 &&
@@ -2660,6 +2709,8 @@ const cleanAiCompetitorList = (
         isSingleGerundFragment ||
         endsWithFillerWord ||
         genericCategoryPhrase ||
+        isContraction ||
+        isGenericAssortmentNoun ||
         contextOnlyPhrase ||
         (
           normalizedMarket &&
@@ -6516,6 +6567,7 @@ hiBox(
         [
           "Domain",
           "Relationship",
+          "Confidence",
           "Shared KWs",
           "Reason",
         ],
@@ -6530,20 +6582,31 @@ hiBox(
                 "Other organic overlap"
               ),
             col3:
+              cl(
+                (
+                  c?.classificationConfidence
+                    ? String(c.classificationConfidence).charAt(0).toUpperCase() +
+                      String(c.classificationConfidence).slice(1)
+                    : ""
+                ),
+                "—"
+              ),
+            col4:
               fmt(
                 c?.sharedKeywords ??
                   c?.intersections
               ),
-            col4:
+            col5:
               cl(
                 shortenClassificationReason(c?.classificationReason),
                 "Organic overlap does not prove direct commercial competition."
               ),
           })),
         [
-          43,
-          46,
-          23,
+          33,
+          38,
+          22,
+          19,
           CW - 112,
         ],
         3
@@ -6567,7 +6630,17 @@ hiBox(
         {label:"Own Keywords",value:fmt(pdfData?.dataforseo?.keywordGap?.ownKeywords),col:C.accent},
         {label:"Competitors Checked",value:fmt(pdfData?.dataforseo?.keywordGap?.competitorCount),col:C.blue},
         {label:"Missing Keywords",value:fmt(pdfData?.dataforseo?.keywordGap?.missingKeywords?.length),col:C.amber},
-        {label:"Gap Quality",value:cl(pdfData?.dataforseo?.keywordGap?.quality==="available"?"Verified":"Limited"),col:pdfData?.dataforseo?.keywordGap?.quality==="available"?C.accent:C.amber},
+        {
+          label:"Gap Quality",
+          value:cl(
+            pdfData?.dataforseo?.keywordGap?.quality==="available"
+              ? "Verified"
+              : pdfData?.dataforseo?.keywordGap?.quality==="category_only_unverified"
+                ? "Category-Only (Unverified)"
+                : "Limited"
+          ),
+          col:pdfData?.dataforseo?.keywordGap?.quality==="available"?C.accent:C.amber
+        },
       ]);
     }
     if(pdfData?.dataforseo?.keywordGap?.missingKeywords?.length){
@@ -6627,6 +6700,24 @@ col4:
     : "medium"
 );
       });
+    }
+    if(pdfData?.dataforseo?.keywordGap?.categoryOpportunityKeywords?.length){
+      hiBox(
+        "Category Opportunity Keywords",
+        pdfData.dataforseo.keywordGap.categoryOpportunityNote ||
+          "These opportunities come from category/vertical competitors whose business model is unverified. Confirm relevance manually before prioritizing.",
+        "amber"
+      );
+      tbl(["Keyword","Volume","Intent","Page Type","Score"],
+        pdfData.dataforseo.keywordGap.categoryOpportunityKeywords.slice(0,12).map((k:any)=>({
+          col1:cl(k.keyword),col2:fmt(k.volume??k.search_volume),
+          col3:cl(k.intent,"general"),
+          col4:cl(
+            adaptPageTypeForMarketRole(k.recommendedPageType, pdfData),
+            "Supporting Content"
+          ),
+          col5:cl(String(k.opportunityScore??"—")),
+        })),[55,22,20,38,CW-135]);
     }
     if(
       pdfData?.dataforseo?.keywordGap?.missingKeywords?.length > 0 &&
@@ -6730,8 +6821,23 @@ col4:
     const pdfManualReviewBacklinkPattern =
       /forum|profile|directory|classified|bookmark|guestbook|stream&type=|pages\.dev|\.cloud(?:\/|$)|\.wiki(?:\/|$)|\.fyi(?:\/|$)|url[s-]?shortener|screenshots?|global-ranks|\/(?:users?|members?|profiles?|tags?|likes?|posts?|evaluate|listings?|reports?|share|stats|gallery|galerias|video)(?:\/|$)|(?:^|[\s./_-])(?:social|feedback|directory|listing)(?:[.\s/_-]|$)|donat|charity|nonprofit|non-profit|shelter|rescue|adopt|foster|pet|animal|casino|gambl|payday|\bloan\b|pharma|viagra|weight[- ]?loss|diet[- ]?pill|crypto[- ]?(?:casino|bet)|\bcbd\b|\bslot\b|staging\.|admin\.|test\.|localhost/i;
 
+    const pdfAuditedDomainRoot = String(domain || "")
+      .toLowerCase()
+      .replace(/^www\./, "")
+      .split(".")
+      .slice(-2)
+      .join(".");
+    const isOwnedPdfBacklinkSource = (item: any) => {
+      const sourceDomain = String(item?.domainFrom || "")
+        .toLowerCase()
+        .replace(/^www\./, "");
+      if (!sourceDomain || !pdfAuditedDomainRoot) return false;
+      return sourceDomain.split(".").slice(-2).join(".") === pdfAuditedDomainRoot;
+    };
+
     const pdfBacklinkSourceDomainCounts = new Map<string, number>();
     sampledBacklinksForPdf.forEach((item: any) => {
+      if (isOwnedPdfBacklinkSource(item)) return;
       const sourceDomain = String(item?.domainFrom || "")
         .toLowerCase()
         .replace(/^www\./, "")
@@ -6746,6 +6852,7 @@ col4:
     const locallyComputedManualReview =
       sampledBacklinksForPdf.filter(
         (item: any) => {
+          if (isOwnedPdfBacklinkSource(item)) return false;
           const rank = Number(item?.rank || 0);
           const source = [item?.domainFrom, item?.sourceUrl, item?.anchor]
             .filter(Boolean)
@@ -11662,10 +11769,19 @@ const impactClass = impact.toLowerCase().includes("high")
                           "Unknown domain"}
                       </p>
 
-                      <span className="rounded-full border border-[#2A2A2A] px-3 py-1 text-xs text-[#A0A0A0]">
-                        {item?.relationshipLabel ||
-                          "Unclassified Organic Overlap"}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {item?.classificationConfidence && (
+                          <span className="rounded-full border border-[#2A2A2A] px-3 py-1 text-xs text-[#777]">
+                            {String(item.classificationConfidence).charAt(0).toUpperCase() +
+                              String(item.classificationConfidence).slice(1)}{" "}
+                            confidence
+                          </span>
+                        )}
+                        <span className="rounded-full border border-[#2A2A2A] px-3 py-1 text-xs text-[#A0A0A0]">
+                          {item?.relationshipLabel ||
+                            "Unclassified Organic Overlap"}
+                        </span>
+                      </div>
                     </div>
 
                     <p className="mt-2 text-xs leading-5 text-[#777]">

@@ -2806,10 +2806,46 @@ const competitorLandscape = {
         .filter(Boolean)
     );
 
-    const competitorDomains = topCompetitors
+    const directCompetitorDomains = topCompetitors
       .map((c: any) => c.domain)
-      .filter(Boolean)
-      .slice(0, 3);
+      .filter(Boolean);
+
+    const categoryCompetitorsForGap = sortCompetitors(
+      classifiedCompetitors.filter(
+        (item: any) => item?.relationship === "category_competitor"
+      )
+    );
+    const categoryCompetitorDomains = categoryCompetitorsForGap
+      .map((c: any) => c.domain)
+      .filter(Boolean);
+
+    /*
+     * Verified direct competitors are always prioritized. When there
+     * are fewer than 3, category competitors (business model
+     * unverified, but independently strong organic overlap) fill
+     * the remaining API budget so a report isn't left with zero
+     * keyword intelligence just because nothing cleared the direct
+     * bar. Each domain's relationship type is tracked so the results
+     * can be split into a safety-restricted direct gap and a clearly
+     * labeled, separate category-opportunity list - the direct-only
+     * rule for the main Keyword Gap KPI is not weakened.
+     */
+    const competitorDomains = Array.from(
+      new Set<string>([
+        ...directCompetitorDomains,
+        ...categoryCompetitorDomains,
+      ])
+    ).slice(0, 3);
+
+    const competitorDomainRelationship = new Map<string, "direct" | "category">();
+    directCompetitorDomains.forEach((d: string) =>
+      competitorDomainRelationship.set(d, "direct")
+    );
+    categoryCompetitorDomains.forEach((d: string) => {
+      if (!competitorDomainRelationship.has(d)) {
+        competitorDomainRelationship.set(d, "category");
+      }
+    });
 
     const competitorBrandTokens: string[] = Array.from(
       new Set<string>([
@@ -2900,7 +2936,7 @@ language_code: languageCode || "en",
 
     const competitorKeywordMap = new Map<
       string,
-      { keyword: string; volume: number; cpc: number; competition: number; competitors: string[] }
+      { keyword: string; volume: number; cpc: number; competition: number; competitors: string[]; sourceTypes: Set<"direct" | "category"> }
     >();
 
     competitorKeywordResponses.forEach((res, index) => {
@@ -2929,11 +2965,14 @@ language_code: languageCode || "en",
           0;
 
         const existing = competitorKeywordMap.get(keyword);
+        const sourceType =
+          competitorDomainRelationship.get(competitorDomain) || "category";
 
         if (existing) {
           if (!existing.competitors.includes(competitorDomain)) {
             existing.competitors.push(competitorDomain);
           }
+          existing.sourceTypes.add(sourceType);
           existing.volume = Math.max(existing.volume, Number(volume || 0));
           existing.cpc = Math.max(existing.cpc, Number(cpc || 0));
           existing.competition = Math.max(existing.competition, Number(competition || 0));
@@ -2944,6 +2983,7 @@ language_code: languageCode || "en",
             cpc: Number(cpc || 0),
             competition: Number(competition || 0),
             competitors: [competitorDomain],
+            sourceTypes: new Set([sourceType]),
           });
         }
       });
@@ -3018,7 +3058,7 @@ const suppressedCompetitorBrandedKeywords =
     )
   ).length;
 
-const missingKeywords = Array.from(competitorKeywordMap.values())
+const allOpportunityKeywords = Array.from(competitorKeywordMap.values())
   .map((k: any) => {
     const intent = getKeywordIntent(k.keyword);
     const opportunityScore = calculateKeywordOpportunityScore(k);
@@ -3032,6 +3072,8 @@ const recommendedPageType =
 
     return {
       ...k,
+      sourceTypes: Array.from(k.sourceTypes || []),
+      isDirectSourced: (k.sourceTypes || new Set()).has("direct"),
       intent,
       opportunityScore,
       recommendedPageType,
@@ -3118,7 +3160,15 @@ return (
 
   return scoreB - scoreA;
 })
-.slice(0, 12);
+.slice(0, 24);
+
+const missingKeywords = allOpportunityKeywords
+  .filter((k: any) => k.isDirectSourced)
+  .slice(0, 12);
+
+const categoryOpportunityKeywords = allOpportunityKeywords
+  .filter((k: any) => !k.isDirectSourced)
+  .slice(0, 12);
 
     const keywordClusters: Record<string, any[]> = {};
 
@@ -3160,14 +3210,32 @@ const contentIdeas = Object.entries(keywordClusters).map(
 const keywordGapQuality =
   competitorDomains.length > 0 && missingKeywords.length > 0
     ? "available"
-    : "not_enough_relevant_competitor_data";
+    : competitorDomains.length > 0 && categoryOpportunityKeywords.length > 0
+      ? "category_only_unverified"
+      : "not_enough_relevant_competitor_data";
 
 const keywordGap = {
   ownKeywords: topKeywords.length,
   competitorCount: competitorDomains.length,
   competitorsChecked: competitorDomains,
+  directCompetitorsUsed: directCompetitorDomains.length,
+  categoryCompetitorsUsed: categoryCompetitorDomains.length,
   missingKeywords,
   opportunities: missingKeywords.slice(0, 10),
+  /*
+   * Separate, clearly labeled opportunity set sourced only from
+   * category/vertical competitors whose business model could not be
+   * verified. These never feed the main missingKeywords gap or its
+   * "Competitors Checked" / "Missing Keywords" KPIs - they exist so
+   * a report isn't left with zero keyword intelligence just because
+   * no domain cleared the verified-direct bar, while still keeping
+   * the direct-only rule intact for the primary gap.
+   */
+  categoryOpportunityKeywords,
+  categoryOpportunityNote:
+    categoryOpportunityKeywords.length > 0
+      ? "These opportunities come from category/vertical competitors whose business model is unverified. Confirm relevance manually before prioritizing."
+      : null,
   keywordClusters,
   contentIdeas,
   quality: keywordGapQuality,

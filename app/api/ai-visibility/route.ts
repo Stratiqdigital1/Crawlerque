@@ -348,6 +348,22 @@ function cleanCompetitorCandidate(
       cleaned
     );
 
+  /*
+   * A contraction ("It's", "They're") is pronoun/discourse text,
+   * never a named entity. A single generic assortment noun ("Mix",
+   * "Blend", "Range", "Variety") is descriptive prose, not a brand
+   * or product name.
+   */
+  const isContraction =
+    /^(?:it's|they're|we're|you're|i'm|don't|doesn't|can't|won't|isn't|aren't|wasn't|weren't|there's|that's|what's|here's)$/i.test(
+      cleaned
+    );
+  const isGenericAssortmentNoun =
+    cleanedWordCount === 1 &&
+    /^(?:mix|blend|range|variety|selection|assortment|collection|lineup|array)$/i.test(
+      cleaned
+    );
+
   if (
     blocked.test(cleaned) ||
     blockedGenericPhrase.test(
@@ -357,7 +373,9 @@ function cleanCompetitorCandidate(
     locationOnlyPhrase ||
     sentenceFragment ||
     endsWithFillerWord ||
-    genericCategoryPhrase
+    genericCategoryPhrase ||
+    isContraction ||
+    isGenericAssortmentNoun
   ) {
     return "";
   }

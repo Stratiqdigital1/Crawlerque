@@ -1095,6 +1095,23 @@ if (
   return "other";
 }
 
+/*
+ * For an ecommerce business, "local SEO applicable" should only be
+ * trusted when there is actual textual evidence of physical/local
+ * discovery intent - a store locator, in-store pickup, branches,
+ * showroom, or a visible address/ZIP pattern. Without that evidence,
+ * a purely online ecommerce brand should not be marked as locally
+ * relevant just because a semantic classification guessed true.
+ * This is a generic textual-shape check, not tied to any specific
+ * brand, product, or country.
+ */
+function hasPhysicalLocalIntentEvidence(text: string): boolean {
+  const value = String(text || "").toLowerCase();
+  return /store locator|find a store|visit our store|in-?store pickup|curbside pickup|our (?:stores?|branches?|locations?|showrooms?)|nearest (?:store|branch|location)|open(?:ing)? hours|\bshowroom\b|\bbranch(?:es)?\b|\bwarehouse (?:pickup|location)\b|\b\d{5}(?:-\d{4})?\b|same[- ]day delivery in|local delivery in/i.test(
+    value
+  );
+}
+
 function resolverLocalSeoApplicable(
   role: BusinessMarketRole
 ) {
@@ -1458,6 +1475,7 @@ async function resolverSemanticFallback(
                     "For editorial, review, comparison or news websites use marketRole publication.",
                     "For software products use software_product.",
                     "For ecommerce stores use ecommerce.",
+                    "If the homepage evidence shows the store sells across multiple distinct, largely unrelated product categories (for example electronics and home appliances and fashion and beauty), do not pick just one category as primaryService. Instead describe it broadly, for example 'multi-category online retailer' or 'general merchandise retailer', and make categoryKeywords and coreTokens span the distinct categories actually shown in the evidence rather than narrowing to a single one.",
                     "For businesses that depend on physical/local discovery use localSeoApplicable true. For publications, pure SaaS products, marketplaces and online platforms normally use false.",
                   ].join(" "),
               },
@@ -1980,7 +1998,16 @@ localSeoApplicable:
     marketRole
   )
     ? false
-    : typeof parsed
+    : marketRole === "ecommerce"
+      ? hasPhysicalLocalIntentEvidence(
+          `${title} ${description} ${bodyText}`
+        ) &&
+        (
+          typeof parsed?.localSeoApplicable === "boolean"
+            ? parsed.localSeoApplicable
+            : true
+        )
+      : typeof parsed
         ?.localSeoApplicable ===
       "boolean"
       ? parsed.localSeoApplicable

@@ -3389,7 +3389,7 @@ const sampledBacklinks = Array.isArray(
   : [];
 
 const lowQualityBacklinkPattern =
-  /forum|profile|directory|classified|bookmark|guestbook|stream&type=|\/(?:users?|members?|profiles?|tags?|likes?|posts?|evaluate|listings?)(?:\/|$)|(?:^|[\s./_-])(?:social|feedback|directory|listing)(?:[.\s/_-]|$)|donat|charity|nonprofit|non-profit|shelter|rescue|adopt|foster|casino|gambl|payday|\bloan\b|pharma|viagra|weight[- ]?loss|diet[- ]?pill|crypto[- ]?(?:casino|bet)|\bcbd\b|\bslot\b|staging\.|admin\.|test\.|localhost|\bwp-content\/uploads\b.*\.(?:pdf|zip)/i;
+  /forum|profile|directory|classified|bookmark|guestbook|stream&type=|\/(?:users?|members?|profiles?|tags?|likes?|posts?|evaluate|listings?)(?:\/|$)|(?:^|[\s./_-])(?:social|feedback|directory|listing)(?:[.\s/_-]|$)|donat|charity|nonprofit|non-profit|shelter|rescue|adopt|foster|pet|animal|casino|gambl|payday|\bloan\b|pharma|viagra|weight[- ]?loss|diet[- ]?pill|crypto[- ]?(?:casino|bet)|\bcbd\b|\bslot\b|staging\.|admin\.|test\.|localhost|\bwp-content\/uploads\b.*\.(?:pdf|zip)/i;
 
 /*
  * Provider rank alone cannot prove a link is trustworthy. A sample
@@ -3398,8 +3398,33 @@ const lowQualityBacklinkPattern =
  * risk regardless of niche - this check is universal and does not
  * reference any specific brand, domain, or country.
  */
+/*
+ * A backlink whose source is a subdomain of the audited site itself
+ * (e.g. blog.example.com or freelance.example.com linking to
+ * example.com) is an owned property, not third-party endorsement.
+ * It should never count as suspicious or duplicate-source risk.
+ * This is derived purely from comparing the source domain's root
+ * against the audited domain's own root - no brand-specific list.
+ */
+const auditedDomainRoot = String(domain || "")
+  .toLowerCase()
+  .replace(/^www\./, "")
+  .split(".")
+  .slice(-2)
+  .join(".");
+
+const isOwnedBacklinkSource = (item: any) => {
+  const sourceDomain = String(item?.domainFrom || "")
+    .toLowerCase()
+    .replace(/^www\./, "");
+  if (!sourceDomain || !auditedDomainRoot) return false;
+  const sourceRoot = sourceDomain.split(".").slice(-2).join(".");
+  return sourceRoot === auditedDomainRoot;
+};
+
 const backlinkSourceDomainCounts = new Map<string, number>();
 sampledBacklinks.forEach((item: any) => {
+  if (isOwnedBacklinkSource(item)) return;
   const sourceDomain = String(item?.domainFrom || "")
     .toLowerCase()
     .replace(/^www\./, "")
@@ -3413,6 +3438,7 @@ sampledBacklinks.forEach((item: any) => {
 
 const duplicateBacklinkSourceCount = sampledBacklinks.filter(
   (item: any) => {
+    if (isOwnedBacklinkSource(item)) return false;
     const sourceDomain = String(item?.domainFrom || "")
       .toLowerCase()
       .replace(/^www\./, "")
@@ -3426,6 +3452,8 @@ const duplicateBacklinkSourceCount = sampledBacklinks.filter(
 
 const sampledLowQualityBacklinks =
   sampledBacklinks.filter((item: any) => {
+    if (isOwnedBacklinkSource(item)) return false;
+
     const sourceText = [
       item?.domainFrom,
       item?.sourceUrl,
