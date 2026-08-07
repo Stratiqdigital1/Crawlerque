@@ -858,14 +858,14 @@ useEffect(() => {
     <main className="cq-reference-home min-h-screen bg-[var(--cq-ink)] text-[var(--cq-text)]">
       <SiteNav />
 
-      <section className="cq-reference-hero relative overflow-hidden border-b border-white/6 px-5 pb-16 pt-12 md:px-8 md:pb-20 md:pt-16">
+      <section className="cq-reference-hero relative overflow-hidden border-b border-white/6 px-5 pb-16 pt-12 md:px-7 md:pb-20 md:pt-16 xl:px-8">
         <div className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.025)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:linear-gradient(to_bottom,black,transparent_95%)]" />
           <div className="absolute -left-20 top-0 h-96 w-96 rounded-full bg-cyan-400/8 blur-[120px]" />
           <div className="absolute right-0 top-0 h-[430px] w-[430px] rounded-full bg-blue-600/9 blur-[130px]" />
         </div>
 
-        <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[.88fr_1.12fr] lg:gap-8">
+        <div className="mx-auto grid max-w-[1540px] items-center gap-12 lg:grid-cols-[.88fr_1.12fr] lg:gap-10">
           <div>
             <div className="inline-flex items-center gap-2 rounded-lg border border-cyan-300/30 bg-cyan-300/7 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-cyan-300">
               <Sparkles className="h-3.5 w-3.5" />
@@ -906,7 +906,7 @@ useEffect(() => {
             </div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-[760px] lg:ml-auto">
+          <div className="relative mx-auto w-full max-w-[880px] lg:ml-auto">
             <div className="absolute -inset-12 rounded-[60px] bg-blue-500/8 blur-3xl" />
             <HeroDashboardPreview />
           </div>
@@ -914,7 +914,7 @@ useEffect(() => {
       </section>
 
       <section ref={modulesSectionRef} id="modules" className="cq-reference-modules border-b border-white/6 px-5 py-14 md:px-8 md:py-16">
-        <div className="mx-auto max-w-7xl">
+        <div className="mx-auto max-w-[1540px]">
           <div className="flex flex-wrap items-end justify-between gap-5">
 <div className="max-w-3xl">
   <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-cyan-300">
@@ -954,7 +954,7 @@ useEffect(() => {
       </section>
 
       <section className="cq-reference-deliverables border-b border-white/6 px-5 py-14 md:px-8 md:py-16">
-        <div className="mx-auto max-w-7xl">
+        <div className="mx-auto max-w-[1540px]">
           <div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]">
             <div>
               <h2 className="text-[22px] font-extrabold text-white">What you receive from every module</h2>
@@ -1035,7 +1035,7 @@ useEffect(() => {
       </section>
 
       <section className="cq-reference-section cq-reference-section--ai border-b border-white/6 px-5 py-16 md:px-8 md:py-20">
-        <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[0.8fr_1.2fr]">
+        <div className="mx-auto grid max-w-[1540px] items-center gap-10 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
             <p className="cq-eyebrow cq-eyebrow--signal">AI search visibility</p>
             <h2 className="mt-4 text-[clamp(2rem,4vw,3.2rem)] font-extrabold leading-[1.08]">
@@ -1114,7 +1114,7 @@ useEffect(() => {
       </section>
 
       <section className="cq-reference-section cq-reference-section--alt border-b border-white/6 px-5 py-16 md:px-8 md:py-20">
-        <div className="mx-auto max-w-7xl">
+        <div className="mx-auto max-w-[1540px]">
           <div className="grid gap-8 lg:grid-cols-[0.78fr_1.22fr]">
             <div>
               <p className="cq-eyebrow cq-eyebrow--signal">How it works</p>
@@ -1196,7 +1196,7 @@ useEffect(() => {
           id="testimonials"
           className="cq-reference-section border-b border-white/6 px-5 py-16 md:px-8 md:py-20"
         >
-          <div className="mx-auto max-w-7xl">
+          <div className="mx-auto max-w-[1540px]">
             <div className="flex flex-wrap items-end justify-between gap-6">
               <div className="max-w-3xl">
                 <p className="cq-eyebrow cq-eyebrow--signal">
@@ -1259,7 +1259,7 @@ useEffect(() => {
       )}
 
       <section id="pricing" className="cq-reference-section border-b border-white/6 px-5 py-16 md:px-8 md:py-20">
-        <div className="mx-auto max-w-7xl">
+        <div className="mx-auto max-w-[1540px]">
           <div className="text-center">
             <p className="cq-eyebrow cq-eyebrow--signal">Pricing</p>
             <h2 className="mx-auto mt-4 max-w-3xl text-[clamp(2rem,5vw,3.6rem)] font-extrabold leading-tight">
@@ -1455,7 +1455,7 @@ useEffect(() => {
       </section>
 
       <section className="cq-reference-section px-5 py-16 md:px-8 md:py-20">
-        <div className="cq-reference-cta mx-auto max-w-7xl overflow-hidden rounded-3xl p-8 md:p-12">
+        <div className="cq-reference-cta mx-auto max-w-[1540px] overflow-hidden rounded-3xl p-8 md:p-12">
           <div className="grid items-center gap-8 lg:grid-cols-[1fr_auto]">
             <div>
               <p className="cq-eyebrow cq-eyebrow--signal">Ready to unlock your website's full potential?</p>
