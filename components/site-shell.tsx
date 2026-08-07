@@ -196,6 +196,30 @@ const FOOTER_COLS: { title: string; links: [string, string][] }[] = [
   },
 ];
 
+const SOCIAL_LINKS = [
+  {
+    name: "Facebook",
+    href: "https://www.facebook.com/share/1RMgoKTtWS/",
+    icon: "facebook",
+    hoverClass:
+      "hover:border-[#1877F2]/60 hover:bg-[#1877F2]/10 hover:text-[#1877F2]",
+  },
+  {
+    name: "Instagram",
+    href: "https://www.instagram.com/crawlerque/",
+    icon: "instagram",
+    hoverClass:
+      "hover:border-[#E4405F]/60 hover:bg-[#E4405F]/10 hover:text-[#E4405F]",
+  },
+  {
+    name: "Reddit",
+    href: "https://www.reddit.com/user/u/Crawlerque",
+    icon: "reddit",
+    hoverClass:
+      "hover:border-[#FF4500]/60 hover:bg-[#FF4500]/10 hover:text-[#FF4500]",
+  },
+] as const;
+
 export function SiteFooter() {
   return (
     <footer className="border-t border-[var(--cq-line-soft)] bg-[var(--cq-footer)] px-5 py-14 md:px-8">
@@ -212,9 +236,71 @@ export function SiteFooter() {
     className="h-7 w-auto"
   />
 </Link>
-            <p className="mt-4 text-sm leading-relaxed text-[var(--cq-text-3)]">
-              AI website growth intelligence for agencies, consultants, and SEO teams.
-            </p>
+<p className="mt-4 text-sm leading-relaxed text-[var(--cq-text-3)]">
+  AI website growth intelligence for agencies, consultants, and SEO teams.
+</p>
+
+<div className="mt-5 flex items-center gap-3">
+  {SOCIAL_LINKS.map((social) => (
+    <a
+      key={social.name}
+      href={social.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Follow Crawler Que on ${social.name}`}
+      title={`Crawler Que on ${social.name}`}
+      className={`flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--cq-line)] bg-[var(--cq-surface)] text-[var(--cq-text-3)] shadow-[0_8px_24px_rgba(0,0,0,.18)] transition-all duration-300 hover:-translate-y-1 ${social.hoverClass}`}
+    >
+      {social.icon === "facebook" && (
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          className="h-[18px] w-[18px] fill-current"
+        >
+          <path d="M13.5 22v-9h3l.45-3.5H13.5V7.25c0-1.01.28-1.7 1.74-1.7H17.1V2.42c-.32-.04-1.42-.14-2.7-.14-2.67 0-4.5 1.63-4.5 4.63V9.5H7v3.5h2.9v9h3.6Z" />
+        </svg>
+      )}
+
+      {social.icon === "instagram" && (
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          className="h-[19px] w-[19px] fill-none stroke-current"
+          strokeWidth="1.8"
+        >
+          <rect
+            x="3"
+            y="3"
+            width="18"
+            height="18"
+            rx="5"
+          />
+          <circle
+            cx="12"
+            cy="12"
+            r="4"
+          />
+          <circle
+            cx="17.4"
+            cy="6.6"
+            r="1"
+            className="fill-current stroke-none"
+          />
+        </svg>
+      )}
+
+      {social.icon === "reddit" && (
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          className="h-5 w-5 fill-current"
+        >
+          <path d="M20.32 12.16c.05-.24.08-.49.08-.75a2.55 2.55 0 0 0-4.35-1.8 10.8 10.8 0 0 0-3.42-1.08l.72-3.36 2.32.5a1.88 1.88 0 1 0 .18-.86l-2.75-.59a.45.45 0 0 0-.53.35l-.84 3.9A10.87 10.87 0 0 0 8 9.5a2.55 2.55 0 0 0-4.4 1.75c0 .3.05.58.14.85A3.25 3.25 0 0 0 3 14.13C3 17.45 7.03 20 12 20s9-2.55 9-5.87c0-.72-.24-1.4-.68-1.97ZM7.5 13a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5Zm7.85 4.2c-.93.93-2.28 1.4-3.35 1.4s-2.42-.47-3.35-1.4a.44.44 0 0 1 .62-.62c.68.68 1.78 1.14 2.73 1.14s2.05-.46 2.73-1.14a.44.44 0 1 1 .62.62ZM16.5 15.5a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z" />
+        </svg>
+      )}
+    </a>
+  ))}
+</div>
           </div>
           {FOOTER_COLS.map(col => (
             <div key={col.title}>
