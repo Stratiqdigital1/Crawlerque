@@ -868,15 +868,17 @@ useEffect(() => {
 
         <div className="mx-auto grid w-full max-w-[1800px] items-center gap-10 lg:grid-cols-[.9fr_1.1fr] lg:gap-8">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-lg border border-cyan-300/30 bg-cyan-300/7 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-cyan-300">
-              <Sparkles className="h-3.5 w-3.5" />
-              AI-powered SEO audit and website growth intelligence
-            </div>
+<div className="inline-flex items-center gap-2 rounded-lg border border-[#18E3D0]/30 bg-[#18E3D0]/[0.07] px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-[#18E3D0]">
+  <Sparkles className="h-3.5 w-3.5 text-[#18E3D0]" />
+  AI-powered SEO audit and website growth intelligence
+</div>
 
-            <h1 className="mt-6 max-w-[760px] text-[clamp(3rem,5.4vw,5.35rem)] font-extrabold leading-[.98] tracking-[-0.045em] text-white">
-              SEO Audit Tool With
-              <span className="mt-2 block text-cyan-300">AI Visibility Built In.</span>
-            </h1>
+<h1 className="mt-6 max-w-[760px] text-[clamp(3rem,5.4vw,5.35rem)] font-extrabold leading-[.98] tracking-[-0.045em] text-white">
+  SEO Audit Tool With
+  <span className="mt-2 block text-[#18E3D0]">
+    AI Visibility Built In.
+  </span>
+</h1>
 
             <p className="mt-6 max-w-2xl text-[17px] leading-8 text-slate-300">
               Find technical SEO issues, Core Web Vitals, ranking opportunities, competitor gaps, backlinks, content weaknesses, and brand visibility across ChatGPT, Claude, and Gemini then turn every finding into a prioritized growth plan.
