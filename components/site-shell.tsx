@@ -44,7 +44,7 @@ const links: [string, string][] = [
 ];
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--cq-line-soft)] bg-[var(--cq-ink)]/95 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8">
+      <div className="flex h-16 w-full items-center px-5 md:px-8 xl:px-10 2xl:px-12">
         <Link
   href="/"
   className="flex items-center gap-3"
@@ -56,7 +56,7 @@ const links: [string, string][] = [
   />
 </Link>
 
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="ml-auto hidden items-center gap-1 md:flex">
           {/* Features mega-menu */}
           <div
             className="relative"
@@ -118,13 +118,13 @@ const links: [string, string][] = [
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
-          <Link
-  href="/#pricing"
-  className="cq-btn cq-btn--primary hidden !py-2.5 md:inline-flex"
->
-  Get started
-</Link>
+       <div className="ml-3 flex items-center gap-3">
+  <Link
+    href="/#pricing"
+    className="cq-btn cq-btn--primary hidden !px-6 !py-2.5 md:inline-flex"
+  >
+    Get started
+  </Link>
           <button
             type="button"
             aria-expanded={open}
@@ -222,9 +222,10 @@ const SOCIAL_LINKS = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-[var(--cq-line-soft)] bg-[var(--cq-footer)] px-5 py-14 md:px-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
+<footer className="relative border-t border-cyan-300/25 bg-[var(--cq-footer)] px-5 py-14 md:px-8 xl:px-10 2xl:px-12">
+  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/65 to-transparent" />
+      <div className="w-full">
+        <div className="grid w-full gap-10 sm:grid-cols-2 lg:grid-cols-[1.35fr_repeat(4,1fr)] lg:gap-14 xl:gap-20">
           <div>
             <Link
   href="/"
@@ -315,8 +316,8 @@ export function SiteFooter() {
             </div>
           ))}
         </div>
-        <div className="cq-scanline mt-12" />
-        <p className="mt-6 text-center font-mono text-xs uppercase tracking-[0.08em] text-[var(--cq-text-3)]">
+        <div className="mt-12 h-px w-full bg-gradient-to-r from-transparent via-cyan-300/45 to-transparent" />
+        <p className="mt-6 text-center font-mono text-[11px] uppercase tracking-[0.1em] text-slate-500">
           Powered By{" "}
           <a href="https://stratiqdigital.com" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--cq-signal)]">
             Strat IQ Digital
