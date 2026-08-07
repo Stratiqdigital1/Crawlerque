@@ -400,8 +400,8 @@ function HeroDashboardPreview() {
 
   return (
     <div className="cq-reference-dashboard-stage relative">
-      <div className="cq-reference-dashboard-shell relative overflow-hidden rounded-[24px] border border-cyan-400/55 bg-[#071625] p-3 shadow-[0_35px_100px_rgba(0,0,0,.52),0_0_55px_rgba(0,173,255,.2)] md:p-4">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_95%_0%,rgba(0,185,255,.13),transparent_32%),linear-gradient(145deg,rgba(13,36,64,.96),rgba(4,17,31,.99))]" />
+      <div className="cq-reference-dashboard-shell relative overflow-hidden rounded-[24px] border border-cyan-300/45 bg-[#071625] p-3 shadow-[0_35px_100px_rgba(0,0,0,.52),0_0_55px_rgba(24,227,208,.14)] md:p-4">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_95%_0%,rgba(24,227,208,.10),transparent_32%),linear-gradient(145deg,rgba(12,34,56,.98),rgba(7,22,37,.99))]" />
         <div className="absolute inset-x-14 bottom-0 h-16 bg-cyan-400/10 blur-3xl" />
 
         <div className="relative flex items-center justify-between border-b border-white/8 px-1 pb-3">
@@ -520,7 +520,7 @@ function HeroDashboardPreview() {
           </div>
         </div>
       </div>
-      <div className="cq-reference-dashboard-pedestal mx-auto h-9 w-[88%] rounded-b-[55%] border-x border-b border-cyan-400/55 bg-[linear-gradient(180deg,rgba(0,119,255,.24),rgba(0,218,207,.08))] shadow-[0_16px_35px_rgba(0,130,255,.26),0_0_30px_rgba(0,224,210,.2)]" />
+      <div className="cq-reference-dashboard-pedestal mx-auto h-9 w-[88%] rounded-b-[55%] border-x border-b border-cyan-300/45 bg-[linear-gradient(180deg,rgba(24,227,208,.16),rgba(24,227,208,.04))] shadow-[0_16px_35px_rgba(24,227,208,.14),0_0_30px_rgba(24,227,208,.16)]" />
     </div>
   );
 }
@@ -863,7 +863,7 @@ useEffect(() => {
         <div className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.025)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:linear-gradient(to_bottom,black,transparent_95%)]" />
           <div className="absolute -left-20 top-0 h-96 w-96 rounded-full bg-cyan-400/8 blur-[120px]" />
-          <div className="absolute right-0 top-0 h-[430px] w-[430px] rounded-full bg-blue-600/9 blur-[130px]" />
+          <div className="absolute right-0 top-0 h-[430px] w-[430px] rounded-full bg-cyan-300/[0.07] blur-[130px]" />
         </div>
 
         <div className="mx-auto grid w-full max-w-[1800px] items-center gap-10 lg:grid-cols-[.9fr_1.1fr] lg:gap-8">
@@ -926,7 +926,7 @@ useEffect(() => {
           </div>
 
           <div className="relative mx-auto w-full max-w-[960px] lg:ml-auto">
-            <div className="absolute -inset-12 rounded-[60px] bg-blue-500/8 blur-3xl" />
+            <div className="absolute -inset-12 rounded-[60px] bg-[#18E3D0]/[0.06] blur-3xl" />
             <HeroDashboardPreview />
           </div>
         </div>
@@ -1023,14 +1023,14 @@ const glow = "24,227,208";
                 </div>
                 <div className="relative mx-auto grid h-36 w-36 place-items-center">
                   <div className="absolute inset-3 rounded-full border border-cyan-300/25 shadow-[0_0_36px_rgba(24,227,208,.16)]" />
-                  <div className="absolute inset-7 rotate-45 rounded-2xl border border-cyan-300/35 bg-[linear-gradient(145deg,rgba(33,128,255,.38),rgba(8,42,74,.96))] shadow-[0_0_34px_rgba(26,178,255,.24)]" />
+                  <div className="absolute inset-7 rotate-45 rounded-2xl border border-cyan-300/35 bg-[linear-gradient(145deg,rgba(24,227,208,.18),rgba(8,34,52,.98))] shadow-[0_0_34px_rgba(24,227,208,.18)]" />
                   <ShieldCheck className="relative h-16 w-16 text-cyan-300 drop-shadow-[0_0_14px_rgba(24,227,208,.7)]" strokeWidth={1.7} />
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="cq-home-hover-card mt-6 grid items-center gap-5 rounded-2xl border border-cyan-300/25 bg-[linear-gradient(90deg,rgba(12,34,56,.98),rgba(8,31,55,.98))] p-6 md:grid-cols-[170px_1fr_auto]">
+          <div className="cq-home-hover-card mt-6 grid items-center gap-5 rounded-2xl border border-cyan-300/20 bg-[linear-gradient(90deg,#0C2238,#091C2F)] p-6 md:grid-cols-[170px_1fr_auto]">
             <div className="relative hidden h-24 md:block">
               <div className="absolute bottom-2 left-7 h-8 w-24 rounded-[50%] bg-cyan-300/20 blur-xl" />
               <Rocket className="absolute bottom-2 left-10 h-20 w-20 -rotate-12 text-cyan-300 drop-shadow-[0_0_15px_rgba(24,227,208,.7)]" strokeWidth={1.6} />
