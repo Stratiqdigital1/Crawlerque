@@ -897,3 +897,126 @@ body { background: transparent; position: relative; z-index: 1; }
     background-size: 34px 34px;
   }
 }
+
+/* =========================================================
+   CRAWLER QUE HOMEPAGE INTERACTIONS
+   ========================================================= */
+
+.cq-home-hover-card {
+  transition:
+    transform 280ms ease,
+    border-color 280ms ease,
+    box-shadow 280ms ease,
+    background-color 280ms ease;
+}
+
+.cq-home-hover-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(24, 227, 208, 0.48);
+  box-shadow:
+    0 22px 55px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(24, 227, 208, 0.1);
+}
+
+/* Generic Crawler Que panels */
+
+.cq-reference-panel {
+  transition:
+    transform 280ms ease,
+    border-color 280ms ease,
+    box-shadow 280ms ease;
+}
+
+.cq-reference-panel:hover {
+  border-color: rgba(24, 227, 208, 0.34);
+  box-shadow:
+    0 22px 55px rgba(0, 0, 0, 0.25),
+    0 0 25px rgba(24, 227, 208, 0.07);
+}
+
+/* AI visibility main panel */
+
+.cq-ai-visibility-panel {
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgba(24, 227, 208, 0.07),
+      transparent 34%
+    ),
+    #0c2238;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 20px 55px rgba(0, 0, 0, 0.2);
+  transition:
+    transform 300ms ease,
+    border-color 300ms ease,
+    box-shadow 300ms ease;
+}
+
+.cq-ai-visibility-panel:hover {
+  transform: translateY(-4px);
+  border-color: rgba(24, 227, 208, 0.5);
+  box-shadow:
+    0 28px 70px rgba(0, 0, 0, 0.3),
+    0 0 34px rgba(24, 227, 208, 0.09);
+}
+
+/* ChatGPT / Claude / Gemini */
+
+.cq-ai-model-card {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 260ms ease,
+    border-color 260ms ease,
+    background-color 260ms ease,
+    box-shadow 260ms ease;
+}
+
+.cq-ai-model-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 0%,
+    rgba(24, 227, 208, 0.07),
+    transparent 48%
+  );
+  opacity: 0;
+  transition: opacity 260ms ease;
+}
+
+.cq-ai-model-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(24, 227, 208, 0.5);
+  background-color: #092038;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.28),
+    0 0 22px rgba(24, 227, 208, 0.09);
+}
+
+.cq-ai-model-card:hover::before {
+  opacity: 1;
+}
+
+/* AI metric rows */
+
+.cq-ai-metric-card {
+  transition:
+    transform 240ms ease,
+    border-color 240ms ease,
+    background-color 240ms ease;
+}
+
+.cq-ai-metric-card:hover {
+  transform: translateX(4px);
+  border-color: rgba(24, 227, 208, 0.42);
+  background-color: #092038;
+}
+
+/* Keep section boundaries visible */
+
+.cq-reference-home section {
+  border-color: rgba(24, 227, 208, 0.09);
+}

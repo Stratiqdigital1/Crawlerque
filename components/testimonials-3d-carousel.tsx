@@ -25,15 +25,17 @@ type Testimonials3DCarouselProps = {
   testimonials: TestimonialCard[];
 };
 
-const CARD_ACCENTS = [
-  "#18e3d0",
-  "#3b82f6",
-  "#8b5cf6",
-  "#06b6d4",
-  "#14b8a6",
-  "#60a5fa",
-  "#22d3ee",
-];
+const BRAND = {
+  signal: "#18E3D0",
+  signalRgb: "24, 227, 208",
+  blue: "#238BFF",
+  blueRgb: "35, 139, 255",
+  ink: "#071625",
+  surface: "#0C2238",
+  surface2: "#0A1D31",
+  text: "#FFFFFF",
+  textMuted: "#94A3B8",
+};
 
 const THICKNESS_LAYERS = [
   -6,
@@ -539,7 +541,7 @@ export function Testimonials3DCarousel({
         paused.current = false;
       }}
     >
-      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[390px] w-[780px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-400/8 blur-[115px]" />
+      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[390px] w-[780px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#18E3D0]/[0.07] blur-[115px]" />
 
       <div
         className="relative mx-auto h-[560px] max-w-7xl overflow-hidden sm:h-[580px]"
@@ -564,11 +566,7 @@ export function Testimonials3DCarousel({
         >
           {testimonials.map(
             (testimonial, index) => {
-              const accent =
-                CARD_ACCENTS[
-                  index %
-                    CARD_ACCENTS.length
-                ];
+            const accent = BRAND.signal;
 
               return (
                 <div
@@ -597,7 +595,7 @@ export function Testimonials3DCarousel({
                         style={{
                           transform: `translateZ(${depth}px)`,
                           background:
-                            "linear-gradient(145deg, #123d58, #071625)",
+                            "linear-gradient(145deg, #0C2238, #071625)",
                           boxShadow:
                             "inset 0 1px 0 rgba(255,255,255,.05)",
                         }}
@@ -612,54 +610,54 @@ export function Testimonials3DCarousel({
                         "translateZ(7px)",
                       backfaceVisibility:
                         "hidden",
-                      border: `1px solid ${accent}66`,
-                      background: `
-                        radial-gradient(
-                          circle at 88% 8%,
-                          ${accent}2b,
-                          transparent 34%
-                        ),
-                        radial-gradient(
-                          circle at 5% 100%,
-                          rgba(59,130,246,.14),
-                          transparent 38%
-                        ),
-                        linear-gradient(
-                          145deg,
-                          rgba(14,45,70,.98),
-                          rgba(5,20,34,.99)
-                        )
-                      `,
+                      border: `1px solid rgba(${BRAND.signalRgb}, .30)`,
+background: `
+  radial-gradient(
+    circle at 88% 8%,
+    rgba(${BRAND.signalRgb}, .18),
+    transparent 34%
+  ),
+  radial-gradient(
+    circle at 5% 100%,
+    rgba(${BRAND.blueRgb}, .10),
+    transparent 40%
+  ),
+  linear-gradient(
+    145deg,
+    ${BRAND.surface},
+    ${BRAND.ink}
+  )
+`,
                       boxShadow: `
-                        0 35px 85px rgba(0,0,0,.55),
-                        0 0 40px ${accent}22,
-                        inset 0 1px 0 rgba(255,255,255,.09)
-                      `,
+  0 35px 85px rgba(0,0,0,.52),
+  0 0 38px rgba(${BRAND.signalRgb}, .12),
+  inset 0 1px 0 rgba(255,255,255,.07)
+`,
                     }}
                   >
-                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_15%,rgba(255,255,255,.055)_45%,transparent_72%)]" />
+                    <div className="pointer-events-none absolute left-1/2 top-1/2 h-[390px] w-[780px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#18E3D0]/[0.07] blur-[115px]" />
 
                     <div className="relative flex h-full flex-col">
                       <div className="flex items-center justify-between gap-4">
                         <div
                           className="flex h-11 w-11 items-center justify-center rounded-xl border"
                           style={{
-                            color: accent,
-                            borderColor: `${accent}55`,
-                            background: `${accent}16`,
-                            boxShadow: `0 0 24px ${accent}22`,
-                          }}
+  color: BRAND.signal,
+  borderColor: `rgba(${BRAND.signalRgb}, .28)`,
+  background: `rgba(${BRAND.signalRgb}, .08)`,
+  boxShadow: `0 0 24px rgba(${BRAND.signalRgb}, .12)`,
+}}
                         >
                           <Quote className="h-5 w-5" />
                         </div>
 
                         <span
                           className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-[9px] font-semibold uppercase tracking-[0.08em]"
-                          style={{
-                            color: accent,
-                            borderColor: `${accent}44`,
-                            background: `${accent}12`,
-                          }}
+                       style={{
+  color: BRAND.signal,
+  borderColor: `rgba(${BRAND.signalRgb}, .24)`,
+  background: `rgba(${BRAND.signalRgb}, .07)`,
+}}
                         >
                           <Sparkles className="h-3 w-3" />
                           Customer story
@@ -686,7 +684,7 @@ export function Testimonials3DCarousel({
       {Array.from({ length: 5 }).map((_, starIndex) => (
         <Star
           key={starIndex}
-          className="h-3.5 w-3.5 fill-[#FBBF24] text-[#FBBF24] drop-shadow-[0_0_5px_rgba(251,191,36,.28)]"
+          className="h-3.5 w-3.5 fill-[#18E3D0] text-[#18E3D0] drop-shadow-[0_0_5px_rgba(24,227,208,.25)]"
           strokeWidth={1.8}
         />
       ))}
@@ -696,8 +694,8 @@ export function Testimonials3DCarousel({
   <p
     className="mt-1 text-[12px] font-semibold"
     style={{
-      color: accent,
-    }}
+  color: BRAND.signal,
+}}
   >
     {[
       testimonial.role,
@@ -718,19 +716,19 @@ export function Testimonials3DCarousel({
                         "translateZ(-7px) rotateY(180deg)",
                       backfaceVisibility:
                         "hidden",
-                      border: `1px solid ${accent}55`,
-                      background: `
-                        radial-gradient(
-                          circle at 50% 20%,
-                          ${accent}25,
-                          transparent 45%
-                        ),
-                        linear-gradient(
-                          145deg,
-                          rgba(12,42,65,.99),
-                          rgba(4,17,30,.99)
-                        )
-                      `,
+border: `1px solid rgba(${BRAND.signalRgb}, .26)`,
+background: `
+  radial-gradient(
+    circle at 50% 20%,
+    rgba(${BRAND.signalRgb}, .14),
+    transparent 45%
+  ),
+  linear-gradient(
+    145deg,
+    ${BRAND.surface},
+    ${BRAND.ink}
+  )
+`,
                       boxShadow:
                         "inset 0 1px 0 rgba(255,255,255,.08)",
                     }}
@@ -745,8 +743,8 @@ export function Testimonials3DCarousel({
                       <p
                         className="mt-5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em]"
                         style={{
-                          color: accent,
-                        }}
+  color: BRAND.signal,
+}}
                       >
                         Crawler Que Customer
                       </p>

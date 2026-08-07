@@ -330,18 +330,18 @@ const MODULES = [
 ];
 
 const MODULE_VISUALS = {
-  "seo-intelligence": { accent: "#00E6C3", glow: "0,230,195" },
-  "technical-seo": { accent: "#238BFF", glow: "35,139,255" },
-  "on-page-signals": { accent: "#06CDB3", glow: "6,205,179" },
-  "core-web-vitals": { accent: "#8B5CF6", glow: "139,92,246" },
-  "traffic-intelligence": { accent: "#F59E0B", glow: "245,158,11" },
-  "keyword-opportunities": { accent: "#16D7C0", glow: "22,215,192" },
-  "serp-rankings": { accent: "#3B82F6", glow: "59,130,246" },
-  "competitor-intelligence": { accent: "#8B5CF6", glow: "139,92,246" },
-  "backlink-authority": { accent: "#14B8A6", glow: "20,184,166" },
-  "content-quality": { accent: "#F59E0B", glow: "245,158,11" },
-  "ai-search-visibility": { accent: "#A855F7", glow: "168,85,247" },
-  "recommendations-roadmap": { accent: "#06B6D4", glow: "6,182,212" },
+  "seo-intelligence": { accent: "#18E3D0", glow: "24,227,208" },
+  "technical-seo": { accent: "#18E3D0", glow: "24,227,208" },
+  "on-page-signals": { accent: "#18E3D0", glow: "24,227,208" },
+  "core-web-vitals": { accent: "#18E3D0", glow: "24,227,208" },
+  "traffic-intelligence": { accent: "#18E3D0", glow: "24,227,208" },
+  "keyword-opportunities": { accent: "#18E3D0", glow: "24,227,208" },
+  "serp-rankings": { accent: "#18E3D0", glow: "24,227,208" },
+  "competitor-intelligence": { accent: "#18E3D0", glow: "24,227,208" },
+  "backlink-authority": { accent: "#18E3D0", glow: "24,227,208" },
+  "content-quality": { accent: "#18E3D0", glow: "24,227,208" },
+  "ai-search-visibility": { accent: "#18E3D0", glow: "24,227,208" },
+  "recommendations-roadmap": { accent: "#18E3D0", glow: "24,227,208" },
 };
 
 const DELIVERABLES = [
@@ -884,10 +884,28 @@ useEffect(() => {
 
             <div className="mt-10 grid max-w-2xl gap-0 sm:grid-cols-3">
               {[
-                { Icon: Layers3, title: "Complete Audit Coverage", text: "See the search, technical, content, authority, and AI signals shaping growth.", accent: "#19e2d0", glow: "25,226,208" },
-                { Icon: Target, title: "Actionable Insights", text: "Clear findings with priorities, ownership, and next steps.", accent: "#f59e0b", glow: "245,158,11" },
-                { Icon: Zap, title: "Built for Results", text: "Move from audit data to a focused growth roadmap.", accent: "#3b82f6", glow: "59,130,246" },
-              ].map(({ Icon, title, text, accent, glow }, index) => (
+  {
+    Icon: Layers3,
+    title: "Complete Audit Coverage",
+    text: "See the search, technical, content, authority, and AI signals shaping growth.",
+    accent: "#18E3D0",
+    glow: "24,227,208",
+  },
+  {
+    Icon: Target,
+    title: "Actionable Insights",
+    text: "Clear findings with priorities, ownership, and next steps.",
+    accent: "#18E3D0",
+    glow: "24,227,208",
+  },
+  {
+    Icon: Zap,
+    title: "Built for Results",
+    text: "Move from audit data to a focused growth roadmap.",
+    accent: "#18E3D0",
+    glow: "24,227,208",
+  },
+].map(({ Icon, title, text, accent, glow }, index) => (
                 <div key={title} className={`py-2 pr-5 ${index > 0 ? "border-l border-white/8 pl-5" : ""}`}>
                   <div
                     className="flex h-10 w-10 items-center justify-center rounded-lg border"
@@ -961,15 +979,13 @@ useEffect(() => {
               <h2 className="text-[22px] font-extrabold text-white">What you receive from every module</h2>
               <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {DELIVERABLES.map(({ Icon, title, text }, index) => {
-                  const accents = [
-                    ["#18e3d0", "24,227,208"],
-                    ["#3b82f6", "59,130,246"],
-                    ["#8b5cf6", "139,92,246"],
-                    ["#f59e0b", "245,158,11"],
-                  ];
-                  const [accent, glow] = accents[index];
+                  const accent = "#18E3D0";
+const glow = "24,227,208";
                   return (
-                    <div key={title} className="rounded-xl border border-white/8 bg-[#0c2238]/92 p-4 text-center">
+                    <div
+  key={title}
+  className="cq-home-hover-card rounded-xl border border-cyan-300/15 bg-[#0c2238]/92 p-4 text-center"
+>
                       <div
                         className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl"
                         style={{ color: accent, background: `rgba(${glow},.12)`, boxShadow: `0 0 22px rgba(${glow},.16)` }}
@@ -984,7 +1000,7 @@ useEffect(() => {
               </div>
             </div>
 
-            <div className="relative overflow-hidden rounded-2xl border border-white/8 bg-[#0c2238]/92 p-6">
+            <div className="cq-home-hover-card relative overflow-hidden rounded-2xl border border-cyan-300/15 bg-[#0c2238]/92 p-6">
               <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-cyan-300/10 blur-3xl" />
               <div className="relative grid items-center gap-5 sm:grid-cols-[1fr_150px]">
                 <div>
@@ -1014,7 +1030,7 @@ useEffect(() => {
             </div>
           </div>
 
-          <div className="mt-6 grid items-center gap-5 rounded-2xl border border-cyan-300/18 bg-[linear-gradient(90deg,rgba(12,34,56,.96),rgba(8,31,55,.96))] p-6 md:grid-cols-[170px_1fr_auto]">
+          <div className="cq-home-hover-card mt-6 grid items-center gap-5 rounded-2xl border border-cyan-300/25 bg-[linear-gradient(90deg,rgba(12,34,56,.98),rgba(8,31,55,.98))] p-6 md:grid-cols-[170px_1fr_auto]">
             <div className="relative hidden h-24 md:block">
               <div className="absolute bottom-2 left-7 h-8 w-24 rounded-[50%] bg-cyan-300/20 blur-xl" />
               <Rocket className="absolute bottom-2 left-10 h-20 w-20 -rotate-12 text-cyan-300 drop-shadow-[0_0_15px_rgba(24,227,208,.7)]" strokeWidth={1.6} />
@@ -1035,8 +1051,10 @@ useEffect(() => {
         </div>
       </section>
 
-      <section className="cq-reference-section cq-reference-section--ai border-b border-white/6 px-5 py-16 md:px-8 md:py-20">
-        <div className="mx-auto grid max-w-[1540px] items-center gap-10 lg:grid-cols-[0.8fr_1.2fr]">
+<section className="cq-reference-section cq-reference-section--ai relative border-y border-cyan-300/20 px-4 py-16 md:px-6 md:py-20 xl:px-8">
+  <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#18E3D0]/70 to-transparent" />
+
+  <div className="mx-auto grid w-full max-w-[1800px] items-center gap-10 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
             <p className="cq-eyebrow cq-eyebrow--signal">AI search visibility</p>
             <h2 className="mt-4 text-[clamp(2rem,4vw,3.2rem)] font-extrabold leading-[1.08]">
@@ -1066,7 +1084,7 @@ useEffect(() => {
             </a>
           </div>
 
-          <div className="cq-reference-panel rounded-3xl p-5 md:p-7">
+          <div className="cq-reference-panel cq-ai-visibility-panel rounded-3xl border border-cyan-300/25 p-5 md:p-7">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="font-semibold">AI Visibility Overview</p>
@@ -1085,13 +1103,16 @@ useEffect(() => {
                 ["Claude", "74%", "Good"],
                 ["Gemini", "68%", "Good"],
               ].map(([name, score, status]) => (
-                <div key={name} className="cq-reference-mini-panel rounded-2xl p-5 text-center">
+                <div
+  key={name}
+  className="cq-ai-model-card rounded-2xl border border-cyan-300/20 bg-[#071a2c] p-5 text-center"
+>
                   <Bot className="mx-auto h-5 w-5 text-[var(--cq-signal)]" />
                   <p className="mt-3 text-sm font-semibold">{name}</p>
                   <p className="mt-3 text-3xl font-extrabold">{score}</p>
-                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[var(--cq-surface-2)]">
-                    <div className="h-full w-4/5 rounded-full bg-[var(--cq-signal)]" />
-                  </div>
+<div className="mt-4 h-2 overflow-hidden rounded-full border border-cyan-300/15 bg-[#04111f]">
+  <div className="h-full w-4/5 rounded-full bg-[#18E3D0] shadow-[0_0_12px_rgba(24,227,208,.45)]" />
+</div>
                   <p className="mt-2 font-mono text-[10px] text-[var(--cq-signal)]">{status}</p>
                 </div>
               ))}
@@ -1104,7 +1125,10 @@ useEffect(() => {
                 ["Cited pages", "12"],
                 ["Missed prompts", "36"],
               ].map(([label, value]) => (
-                <div key={label} className="cq-reference-mini-panel flex items-center justify-between rounded-xl px-4 py-3">
+                <div
+  key={label}
+  className="cq-ai-metric-card flex items-center justify-between rounded-xl border border-cyan-300/15 bg-[#071a2c] px-4 py-3"
+>
                   <span className="text-xs text-[var(--cq-text-3)]">{label}</span>
                   <span className="font-mono text-sm font-bold text-[var(--cq-text)]">{value}</span>
                 </div>
@@ -1112,6 +1136,8 @@ useEffect(() => {
             </div>
           </div>
         </div>
+
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#18E3D0]/70 to-transparent" />
       </section>
 
       <section className="cq-reference-section cq-reference-section--alt border-b border-white/6 px-5 py-16 md:px-8 md:py-20">
