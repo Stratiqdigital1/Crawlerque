@@ -213,7 +213,7 @@ const SOCIAL_LINKS = [
   },
   {
     name: "Reddit",
-    href: "https://www.reddit.com/user/u/Crawlerque",
+    href: "https://www.reddit.com/user/Crawlerque",
     icon: "reddit",
     hoverClass:
       "hover:border-[#FF4500]/60 hover:bg-[#FF4500]/10 hover:text-[#FF4500]",
