@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Quote,
   Sparkles,
+  Star,
 } from "lucide-react";
 
 type TestimonialCard = {
@@ -671,25 +672,41 @@ export function Testimonials3DCarousel({
                         ”
                       </blockquote>
 
-                      <figcaption className="mt-5 border-t border-white/10 pt-4">
-                        <p className="text-[15px] font-extrabold text-white">
-                          {testimonial.name}
-                        </p>
+<figcaption className="mt-5 border-t border-white/10 pt-4">
+  <div className="flex flex-wrap items-center gap-3">
+    <p className="text-[15px] font-extrabold text-white">
+      {testimonial.name}
+    </p>
 
-                        <p
-                          className="mt-1 text-[12px] font-semibold"
-                          style={{
-                            color: accent,
-                          }}
-                        >
-                          {[
-                            testimonial.role,
-                            testimonial.company,
-                          ]
-                            .filter(Boolean)
-                            .join(", ")}
-                        </p>
-                      </figcaption>
+    <div
+      className="flex items-center gap-0.5"
+      aria-label="5 out of 5 stars"
+      title="5 out of 5 stars"
+    >
+      {Array.from({ length: 5 }).map((_, starIndex) => (
+        <Star
+          key={starIndex}
+          className="h-3.5 w-3.5 fill-[#FBBF24] text-[#FBBF24] drop-shadow-[0_0_5px_rgba(251,191,36,.28)]"
+          strokeWidth={1.8}
+        />
+      ))}
+    </div>
+  </div>
+
+  <p
+    className="mt-1 text-[12px] font-semibold"
+    style={{
+      color: accent,
+    }}
+  >
+    {[
+      testimonial.role,
+      testimonial.company,
+    ]
+      .filter(Boolean)
+      .join(", ")}
+  </p>
+</figcaption>
                     </div>
                   </article>
 
