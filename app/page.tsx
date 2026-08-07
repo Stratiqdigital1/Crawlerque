@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { SiteFooter, SiteNav } from "@/components/site-shell";
 import { APPROVED_TESTIMONIALS } from "@/lib/testimonials";
+import { Testimonials3DCarousel } from "@/components/testimonials-3d-carousel";
 
 const TRIAL_PLAN = {
   name: "Trial",
@@ -1191,72 +1192,46 @@ useEffect(() => {
         </div>
      </section>
 
-      {featuredTestimonials.length > 0 && (
-        <section
-          id="testimonials"
-          className="cq-reference-section border-b border-white/6 px-5 py-16 md:px-8 md:py-20"
+{featuredTestimonials.length > 0 && (
+  <section
+    id="testimonials"
+    className="cq-reference-section relative overflow-hidden border-b border-white/6 px-4 py-16 md:px-6 md:py-20 xl:px-8"
+  >
+    <div className="mx-auto w-full max-w-[1800px]">
+      <div className="flex flex-wrap items-end justify-between gap-6">
+        <div className="max-w-3xl">
+          <p className="cq-eyebrow cq-eyebrow--signal">
+            Customer stories
+          </p>
+
+          <h2 className="mt-4 text-[clamp(2rem,4vw,3.2rem)] font-extrabold leading-[1.08] text-white">
+            What customers say about Crawler Que.
+          </h2>
+
+          <p className="mt-4 max-w-2xl text-[15px] leading-7 text-[var(--cq-text-2)]">
+            Genuine feedback from professionals using Crawler Que for
+            website audits, AI visibility analysis, client reporting,
+            and growth planning.
+          </p>
+        </div>
+
+        <Link
+          href="/testimonials"
+          className="cq-btn cq-btn--ghost !px-5 !py-3"
         >
-          <div className="mx-auto w-full max-w-[1800px]">
-            <div className="flex flex-wrap items-end justify-between gap-6">
-              <div className="max-w-3xl">
-                <p className="cq-eyebrow cq-eyebrow--signal">
-                  Customer stories
-                </p>
+          View all customer stories
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
 
-                <h2 className="mt-4 text-[clamp(2rem,4vw,3.2rem)] font-extrabold leading-[1.08] text-white">
-                  What customers say about Crawler Que.
-                </h2>
-
-                <p className="mt-4 max-w-2xl text-[15px] leading-7 text-[var(--cq-text-2)]">
-                  Genuine feedback from professionals using Crawler Que for
-                  website audits, AI visibility analysis, client reporting,
-                  and growth planning.
-                </p>
-              </div>
-
-              <Link
-                href="/testimonials"
-                className="cq-btn cq-btn--ghost !px-5 !py-3"
-              >
-                View all customer stories
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-
-            <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {featuredTestimonials.map((testimonial) => (
-                <figure
-                  key={testimonial.id}
-                  className="cq-reference-panel flex h-full flex-col rounded-2xl p-6"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="font-mono text-4xl leading-none text-[var(--cq-signal)]"
-                  >
-                    “
-                  </span>
-
-                  <blockquote className="mt-2 flex-1 text-[15px] leading-7 text-[var(--cq-text-2)]">
-                    {testimonial.quote}
-                  </blockquote>
-
-                  <figcaption className="mt-6 border-t border-[var(--cq-line)] pt-4">
-                    <p className="text-[15px] font-bold text-white">
-                      {testimonial.name}
-                    </p>
-
-                    <p className="mt-1 text-sm text-[var(--cq-text-3)]">
-                      {[testimonial.role, testimonial.company]
-                        .filter(Boolean)
-                        .join(", ")}
-                    </p>
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      <div className="mt-4">
+        <Testimonials3DCarousel
+          testimonials={featuredTestimonials}
+        />
+      </div>
+    </div>
+  </section>
+)}
 
       <section id="pricing" className="cq-reference-section border-b border-white/6 px-5 py-16 md:px-8 md:py-20">
         <div className="mx-auto w-full max-w-[1800px]">

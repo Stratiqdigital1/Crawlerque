@@ -329,22 +329,54 @@ export function SiteFooter() {
 }
 
 /* ── PAGE PRIMITIVES ─────────────────────────────────────────────────── */
-export function PageHero({ eyebrow, title, sub }: { eyebrow: string; title: string; sub?: string }) {
+export function PageHero({
+  eyebrow,
+  title,
+  sub,
+}: {
+  eyebrow: string;
+  title: string;
+  sub?: string;
+}) {
   return (
-    <section className="border-b border-[var(--cq-line-soft)] px-5 pb-16 pt-20 md:px-8">
-      <div className="mx-auto max-w-4xl text-center">
-        <p className="cq-eyebrow cq-eyebrow--signal">{eyebrow}</p>
-        <h1 className="mt-4 text-[clamp(2.2rem,5.5vw,3.6rem)] font-extrabold leading-[1.06]">{title}</h1>
-        {sub && <p className="mx-auto mt-5 max-w-2xl text-[17px] leading-relaxed text-[var(--cq-text-2)]">{sub}</p>}
+    <section className="border-b border-[var(--cq-line-soft)] px-4 pb-16 pt-20 md:px-6 xl:px-8">
+      <div className="mx-auto w-full max-w-[1800px]">
+        <div className="max-w-4xl">
+          <p className="cq-eyebrow cq-eyebrow--signal">
+            {eyebrow}
+          </p>
+
+          <h1 className="mt-4 text-[clamp(2.4rem,4.6vw,4.5rem)] font-extrabold leading-[1.04] tracking-[-0.035em]">
+            {title}
+          </h1>
+
+          {sub && (
+            <p className="mt-5 max-w-3xl text-[17px] leading-8 text-[var(--cq-text-2)]">
+              {sub}
+            </p>
+          )}
+        </div>
       </div>
     </section>
   );
 }
 
-export function Section({ children, alt = false }: { children: React.ReactNode; alt?: boolean }) {
+export function Section({
+  children,
+  alt = false,
+}: {
+  children: React.ReactNode;
+  alt?: boolean;
+}) {
   return (
-    <section className={`border-b border-[var(--cq-line-soft)] px-5 py-16 md:px-8 ${alt ? "bg-[var(--cq-surface)]/40" : ""}`}>
-      <div className="mx-auto max-w-5xl">{children}</div>
+    <section
+      className={`border-b border-[var(--cq-line-soft)] px-4 py-16 md:px-6 md:py-20 xl:px-8 ${
+        alt ? "bg-[var(--cq-surface)]/40" : ""
+      }`}
+    >
+      <div className="mx-auto w-full max-w-[1800px]">
+        {children}
+      </div>
     </section>
   );
 }
@@ -376,8 +408,10 @@ export function CtaBand({
   secondaryLabel?: string;
 }) {
   return (
-    <section className="px-5 py-20 text-center md:px-8">
-      <div className="mx-auto max-w-2xl">
+<section className="px-4 py-20 md:px-6 xl:px-8">
+  <div className="mx-auto w-full max-w-[1800px]">
+    <div className="cq-reference-cta rounded-3xl px-6 py-14 text-center md:px-10 md:py-16">
+      <div className="mx-auto max-w-3xl">
         <p className="cq-eyebrow cq-eyebrow--signal">
           Complete website growth intelligence
         </p>
@@ -399,8 +433,11 @@ export function CtaBand({
           3 full audits · All growth modules · Card required · Cancel during trial
         </p>
       </div>
+      </div>
+      </div>
     </section>
   );
+  
 }
 
 /* ── PERSONA PAGE TEMPLATE (for-agencies / for-seo-teams / for-consultants) */
